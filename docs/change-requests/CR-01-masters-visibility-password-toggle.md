@@ -3,7 +3,7 @@
 | | |
 |---|---|
 | Raised | 2026-10-11 by the user, during F03 UAT |
-| Status | Approved (raised directly by the user) |
+| Status | ✅ Complete: accepted by the user on 2026-10-11 ("CR-01 accepted") |
 | Affects | F02 (masters permissions), F01 (login and accept-invite forms) |
 
 ## User request
