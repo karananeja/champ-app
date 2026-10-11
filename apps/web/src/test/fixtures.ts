@@ -49,6 +49,7 @@ export const lookupsFixture: LookupsResponse = {
     { value: 'THIRD_PARTY', label: 'Third party' },
     { value: 'CONTRACTUAL', label: 'Contractual' },
   ],
+  clients: [],
 };
 
 export const json = (body: unknown, status = 200) =>

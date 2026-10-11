@@ -1,7 +1,15 @@
 import { INVITABLE_ROLES, USER_LIST_ROLES, type Role, type UserDto } from '@champ/shared';
 
 // Master and technician rules are shared with the API.
-export { canAddTechnician, canEditLookupKind, canEditMasters, canManageTechnician, canViewTechnicians } from '@champ/shared';
+export {
+  canAddTechnician,
+  canEditClients,
+  canEditLookupKind,
+  canEditMasters,
+  canManageTechnician,
+  canViewClients,
+  canViewTechnicians,
+} from '@champ/shared';
 
 export const invitableRoles = (user: UserDto): readonly Role[] => INVITABLE_ROLES[user.role];
 
