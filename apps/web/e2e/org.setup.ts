@@ -1,11 +1,12 @@
 /**
  * Builds a small org for the F02 specs through the API (one SA login, so the login rate limit is not hit):
- * an OM, two OEs, one technician (OT) per OE and (F03) one client. Credentials go to e2e/.data/org.json.
+ * an OM, two OEs, one technician (OT) per OE, (F03) one client and (F04) a task OM/OE/RO plus one task per
+ * viewport. Credentials go to e2e/.data/org.json.
  */
 import fs from 'node:fs';
 import path from 'node:path';
 import { expect, test as setup, type APIRequestContext } from '@playwright/test';
-import type { AuthResponse, CreateInviteResponse, LookupsResponse } from '@champ/shared';
+import type { AuthResponse, ClientDto, CreateInviteResponse, LookupsResponse, TaskDto } from '@champ/shared';
 import { ADMIN_EMAIL, ADMIN_PASSWORD, ORG_FILE, type E2eOrg } from './helpers';
 
 async function post<T>(request: APIRequestContext, url: string, data: unknown, token?: string): Promise<T> {
@@ -68,7 +69,7 @@ setup('create the F02 test org', async ({ request }) => {
   // stubbed geocoder suggests.
   const pune = lookups.locations.find((l) => l.city === 'Pune')!;
   const client = `Acme Fleet ${run}`;
-  await post(
+  const createdClient = await post<ClientDto>(
     request,
     '/api/clients',
     {
@@ -80,6 +81,43 @@ setup('create the F02 test org', async ({ request }) => {
     sa.accessToken,
   );
 
+  // F04: a dedicated OM, OE and RO (keeps every account under the login rate limit), and one untouched task
+  // per viewport for the delete / read-only spec.
+  const taskOm = { email: `f04.om.${run}@intellicar.in`, name: `Tara Taskmanager ${run}`, password };
+  const taskOmInvite = await post<CreateInviteResponse>(request, '/api/invites', { email: taskOm.email, role: 'OM' }, sa.accessToken);
+  const taskOmSession = await accept(taskOmInvite.link, taskOm.name);
+  const taskOe = { email: `f04.oe.${run}@intellicar.in`, name: `Uma Taskexec ${run}`, password };
+  const taskOeInvite = await post<CreateInviteResponse>(request, '/api/invites', { email: taskOe.email, role: 'OE' }, taskOmSession.accessToken);
+  const taskOeSession = await accept(taskOeInvite.link, taskOe.name);
+  const ro = { email: `f04.ro.${run}@intellicar.in`, name: `Rhea Reader ${run}`, password };
+  const roInvite = await post<CreateInviteResponse>(request, '/api/invites', { email: ro.email, role: 'RO' }, sa.accessToken);
+  await accept(roInvite.link, ro.name);
+
+  const byCode = (list: { id: string; code: string | null }[], code: string) => list.find((i) => i.code === code)!.id;
+  const vehicle = byCode(lookups.assetTypes, 'VEHICLE');
+  const taskBody = {
+    clientId: createdClient.id,
+    siteId: createdClient.sites[0]!.id,
+    pocName: 'Asha Rao',
+    pocPhone: '+91 90000 22222',
+    oeId: taskOeSession.user.id,
+    assetTypeId: vehicle,
+    activityId: lookups.activities.find((a) => a.assetTypeId === vehicle)!.id,
+    deviceTypeId: byCode(lookups.deviceTypes, 'LAF5'),
+    makeModelId: lookups.makeModels[0]!.id,
+    installationTypeId: lookups.installationTypes[0]!.id,
+    requestedAt: '2026-11-02T04:30:00.000Z',
+    fitmentAt: '2026-11-03T04:30:00.000Z',
+    shiftTypeId: byCode(lookups.shiftTypes, 'DAY'),
+    issueReportedId: lookups.issuesReported[0]!.id,
+    vehicles: { entry: 'COUNT', count: 2 },
+  };
+  const tasks: Record<string, { id: string; omId: string }> = {};
+  for (const project of ['desktop', 'mobile-360']) {
+    const task = await post<TaskDto>(request, '/api/tasks', { ...taskBody, comments: `E2E ${project}` }, taskOmSession.accessToken);
+    tasks[project] = { id: task.id, omId: task.omId };
+  }
+
   const org: E2eOrg = {
     om,
     oeA: oes[0]!,
@@ -88,6 +126,10 @@ setup('create the F02 test org', async ({ request }) => {
     techB: technicians[1]!,
     client,
     locations: { bengaluru: location.id, pune: pune.id },
+    taskOm,
+    taskOe,
+    ro,
+    tasks,
   };
   fs.mkdirSync(path.dirname(ORG_FILE), { recursive: true });
   fs.writeFileSync(ORG_FILE, JSON.stringify(org, null, 2));

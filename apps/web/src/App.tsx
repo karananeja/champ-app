@@ -12,10 +12,24 @@ import { AcceptInvitePage } from '@/features/invites/AcceptInvitePage';
 import { MasterPage } from '@/features/masters/MasterPage';
 import { MastersPage } from '@/features/masters/MastersPage';
 import { ProfilePage } from '@/features/profile/ProfilePage';
+import { BulkUploadPage } from '@/features/tasks/BulkUploadPage';
+import { ComingSoonPage } from '@/features/tasks/ComingSoonPage';
+import { TaskDetailPage } from '@/features/tasks/TaskDetailPage';
+import { TaskFormPage } from '@/features/tasks/TaskFormPage';
+import { TaskListPage } from '@/features/tasks/TaskListPage';
 import { TechniciansPage } from '@/features/technicians/TechniciansPage';
 import { UsersPage } from '@/features/users/UsersPage';
 import { useAuth } from '@/lib/auth';
-import { canEditClients, canViewClients, canViewMasters, canViewTechnicians, canViewUsers } from '@/lib/permissions';
+import { RotateCcw, Route as RouteIcon, TriangleAlert } from 'lucide-react';
+import {
+  canCreateTask,
+  canEditClients,
+  canViewClients,
+  canViewMasters,
+  canViewTasks,
+  canViewTechnicians,
+  canViewUsers,
+} from '@/lib/permissions';
 
 function UsersRoute() {
   const { user } = useAuth();
@@ -40,6 +54,16 @@ function MastersRoute({ children }: { children: ReactNode }) {
   return user && canViewMasters(user) ? children : <NoAccessRedirect />;
 }
 
+/**
+ * Task pages (F04): SA, OM, OE and RO can view; `create` pages (new, bulk, edit) need a task creator; the
+ * Assigned view is for OEs. Others go to the dashboard with a "no access" toast.
+ */
+function TasksRoute({ create = false, oeOnly = false, children }: { create?: boolean; oeOnly?: boolean; children: ReactNode }) {
+  const { user } = useAuth();
+  const allowed = user && canViewTasks(user) && (!create || canCreateTask(user)) && (!oeOnly || user.role === 'OE');
+  return allowed ? children : <NoAccessRedirect />;
+}
+
 export function App() {
   return (
     <Routes>
@@ -56,6 +80,36 @@ export function App() {
           <Route path="/clients/:id/edit" element={<ClientsRoute edit><ClientFormPage /></ClientsRoute>} />
           <Route path="/masters" element={<MastersRoute><MastersPage /></MastersRoute>} />
           <Route path="/masters/:slug" element={<MastersRoute><MasterPage /></MastersRoute>} />
+          <Route path="/tasks" element={<TasksRoute><TaskListPage view="open" /></TasksRoute>} />
+          <Route path="/tasks/assigned" element={<TasksRoute oeOnly><TaskListPage view="assigned" /></TasksRoute>} />
+          <Route path="/tasks/new" element={<TasksRoute create><TaskFormPage /></TasksRoute>} />
+          <Route path="/tasks/bulk" element={<TasksRoute create><BulkUploadPage /></TasksRoute>} />
+          <Route
+            path="/tasks/travel"
+            element={
+              <TasksRoute>
+                <ComingSoonPage title="Travel tasks" description="Travel between fitment sites (F08)." icon={RouteIcon} />
+              </TasksRoute>
+            }
+          />
+          <Route
+            path="/tasks/faulty"
+            element={
+              <TasksRoute>
+                <ComingSoonPage title="Faulty tasks" description="Fitments moved to a faulty task (F05)." icon={TriangleAlert} />
+              </TasksRoute>
+            }
+          />
+          <Route
+            path="/tasks/reopened"
+            element={
+              <TasksRoute>
+                <ComingSoonPage title="Re-opened" description="Fitments sent back for rework (F05)." icon={RotateCcw} />
+              </TasksRoute>
+            }
+          />
+          <Route path="/tasks/:id" element={<TasksRoute><TaskDetailPage /></TasksRoute>} />
+          <Route path="/tasks/:id/edit" element={<TasksRoute create><TaskFormPage /></TasksRoute>} />
           <Route path="/profile" element={<ProfilePage />} />
         </Route>
       </Route>

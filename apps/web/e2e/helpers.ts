@@ -97,6 +97,12 @@ export interface E2eOrg {
   client: string;
   /** F03: location ids used as geocoder suggestions. */
   locations: { bengaluru: string; pune: string };
+  /** F04: dedicated accounts for the task specs (the OE reports to taskOm). */
+  taskOm: Account;
+  taskOe: Account;
+  ro: Account;
+  /** F04: one untouched task per Playwright project (2 vehicles, OE = taskOe), for delete/read-only checks. */
+  tasks: Record<string, { id: string; omId: string }>;
 }
 
 export const readOrg = (): E2eOrg => JSON.parse(fs.readFileSync(ORG_FILE, 'utf8')) as E2eOrg;
@@ -175,3 +181,13 @@ export async function stubMaps(
   });
   return reverseCalls;
 }
+
+// --- F04 ---
+
+/** The visible task row (desktop table) or card (small screens) that contains `text`. */
+export const taskItem = (page: Page, text: string): Locator =>
+  page.locator('[data-testid="task-row"], [data-testid="task-card"]').filter({ hasText: text, visible: true });
+
+/** The visible fitment rows (table) or cards (small screens). */
+export const fitmentItems = (page: Page): Locator =>
+  page.locator('[data-testid="fitment-row"], [data-testid="fitment-card"]').filter({ visible: true });

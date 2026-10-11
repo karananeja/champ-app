@@ -388,7 +388,7 @@ describe('clients — permissions', () => {
 });
 
 describe('GET /api/lookups — clients', () => {
-  it('includes only active clients with their active sites', async () => {
+  it('includes only active clients with their active sites and the primary contact (F04 POC prefill)', async () => {
     const { om, ot } = await createOrg();
     const zoom = await createClient(om);
     const yard = await api().post(`/api/clients/${zoom.id}/sites`).set(bearer(om)).send(await siteBody({ name: 'Yard', lat: 13, lng: 77.5 }));
@@ -403,6 +403,9 @@ describe('GET /api/lookups — clients', () => {
         id: zoom.id,
         name: 'Zoomcar',
         code: 'ZOOM',
+        contactName: 'Priya Rao',
+        contactPhone: '+91 98765 43210',
+        contactEmail: 'priya@zoom.example',
         sites: [{ id: yard.body.id, name: 'Yard', locationId: yard.body.locationId, lat: 13, lng: 77.5 }],
       },
     ]);

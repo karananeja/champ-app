@@ -49,6 +49,11 @@ model User {
   invitesSent        Invite[]        @relation("InvitedBy")
   refreshTokens      RefreshToken[]
   clientsCreated     Client[]        @relation("ClientCreatedBy")
+  tasksAsOe          Task[]          @relation("TaskOe")
+  tasksCreated       Task[]          @relation("TaskCreatedBy")
+  tasksDeleted       Task[]          @relation("TaskDeletedBy")
+  fitments           Fitment[]       @relation("FitmentTechnician")
+  taskEvents         TaskEvent[]     @relation("TaskEventActor")
 
   @@index([managerId])
   @@index([role, baseLocationId])
@@ -131,6 +136,12 @@ model LookupItem {
   activities        Activity[]
   locationsInState  Location[] @relation("LocationState")
   locationsInRegion Location[] @relation("LocationRegion")
+  tasksByType       Task[]     @relation("TaskType")
+  tasksByAssetType  Task[]     @relation("TaskAssetType")
+  tasksByDevice     Task[]     @relation("TaskDeviceType")
+  tasksByInstall    Task[]     @relation("TaskInstallationType")
+  tasksByShift      Task[]     @relation("TaskShiftType")
+  tasksByIssue      Task[]     @relation("TaskIssueReported")
 
   @@unique([kind, nameKey])
   @@unique([kind, code])
@@ -145,6 +156,7 @@ model Activity {
   active      Boolean    @default(true)
   createdAt   DateTime   @default(now())
   updatedAt   DateTime   @updatedAt
+  tasks       Task[]
 
   @@unique([assetTypeId, nameKey])
 }
@@ -157,6 +169,7 @@ model VehicleMakeModel {
   active    Boolean  @default(true)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+  tasks     Task[]
 
   @@unique([key])
 }
@@ -175,6 +188,7 @@ model Location {
   technicians User[]       @relation("UserBaseLocation")
   invites     Invite[]     @relation("InviteBaseLocation")
   clientSites ClientSite[]
+  tasks       Task[]
 
   @@unique([stateId, cityKey])
   @@index([regionId])
@@ -201,6 +215,7 @@ model Client {
   createdAt    DateTime     @default(now())
   updatedAt    DateTime     @updatedAt
   sites        ClientSite[]
+  tasks        Task[]
 }
 
 /**
@@ -222,7 +237,149 @@ model ClientSite {
   active       Boolean  @default(true)
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
+  tasks        Task[]
 
   @@unique([clientId, nameKey])
   @@index([locationId])
+}
+
+// --- Tasks (F04) ---
+
+/**
+ * Human id counters: 'OM', 'OE', 'TK' (D-065). Incremented inside the creating transaction.
+ */
+model Counter {
+  name  String @id
+  value Int    @default(0)
+}
+
+/**
+ * Stored aggregate of the fitment statuses, set only by `recomputeTaskStatus`.
+ */
+enum TaskStatus {
+  OPEN
+  ASSIGNED
+  IN_PROGRESS
+  COMPLETED
+}
+
+/**
+ * The full workflow (D-011); F04 uses OPEN and ASSIGNED only.
+ */
+enum FitmentStatus {
+  OPEN
+  ASSIGNED
+  IN_PROGRESS
+  SUBMITTED
+  OE_VERIFIED
+  OM_APPROVED
+  CLOSED_NOT_DONE
+  MOVED_TO_FT
+  REOPENED
+}
+
+enum VehicleEntry {
+  COUNT
+  CSV
+}
+
+/**
+ * A client requirement, split into one fitment per vehicle (D-009). Soft-deleted.
+ */
+model Task {
+  id                 String            @id @default(cuid())
+  omNo               Int               @unique // OM-00001
+  oeNo               Int               @unique // OE-00001
+  taskTypeId         String // LookupItem TASK_TYPE (code OT in F04)
+  taskType           LookupItem        @relation("TaskType", fields: [taskTypeId], references: [id])
+  clientId           String
+  client             Client            @relation(fields: [clientId], references: [id])
+  siteId             String
+  site               ClientSite        @relation(fields: [siteId], references: [id])
+  locationId         String // copied from site.locationId (D-061)
+  location           Location          @relation(fields: [locationId], references: [id])
+  pocName            String
+  pocPhone           String
+  pocEmail           String?
+  oeId               String // User with role OE
+  oe                 User              @relation("TaskOe", fields: [oeId], references: [id])
+  technicianType     TechnicianType?
+  assetTypeId        String // LookupItem ASSET_TYPE
+  assetType          LookupItem        @relation("TaskAssetType", fields: [assetTypeId], references: [id])
+  activityId         String
+  activity           Activity          @relation(fields: [activityId], references: [id])
+  deviceTypeId       String // LookupItem DEVICE_TYPE
+  deviceType         LookupItem        @relation("TaskDeviceType", fields: [deviceTypeId], references: [id])
+  makeModelId        String? // required iff the asset type code is VEHICLE
+  makeModel          VehicleMakeModel? @relation(fields: [makeModelId], references: [id])
+  installationTypeId String // LookupItem INSTALLATION_TYPE
+  installationType   LookupItem        @relation("TaskInstallationType", fields: [installationTypeId], references: [id])
+  requestedAt        DateTime // requested fitment date and time (UTC)
+  fitmentAt          DateTime // fitment date and time (UTC)
+  shiftTypeId        String // LookupItem SHIFT_TYPE
+  shiftType          LookupItem        @relation("TaskShiftType", fields: [shiftTypeId], references: [id])
+  issueReportedId    String // LookupItem ISSUE_REPORTED
+  issueReported      LookupItem        @relation("TaskIssueReported", fields: [issueReportedId], references: [id])
+  gpsAddress         String?
+  comments           String?
+  vehicleEntry       VehicleEntry
+  status             TaskStatus        @default(OPEN)
+  createdById        String
+  createdBy          User              @relation("TaskCreatedBy", fields: [createdById], references: [id])
+  createdAt          DateTime          @default(now())
+  updatedAt          DateTime          @updatedAt
+  deletedAt          DateTime?
+  deletedById        String?
+  deletedBy          User?             @relation("TaskDeletedBy", fields: [deletedById], references: [id])
+  fitments           Fitment[]
+  events             TaskEvent[]
+
+  @@index([status, deletedAt])
+  @@index([oeId])
+  @@index([clientId])
+  @@index([fitmentAt])
+}
+
+/**
+ * One vehicle of a task: the technician's unit of work (TK-00001).
+ */
+model Fitment {
+  id           String        @id @default(cuid())
+  tkNo         Int           @unique // TK-00001
+  taskId       String
+  task         Task          @relation(fields: [taskId], references: [id])
+  seq          Int // 1..N within the task
+  status       FitmentStatus @default(OPEN)
+  technicianId String?
+  technician   User?         @relation("FitmentTechnician", fields: [technicianId], references: [id])
+  vehicleRegNo String?
+  chassisNo    String?
+  assetNumber  String?
+  oldDeviceId  String?
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+  events       TaskEvent[]
+
+  @@unique([taskId, seq])
+  @@index([technicianId, status])
+}
+
+/**
+ * Audit trail of a task (D-065); F05 adds workflow event types.
+ */
+model TaskEvent {
+  id         String   @id @default(cuid())
+  taskId     String
+  task       Task     @relation(fields: [taskId], references: [id])
+  fitmentId  String?
+  fitment    Fitment? @relation(fields: [fitmentId], references: [id])
+  actorId    String
+  actor      User     @relation("TaskEventActor", fields: [actorId], references: [id])
+  type       String // TASK_CREATED | TASK_UPDATED | FITMENT_ASSIGNED | FITMENT_UNASSIGNED | FITMENT_UPDATED | TASK_DELETED
+  fromStatus String?
+  toStatus   String?
+  data       Json? // a diff { field: [before, after] } or a payload
+  createdAt  DateTime @default(now())
+
+  @@index([taskId, createdAt])
 }

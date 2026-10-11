@@ -73,7 +73,7 @@ invite (same one-time link as above). An OE only sees and edits their own techni
 
 `pnpm db:seed:demo` (after `pnpm db:seed`) adds `demo.om@intellicar.in`, `demo.oe@intellicar.in` and three OTs
 (`ravi.ot@`, `suresh.ot@`, `amit.ot@intellicar.in`), all with the password `Demo@1234`, plus two sample clients
-(F03). It skips accounts and clients that already exist.
+(F03). It skips accounts and clients that already exist (and the demo tasks once any `[demo]` task exists).
 
 ### Clients and sites (F03)
 
@@ -98,6 +98,36 @@ the pin and type the address by hand. Map tiles load straight from `tile.openstr
 `pnpm db:seed:demo` also adds two sample clients (*Demo Fleet Rentals* with sites in Bengaluru and Pune, *Demo
 Logistics* in New Delhi), with hard-coded coordinates.
 
+### Tasks (F04)
+
+The **Tasks** menu (SA, OM, OE and RO; not OT) holds *Create task*, *Bulk upload* (creators only), *Open tasks*,
+*Assigned* (OEs: tasks where they are the operation executive) and placeholder pages for *Travel tasks*, *Faulty
+tasks* and *Re-opened* (filled in by F05/F08).
+
+- **Create task** is a full page: customer → site (the fitment city comes from the site), POC prefilled from the
+  customer's primary contact, operation executive (locked to yourself as an OE), optional technician type and
+  technician, asset type → activity, device type (LAF5 by default), make/model (vehicles only), installation type,
+  requested and fitment date-time **in IST**, shift, issue reported, GPS address and comments. Vehicles are either a
+  count or a CSV (`registration_number, chassis_number, asset_number, old_device_id`, all optional, up to 500 rows;
+  sample on the page).
+- Saving creates the task with an **OM id** (`OM-00001`), an **OE id** (`OE-00001`) and **one fitment per vehicle**
+  (`TK-00001`, …). With a technician every fitment starts *Assigned* to them, otherwise *Open*. On the task page,
+  tick fitments and assign or unassign them (any active technician) while they are Open/Assigned, and edit vehicle
+  details.
+- **Edit** (SA/OM, or the task's OE) and **Delete** (SA/OM; soft delete, kept in the audit log) only while no
+  fitment has started.
+- **Bulk upload**: download the sample, upload a CSV (one row per task, `vehicle_count` vehicles; customer code or
+  name, site name, emails and master names; dates `YYYY-MM-DD HH:mm` IST; ≤ 2 MB, ≤ 1,000 rows), check the preview
+  (bad cells in red with the reason), import the valid rows and download the error rows to fix.
+- Lists filter by customer, OE, technician, status, activity and fitment date, search ids (`OM-00001`, `tk-1`, `12`),
+  customer or POC, and **Download** CSV or Excel with the current filters (up to 10,000 rows).
+
+Every change writes a `TaskEvent` row (audit trail for F05's history). Sample CSVs for UAT are in
+[`docs/features/F04-task-creation/samples/`](docs/features/F04-task-creation/samples/).
+
+`pnpm db:seed:demo` also adds three demo tasks (comments start with `[demo]`): one Open, one Assigned and one split
+between two technicians.
+
 ### Google sign-in
 
 Hidden unless `GOOGLE_CLIENT_ID` is set. When set, only verified Google accounts in `GOOGLE_ALLOWED_DOMAIN`
@@ -116,8 +146,8 @@ Hidden unless `GOOGLE_CLIENT_ID` is set. When set, only verified Google accounts
 | `pnpm start` | Runs the API without watch mode |
 | `pnpm db:migrate` | Applies pending migrations (`prisma migrate deploy`) |
 | `pnpm db:migrate:dev` | Creates a new migration after editing `apps/api/prisma/schema.prisma` |
-| `pnpm db:seed` | Creates the Super Admin if missing and upserts the master data (idempotent) |
-| `pnpm db:seed:demo` | Optional demo data: an OM, an OE, three technicians and two clients with sites (idempotent) |
+| `pnpm db:seed` | Creates the Super Admin if missing, upserts the master data and creates the task id counters (idempotent) |
+| `pnpm db:seed:demo` | Optional demo data: an OM, an OE, three technicians, two clients with sites and three tasks (idempotent) |
 | `pnpm db:reset` | Drops the dev database, re-applies migrations and seeds — **deletes all local data** |
 
 First E2E run on a machine: `pnpm --filter @champ/web exec playwright install chromium`.
@@ -139,14 +169,17 @@ apps/api/src
   app.ts              Express app factory (used by tests)
   server.ts           HTTP server entry
   config/env.ts       zod-validated environment
-  lib/                prisma, jwt, tokens, password, cookies, google, logger, errors, geocoder/ (Nominatim)
+  lib/                prisma, jwt, tokens, password, cookies, google, logger, errors, geocoder/ (Nominatim),
+                      counters (transactional OM/OE/TK ids)
   middleware/         authenticate, requireRole, validate, error handler
-  modules/            auth, invites, users, health, masters (+ /lookups), technicians, clients, geo (router + service)
+  modules/            auth, invites, users, health, masters (+ /lookups), technicians, clients, geo,
+                      tasks (service, refs, status, filters, export, bulk + bulk-rows)
 apps/api/prisma       schema, migrations, seed (seed-masters.ts: master values; seed-demo.ts: demo users)
 apps/web/src
   components/ui       shadcn/ui components (generated)
   components/         app shell, auth provider, shared widgets, SitePicker, map/ (react-leaflet)
-  features/           auth, invites, users, dashboard, profile, masters (config-driven), technicians, clients
+  features/           auth, invites, users, dashboard, profile, masters (config-driven), technicians, clients, tasks
   lib/                API client (in-memory access token, single-flight refresh), auth context, permissions
-packages/shared/src   roles.ts, masters.ts (kinds, permission helpers), clients.ts, schemas.ts, dto.ts
+packages/shared/src   roles.ts, masters.ts (kinds, permission helpers), clients.ts, tasks.ts (ids, statuses,
+                      permissions, IST helpers, CSV columns), schemas.ts, dto.ts
 ```

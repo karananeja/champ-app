@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { LOOKUP_KINDS } from '@champ/shared';
 import { ACTIVITY_SEED, LOCATION_SEED, LOOKUP_SEED, MAKE_MODEL_SEED, seedMasters } from '../prisma/seed-masters';
+import { ensureCounters, nextNumber } from '../src/lib/counters';
 import { prisma } from '../src/lib/prisma';
 
 async function counts() {
@@ -59,5 +60,32 @@ describe('master data seed', () => {
     await prisma.lookupItem.update({ where: { id: relay.id }, data: { active: false } });
     await seedMasters(prisma);
     expect((await prisma.lookupItem.findUniqueOrThrow({ where: { id: relay.id } })).active).toBe(false);
+  });
+});
+
+describe('task id counters (F04)', () => {
+  it('creates the OM, OE and TK counters once and keeps their values on a re-run', async () => {
+    await ensureCounters(prisma);
+    expect(await prisma.counter.findMany({ orderBy: { name: 'asc' } })).toEqual([
+      { name: 'OE', value: 0 },
+      { name: 'OM', value: 0 },
+      { name: 'TK', value: 0 },
+    ]);
+    const first = await prisma.$transaction((tx) => nextNumber(tx, 'TK', 3));
+    expect(first).toBe(1);
+    await ensureCounters(prisma);
+    expect((await prisma.counter.findUniqueOrThrow({ where: { name: 'TK' } })).value).toBe(3);
+    expect(await prisma.$transaction((tx) => nextNumber(tx, 'TK'))).toBe(4);
+  });
+
+  it('starts a missing counter on first use and gives numbers back when the transaction fails', async () => {
+    expect(await prisma.$transaction((tx) => nextNumber(tx, 'OM'))).toBe(1);
+    await expect(
+      prisma.$transaction(async (tx) => {
+        await nextNumber(tx, 'OM');
+        throw new Error('rollback');
+      }),
+    ).rejects.toThrow('rollback');
+    expect(await prisma.$transaction((tx) => nextNumber(tx, 'OM'))).toBe(2);
   });
 });

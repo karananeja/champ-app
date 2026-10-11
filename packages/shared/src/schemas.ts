@@ -2,6 +2,13 @@ import { z } from 'zod';
 import { CLIENT_CODE_PATTERN } from './clients';
 import { TECHNICIAN_TYPES } from './masters';
 import { ROLES, USER_STATUSES } from './roles';
+import {
+  BULK_MAX_ROWS,
+  MAX_VEHICLES_PER_TASK,
+  TASK_STATUSES,
+  VEHICLE_CSV_COLUMNS,
+  type VehicleCsvColumn,
+} from './tasks';
 
 export const roleSchema = z.enum(ROLES);
 export const userStatusSchema = z.enum(USER_STATUSES);
@@ -401,3 +408,217 @@ export const geoReverseQuerySchema = z.object({
   lng: z.coerce.number().pipe(lngSchema),
 });
 export type GeoReverseQuery = z.infer<typeof geoReverseQuerySchema>;
+
+// --- Tasks (F04) ---
+
+const VEHICLE_FIELD_MAX = 50;
+const vehicleText = (label: string) =>
+  blankable(z.string().max(VEHICLE_FIELD_MAX, `${label} must be at most ${VEHICLE_FIELD_MAX} characters`));
+
+/** One vehicle of a task (D-062). Every field is optional; blanks become null. */
+export const vehicleRowSchema = z.object({
+  vehicleRegNo: vehicleText('Registration number'),
+  chassisNo: vehicleText('Chassis number'),
+  assetNumber: vehicleText('Asset number'),
+  oldDeviceId: vehicleText('Old device id'),
+});
+export type VehicleRowInput = z.infer<typeof vehicleRowSchema>;
+
+/** Vehicles of a new task: a count (blank fitments) or one CSV row per vehicle. */
+export const vehiclesSchema = z.discriminatedUnion(
+  'entry',
+  [
+    z.object({
+      entry: z.literal('COUNT'),
+      count: z
+        .number({ error: 'Enter the number of vehicles' })
+        .int('Enter a whole number')
+        .min(1, 'At least 1 vehicle')
+        .max(MAX_VEHICLES_PER_TASK, `At most ${MAX_VEHICLES_PER_TASK} vehicles`),
+    }),
+    z.object({
+      entry: z.literal('CSV'),
+      rows: z
+        .array(vehicleRowSchema, { error: 'Upload a vehicle CSV' })
+        .min(1, 'The CSV has no vehicle rows')
+        .max(MAX_VEHICLES_PER_TASK, `At most ${MAX_VEHICLES_PER_TASK} vehicles`),
+    }),
+  ],
+  { error: 'Choose how to enter vehicles' },
+);
+export type VehiclesInput = z.infer<typeof vehiclesSchema>;
+
+const isoDateTime = (message: string) => z.iso.datetime({ offset: true, error: message });
+const optionalRef = idSchema.nullish();
+
+const pocNameSchema = z
+  .string({ error: 'POC name is required' })
+  .trim()
+  .min(1, 'POC name is required')
+  .max(100, 'POC name must be at most 100 characters');
+
+/** The task fields shared by create and edit ("header" fields; vehicles are create-only). */
+const taskHeaderFields = {
+  clientId: refId('Choose a customer'),
+  siteId: refId('Choose a site'),
+  pocName: pocNameSchema,
+  pocPhone: phoneSchema,
+  pocEmail: blankable(emailSchema),
+  oeId: refId('Choose an operation executive'),
+  technicianType: technicianTypeSchema.nullish(),
+  assetTypeId: refId('Choose an asset type'),
+  activityId: refId('Choose an activity'),
+  deviceTypeId: refId('Choose a device type'),
+  makeModelId: optionalRef,
+  installationTypeId: refId('Choose an installation type'),
+  requestedAt: isoDateTime('Choose the requested fitment date and time'),
+  fitmentAt: isoDateTime('Choose the fitment date and time'),
+  shiftTypeId: refId('Choose a shift type'),
+  issueReportedId: refId('Choose the issue reported'),
+  gpsAddress: blankable(z.string().max(500, 'GPS address must be at most 500 characters')),
+  comments: blankable(z.string().max(2000, 'Comments must be at most 2000 characters')),
+};
+
+export const createTaskSchema = z.object({
+  ...taskHeaderFields,
+  vehicles: vehiclesSchema,
+  /** Optional (D-063): every fitment is assigned to this technician. */
+  technicianId: optionalRef,
+});
+export type CreateTaskInput = z.infer<typeof createTaskSchema>;
+
+export const MAKE_MODEL_REQUIRED = 'Choose the vehicle make/model';
+export const MAKE_MODEL_NOT_ALLOWED = 'Make/model applies to vehicles only';
+
+/**
+ * The make/model rule: required when the asset type is a vehicle, empty otherwise. The API checks it against
+ * the database; forms that know which asset type ids are vehicles use `createTaskSchemaFor`.
+ */
+export function makeModelIssue(isVehicle: boolean, makeModelId: string | null | undefined): string | null {
+  if (isVehicle && !makeModelId) return MAKE_MODEL_REQUIRED;
+  if (!isVehicle && makeModelId) return MAKE_MODEL_NOT_ALLOWED;
+  return null;
+}
+
+/** `createTaskSchema` plus the make/model rule, given a way to tell vehicle asset types. */
+export const createTaskSchemaFor = (isVehicle: (assetTypeId: string) => boolean) =>
+  createTaskSchema.superRefine((value, ctx) => {
+    const message = makeModelIssue(isVehicle(value.assetTypeId), value.makeModelId);
+    if (message) ctx.addIssue({ code: 'custom', path: ['makeModelId'], message });
+  });
+
+/** PATCH /tasks/:id: header fields only (not vehicles or the count). */
+export const updateTaskSchema = z
+  .object({
+    clientId: idSchema.optional(),
+    siteId: idSchema.optional(),
+    pocName: pocNameSchema.optional(),
+    pocPhone: phoneSchema.optional(),
+    pocEmail: taskHeaderFields.pocEmail,
+    oeId: idSchema.optional(),
+    technicianType: technicianTypeSchema.nullish(),
+    assetTypeId: idSchema.optional(),
+    activityId: idSchema.optional(),
+    deviceTypeId: idSchema.optional(),
+    makeModelId: optionalRef,
+    installationTypeId: idSchema.optional(),
+    requestedAt: taskHeaderFields.requestedAt.optional(),
+    fitmentAt: taskHeaderFields.fitmentAt.optional(),
+    shiftTypeId: idSchema.optional(),
+    issueReportedId: idSchema.optional(),
+    gpsAddress: taskHeaderFields.gpsAddress,
+    comments: taskHeaderFields.comments,
+  })
+  .refine(atLeastOne, nothingToUpdate);
+export type UpdateTaskInput = z.infer<typeof updateTaskSchema>;
+
+export const updateFitmentSchema = vehicleRowSchema.refine(atLeastOne, nothingToUpdate);
+export type UpdateFitmentInput = z.infer<typeof updateFitmentSchema>;
+
+export const assignFitmentsSchema = z.object({
+  fitmentIds: z
+    .array(idSchema, { error: 'Choose at least one fitment' })
+    .min(1, 'Choose at least one fitment')
+    .max(MAX_VEHICLES_PER_TASK),
+  /** null unassigns. */
+  technicianId: idSchema.nullable(),
+});
+export type AssignFitmentsInput = z.infer<typeof assignFitmentsSchema>;
+
+export const TASK_VIEWS = ['open', 'assigned', 'all'] as const;
+export type TaskView = (typeof TASK_VIEWS)[number];
+
+export const TASK_SORTS = ['fitmentAt:asc', 'fitmentAt:desc', 'createdAt:asc', 'createdAt:desc'] as const;
+export type TaskSort = (typeof TASK_SORTS)[number];
+
+const istDay = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Use YYYY-MM-DD');
+
+/** Filters shared by `GET /tasks` and `GET /tasks/export`. `from`/`to` are IST days, both inclusive. */
+const taskFilterFields = {
+  view: z.enum(TASK_VIEWS).default('open'),
+  q: searchQuery,
+  clientId: idSchema.optional(),
+  oeId: idSchema.optional(),
+  technicianId: idSchema.optional(),
+  status: z.enum(TASK_STATUSES).optional(),
+  activityId: idSchema.optional(),
+  from: istDay.optional(),
+  to: istDay.optional(),
+  sort: z.enum(TASK_SORTS).default('fitmentAt:asc'),
+};
+
+export const listTasksQuerySchema = z.object({
+  ...taskFilterFields,
+  page: z.coerce.number().int().min(1).default(1),
+  pageSize: z.coerce.number().int().min(1).max(100).default(20),
+});
+export type ListTasksQuery = z.infer<typeof listTasksQuerySchema>;
+export type TaskFilters = Omit<ListTasksQuery, 'page' | 'pageSize'>;
+
+export const EXPORT_FORMATS = ['csv', 'xlsx'] as const;
+export type ExportFormat = (typeof EXPORT_FORMATS)[number];
+
+export const exportTasksQuerySchema = z.object({ ...taskFilterFields, format: z.enum(EXPORT_FORMATS).default('csv') });
+export type ExportTasksQuery = z.infer<typeof exportTasksQuerySchema>;
+
+/** POST /tasks/bulk/import: the preview rows sent back (the server validates them again). */
+export const bulkImportSchema = z.object({
+  rows: z
+    .array(
+      z.object({
+        rowNumber: z.number().int().min(1),
+        data: z.record(z.string(), z.string().max(2000)),
+      }),
+      { error: 'Nothing to import' },
+    )
+    .min(1, 'Nothing to import')
+    .max(BULK_MAX_ROWS, `At most ${BULK_MAX_ROWS} rows`),
+});
+export type BulkImportInput = z.infer<typeof bulkImportSchema>;
+
+/**
+ * Turns parsed vehicle CSV records (keys = normalised headers) into vehicle rows, with readable errors.
+ * At least one data row, at most 500, and at least one known column; other columns are ignored.
+ */
+export function vehicleRowsFromCsv(
+  headers: readonly string[],
+  records: readonly Record<string, string | undefined>[],
+): { rows: VehicleRowInput[]; errors: string[] } {
+  const known = Object.keys(VEHICLE_CSV_COLUMNS) as VehicleCsvColumn[];
+  const errors: string[] = [];
+  if (!headers.some((h) => (known as string[]).includes(h))) {
+    return { rows: [], errors: [`The header must have at least one of: ${known.join(', ')}`] };
+  }
+  if (records.length === 0) return { rows: [], errors: ['The CSV has no vehicle rows'] };
+  if (records.length > MAX_VEHICLES_PER_TASK) {
+    return { rows: [], errors: [`At most ${MAX_VEHICLES_PER_TASK} vehicles (the file has ${records.length})`] };
+  }
+  const rows: VehicleRowInput[] = [];
+  records.forEach((record, i) => {
+    const raw = Object.fromEntries(known.map((col) => [VEHICLE_CSV_COLUMNS[col], record[col] ?? '']));
+    const parsed = vehicleRowSchema.safeParse(raw);
+    if (parsed.success) rows.push(parsed.data);
+    else errors.push(...parsed.error.issues.map((issue) => `Row ${i + 2}: ${issue.message}`));
+  });
+  return { rows, errors };
+}

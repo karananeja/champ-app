@@ -1,8 +1,10 @@
 /**
- * Base seed: the first Super Admin and the master data (F02). Idempotent: an existing Super Admin is left
- * untouched and master values are upserted (see seed-masters.ts).
+ * Base seed: the first Super Admin, the master data (F02) and the task id counters (F04). Idempotent: an
+ * existing Super Admin is left untouched, master values are upserted (see seed-masters.ts) and existing
+ * counters keep their values.
  */
 import { passwordSchema } from '@champ/shared';
+import { ensureCounters } from '../src/lib/counters';
 import { hashPassword } from '../src/lib/password';
 import { logger } from '../src/lib/logger';
 import { prisma } from '../src/lib/prisma';
@@ -33,6 +35,7 @@ async function seedSuperAdmin() {
 async function main() {
   await seedSuperAdmin();
   await seedMasters(prisma);
+  await ensureCounters(prisma);
   const [lookups, activities, makeModels, locations] = await Promise.all([
     prisma.lookupItem.count(),
     prisma.activity.count(),
