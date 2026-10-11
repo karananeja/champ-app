@@ -1,0 +1,6 @@
+customer,site,oe_email,technician_email,technician_type,asset_type,activity,device_type,vehicle_make,vehicle_model,installation_type,requested_fitment_at,fitment_at,shift_type,vehicle_count,issue_reported,poc_name,poc_phone,poc_email,gps_address,comments
+DFR,Bengaluru depot,demo.oe@intellicar.in,ravi.ot@intellicar.in,Payroll,Vehicle,New installation,LAF5,Tata,Ace,GPS,2026-10-20 09:00,2026-10-21 10:30,Day,3,Device not reporting,,,,,Good row 1
+Demo Fleet Rentals,Pune yard,demo.oe@intellicar.in,,,Vehicle,Health check,,Ashok Leyland,Dost,GPS+CAN,2026-10-20 09:00,2026-10-22 06:00,Early morning,2,Wrong GPS location,,,,,Good row 2
+Unknown Customer Ltd,Main gate,demo.oe@intellicar.in,,,Vehicle,New installation,,Tata,Ace,GPS,21/10/2026 10:00,2026-10-21 10:00,Day,0,Device not reporting,,,,,Bad row: customer, date and count
+DLOG,Delhi hub,demo.oe@intellicar.in,,,Battery,New installation,,,,GPS,2026-10-21 18:00,2026-10-23 21:00,Night,4,Vehicle battery draining,,,,,Good row 3
+DFR,Bengaluru depot,demo.oe@intellicar.in,suresh.ot@intellicar.in,Payroll,Battery,Removal,,Tata,Ace,GPS,2026-10-21 09:00,2026-10-24 10:00,Day,1,Device not reporting,,,,,Bad row: technician type and make/model on a battery
