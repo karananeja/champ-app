@@ -1,7 +1,8 @@
 /**
  * Builds a small org for the F02 specs through the API (one SA login, so the login rate limit is not hit):
- * an OM, two OEs, one technician (OT) per OE, (F03) one client and (F04) a task OM/OE/RO plus one task per
- * viewport. Credentials go to e2e/.data/org.json.
+ * an OM, two OEs, one technician (OT) per OE, (F03) one client, (F04) a task OM/OE/RO plus one task per
+ * viewport and (F05) a workflow OM/OE with two technicians and, per viewport, the tasks of the workflow spec
+ * (one already OE-verified for bulk approve). Credentials go to e2e/.data/org.json.
  */
 import fs from 'node:fs';
 import path from 'node:path';
@@ -118,6 +119,50 @@ setup('create the F02 test org', async ({ request }) => {
     tasks[project] = { id: task.id, omId: task.omId };
   }
 
+  // F05: a workflow OM and OE (their own accounts keep each login count low), two technicians of the OE, and
+  // per viewport: a task for the full flow, one for reopen, one for faulty, and one with 2 fitments driven to
+  // OE verified through the API (simulator as the OM, verify as the OE) for the bulk approve.
+  const wfOm = { email: `f05.om.${run}@intellicar.in`, name: `Wanda Workflow OM ${run}`, password };
+  const wfOmSession = await accept((await post<CreateInviteResponse>(request, '/api/invites', { email: wfOm.email, role: 'OM' }, sa.accessToken)).link, wfOm.name);
+  const wfOe = { email: `f05.oe.${run}@intellicar.in`, name: `Vikram Workflow OE ${run}`, password };
+  const wfOeSession = await accept(
+    (await post<CreateInviteResponse>(request, '/api/invites', { email: wfOe.email, role: 'OE' }, wfOmSession.accessToken)).link,
+    wfOe.name,
+  );
+  const wfTechs: { id: string; name: string }[] = [];
+  for (const [i, name] of [`Kiran Fitter ${run}`, `Lata Fitter ${run}`].entries()) {
+    const invite = await post<CreateInviteResponse>(
+      request,
+      '/api/technicians',
+      { name, phone: '+91 90000 00009', email: `f05.ot.${i}.${run}@intellicar.in`, technicianType: 'PAYROLL', baseLocationId: location.id },
+      wfOeSession.accessToken,
+    );
+    wfTechs.push({ id: (await accept(invite.link, name)).user.id, name });
+  }
+  const wfTask = (comments: string, count: number) =>
+    post<TaskDto>(
+      request,
+      '/api/tasks',
+      { ...taskBody, oeId: wfOeSession.user.id, technicianId: wfTechs[0]!.id, vehicles: { entry: 'COUNT', count }, comments },
+      wfOmSession.accessToken,
+    );
+  const workflow: E2eOrg['workflow'] = {};
+  for (const project of ['desktop', 'mobile-360']) {
+    const [flow, reopen, faulty, bulk] = [
+      await wfTask(`F05 flow ${project}`, 1),
+      await wfTask(`F05 reopen ${project}`, 1),
+      await wfTask(`F05 faulty ${project}`, 1),
+      await wfTask(`F05 bulk ${project}`, 2),
+    ];
+    for (const f of bulk.fitments) {
+      await post(request, `/api/dev/fitments/${f.id}/simulate`, { action: 'START' }, wfOmSession.accessToken);
+      await post(request, `/api/dev/fitments/${f.id}/simulate`, { action: 'SUBMIT' }, wfOmSession.accessToken);
+      await post(request, `/api/fitments/${f.id}/transitions`, { action: 'VERIFY' }, wfOeSession.accessToken);
+    }
+    const ref = (t: TaskDto) => ({ id: t.id, omId: t.omId, tkIds: t.fitments.map((f) => f.tkId) });
+    workflow[project] = { flow: ref(flow), reopen: ref(reopen), faulty: ref(faulty), bulk: ref(bulk) };
+  }
+
   const org: E2eOrg = {
     om,
     oeA: oes[0]!,
@@ -130,6 +175,10 @@ setup('create the F02 test org', async ({ request }) => {
     taskOe,
     ro,
     tasks,
+    wfOm,
+    wfOe,
+    wfTechs: wfTechs.map((t) => t.name),
+    workflow,
   };
   fs.mkdirSync(path.dirname(ORG_FILE), { recursive: true });
   fs.writeFileSync(ORG_FILE, JSON.stringify(org, null, 2));

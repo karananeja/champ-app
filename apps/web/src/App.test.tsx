@@ -9,8 +9,8 @@ import { AuthContext, type AuthContextValue } from '@/lib/auth';
 import { makeUser, mockApi } from '@/test/fixtures';
 import { App } from './App';
 
-function renderAt(path: string, role: Role) {
-  mockApi({ 'GET /api/masters/lookup/final-issue': { items: [] } });
+function renderAt(path: string, role: Role, routes: Record<string, unknown> = {}) {
+  mockApi({ 'GET /api/masters/lookup/final-issue': { items: [] }, ...routes });
   const auth: AuthContextValue = {
     status: 'authenticated',
     user: makeUser({ role, name: 'Test User' }),
@@ -94,9 +94,27 @@ describe('Tasks route guards (F04)', () => {
     expect(sidebar().getByRole('link', { name: 'Travel tasks' })).toBeInTheDocument();
   });
 
-  it('placeholder views say they are coming later', async () => {
-    renderAt('/tasks/faulty', 'OE');
-    expect(await screen.findByRole('heading', { name: 'Faulty tasks' })).toBeInTheDocument();
+  it('the travel placeholder says it is coming later', async () => {
+    renderAt('/tasks/travel', 'OE');
+    expect(await screen.findByRole('heading', { name: 'Travel tasks' })).toBeInTheDocument();
     expect(screen.getByText('Coming in a later release')).toBeInTheDocument();
+  });
+
+  it('F05: Faulty and Re-opened are real lists; Awaiting approval is for SA/OM only', async () => {
+    renderAt('/tasks/faulty', 'OE', {
+      'GET /api/fitments/faulty': { items: [], total: 0, page: 1, pageSize: 20 },
+      'GET /api/tasks/options': { oes: [], technicians: [] },
+    });
+    expect(await screen.findByRole('heading', { name: 'Faulty tasks' })).toBeInTheDocument();
+    expect(await screen.findByText('No fitment has been moved to FT.')).toBeInTheDocument();
+    expect(screen.queryByText('Coming in a later release')).not.toBeInTheDocument();
+    expect(sidebar().queryByRole('link', { name: 'Awaiting approval' })).not.toBeInTheDocument();
+  });
+
+  it('F05: an OE opening Awaiting approval is sent to the dashboard', async () => {
+    const toastError = vi.spyOn(toast, 'error');
+    renderAt('/tasks/awaiting-approval', 'OE');
+    expect(await screen.findByRole('heading', { name: 'Welcome, Test User' })).toBeInTheDocument();
+    expect(toastError).toHaveBeenCalledWith("You don't have access to that page", { id: 'no-access' });
   });
 });

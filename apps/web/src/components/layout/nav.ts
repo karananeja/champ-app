@@ -1,4 +1,5 @@
 import {
+  BadgeCheck,
   Building2,
   ClipboardList,
   Database,
@@ -15,7 +16,7 @@ import {
   type LucideIcon,
 } from 'lucide-react';
 import type { UserDto } from '@champ/shared';
-import { canCreateTask, canViewClients, canViewMasters, canViewTasks, canViewTechnicians, canViewUsers } from '@/lib/permissions';
+import { canApproveFitments, canCreateTask, canViewClients, canViewMasters, canViewTasks, canViewTechnicians, canViewUsers } from '@/lib/permissions';
 
 export interface NavItem {
   to: string;
@@ -25,7 +26,10 @@ export interface NavItem {
   end?: boolean;
 }
 
-/** The Tasks group (F04): creators get Create/Bulk upload, OEs get Assigned; Travel/Faulty/Re-opened are placeholders. */
+/**
+ * The Tasks group (F04/F05): creators get Create/Bulk upload, OEs get Assigned, SA/OM get Awaiting approval;
+ * Faulty and Re-opened for every task viewer; Travel is a placeholder (F08).
+ */
 function taskItems(user: UserDto): NavItem[] {
   const creator = canCreateTask(user);
   return [
@@ -33,6 +37,7 @@ function taskItems(user: UserDto): NavItem[] {
     ...(creator ? [{ to: '/tasks/bulk', label: 'Bulk upload', icon: Upload }] : []),
     { to: '/tasks', label: 'Open tasks', icon: ClipboardList, end: true },
     ...(user.role === 'OE' ? [{ to: '/tasks/assigned', label: 'Assigned', icon: UserCheck }] : []),
+    ...(canApproveFitments(user) ? [{ to: '/tasks/awaiting-approval', label: 'Awaiting approval', icon: BadgeCheck }] : []),
     { to: '/tasks/travel', label: 'Travel tasks', icon: Route },
     { to: '/tasks/faulty', label: 'Faulty tasks', icon: TriangleAlert },
     { to: '/tasks/reopened', label: 'Re-opened', icon: RotateCcw },

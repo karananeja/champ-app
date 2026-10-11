@@ -3,6 +3,8 @@ import { INVITABLE_ROLES, USER_LIST_ROLES, type Role, type UserDto } from '@cham
 // Master and technician rules are shared with the API.
 export {
   canAddTechnician,
+  canApproveFitments,
+  canViewHistory,
   canCreateTask,
   canDeleteTask,
   canManageTask,

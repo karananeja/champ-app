@@ -1,8 +1,8 @@
-import { useState, type ReactNode } from 'react';
+import { Suspense, lazy, useState, type ReactNode } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { toast } from 'sonner';
 import { ArrowLeft, Pencil, Trash2 } from 'lucide-react';
-import { TECHNICIAN_TYPE_LABELS, type TaskDto, type TaskRef } from '@champ/shared';
+import { TECHNICIAN_TYPE_LABELS, canManageTask, type TaskDto, type TaskRef } from '@champ/shared';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -17,14 +17,39 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ApiError } from '@/lib/api';
+import { useCurrentUser } from '@/lib/auth';
+import { useAppConfig } from '@/lib/config';
 import { formatIst } from '@/lib/format';
 import { cn } from '@/lib/utils';
 import { FitmentsSection } from './FitmentsSection';
+import { TaskHistory } from './history/task-history';
 import { useDeleteTask, useTask } from './queries';
-import { TaskStatusBadge } from './TaskStatusBadge';
+import { TaskStatusBadge } from '@/components/fitment-status-badge';
 
-/** `/tasks/:id`: every task field, the fitments with assignment, and Edit/Delete per the server's flags. */
+/**
+ * The dev-only technician simulator (D-073). `import.meta.env.DEV` is false in production builds, so the
+ * lazy import is dropped and the panel's code never reaches the bundle (checked by `prod-bundle.test.ts`).
+ */
+const SimulatorPanel = import.meta.env.DEV ? lazy(() => import('./simulator/simulator-panel')) : null;
+
+/** Shows the simulator to SA, OM and the task's OE when the API has it enabled. */
+function DevSimulator({ task }: { task: TaskDto }) {
+  const actor = useCurrentUser();
+  const config = useAppConfig();
+  if (!SimulatorPanel || !config.data?.devSimulator || !canManageTask(actor, task)) return null;
+  return (
+    <Suspense fallback={null}>
+      <SimulatorPanel task={task} />
+    </Suspense>
+  );
+}
+
+/**
+ * `/tasks/:id`: every task field, the fitments with their workflow actions, Edit/Delete per the server's
+ * flags, and (SA/OM) a History tab with the stage timeline and raw events (F05).
+ */
 export function TaskDetailPage() {
   const { id = '' } = useParams();
   const { data: task, isPending, isError, error } = useTask(id);
@@ -105,6 +130,54 @@ function TaskDetail({ task }: { task: TaskDto }) {
         )}
       </div>
 
+      {task.permissions.canViewHistory ? (
+        <Tabs defaultValue="details" className="gap-4">
+          <TabsList>
+            <TabsTrigger value="details">Details</TabsTrigger>
+            <TabsTrigger value="history">History</TabsTrigger>
+          </TabsList>
+          <TabsContent value="details">
+            <TaskDetails task={task} />
+          </TabsContent>
+          <TabsContent value="history">
+            <TaskHistory taskId={task.id} omId={task.omId} />
+          </TabsContent>
+        </Tabs>
+      ) : (
+        <TaskDetails task={task} />
+      )}
+
+      <AlertDialog open={confirmDelete} onOpenChange={setConfirmDelete}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete {task.omId}?</AlertDialogTitle>
+            <AlertDialogDescription>
+              The task and its {task.counts.total} fitment(s) disappear from every list. The deletion is kept in the
+              audit log.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={remove.isPending}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              disabled={remove.isPending}
+              onClick={(e) => {
+                e.preventDefault();
+                onDelete();
+              }}
+            >
+              Delete task
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </div>
+  );
+}
+
+/** The Details tab: the task's fields, its fitments and (dev only) the technician simulator. */
+function TaskDetails({ task }: { task: TaskDto }) {
+  return (
+    <div className="grid grid-cols-1 gap-6">
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
         <InfoCard title="Customer">
           <Info label="Customer">{refName(task.client)}</Info>
@@ -154,30 +227,7 @@ function TaskDetail({ task }: { task: TaskDto }) {
       </div>
 
       <FitmentsSection task={task} />
-
-      <AlertDialog open={confirmDelete} onOpenChange={setConfirmDelete}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Delete {task.omId}?</AlertDialogTitle>
-            <AlertDialogDescription>
-              The task and its {task.counts.total} fitment(s) disappear from every list. The deletion is kept in the
-              audit log.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel disabled={remove.isPending}>Cancel</AlertDialogCancel>
-            <AlertDialogAction
-              disabled={remove.isPending}
-              onClick={(e) => {
-                e.preventDefault();
-                onDelete();
-              }}
-            >
-              Delete task
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      <DevSimulator task={task} />
     </div>
   );
 }

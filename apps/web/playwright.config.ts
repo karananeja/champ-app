@@ -58,6 +58,8 @@ export default defineConfig({
         // never calls the real Nominatim during E2E.
         NOMINATIM_URL: 'http://127.0.0.1:9',
         JWT_ACCESS_SECRET: process.env.JWT_ACCESS_SECRET || 'e2e-secret-not-for-production',
+        // F05: the dev technician simulator (D-073) drives the OT steps in the workflow spec.
+        ENABLE_DEV_SIMULATOR: 'true',
       },
     },
     {

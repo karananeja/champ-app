@@ -25,7 +25,7 @@ import { formatIst } from '@/lib/format';
 import { useLookups } from '../masters/queries';
 import { downloadFile, useTaskOptions, useTasks } from './queries';
 import { EMPTY_FILTERS, buildTaskQuery, exportPath, hasFilters, type TaskFilterState, type TaskListView } from './taskQuery';
-import { TaskStatusBadge } from './TaskStatusBadge';
+import { TaskStatusBadge } from '@/components/fitment-status-badge';
 
 const PAGE_SIZE = 20;
 const ALL = 'ALL';

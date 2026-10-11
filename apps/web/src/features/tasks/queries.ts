@@ -1,14 +1,20 @@
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import type {
+  ApproveFitmentsResponse,
   AssignFitmentsInput,
   BulkImportInput,
   BulkImportResponse,
   BulkPreviewResponse,
   Paginated,
   TaskDto,
+  TaskEventDto,
+  TaskHistoryResponse,
   TaskListItemDto,
   TaskOptionsResponse,
+  TransitionInput,
+  TransitionResponse,
   UpdateFitmentInput,
+  WorkflowFitmentItemDto,
 } from '@champ/shared';
 import { api, apiDownload, apiUpload } from '@/lib/api';
 import { saveBlob } from '@/lib/download';
@@ -18,7 +24,13 @@ export const tasksKeys = {
   list: (query: TaskListParams) => ['tasks', 'list', query] as const,
   detail: (id: string) => ['tasks', 'detail', id] as const,
   options: ['tasks', 'options'] as const,
+  workflow: (list: WorkflowListName, query: TaskListParams) => ['tasks', 'workflow', list, query] as const,
+  history: (id: string) => ['tasks', 'history', id] as const,
+  events: (id: string) => ['tasks', 'events', id] as const,
 };
+
+/** The F05 fitment lists (`GET /fitments/<name>`). */
+export type WorkflowListName = 'awaiting-approval' | 'reopened' | 'faulty';
 
 /** `GET /tasks` query string (see `listTasksQuerySchema`); empty values are left out. */
 export type TaskListParams = Record<string, string | number | undefined>;
@@ -109,3 +121,53 @@ export function useImportBulk() {
     onSuccess: () => void queryClient.invalidateQueries({ queryKey: tasksKeys.all }),
   });
 }
+
+// --- Workflow (F05) ---
+
+/** After any workflow change: refresh every task query (detail, lists, workflow lists, history). */
+export function useInvalidateTasks() {
+  const queryClient = useQueryClient();
+  return () => void queryClient.invalidateQueries({ queryKey: tasksKeys.all });
+}
+
+/** `POST /fitments/:fid/transitions` (Verify, Final approve, Reopen on the web). */
+export function useFitmentTransition() {
+  const invalidate = useInvalidateTasks();
+  return useMutation({
+    mutationFn: ({ fitmentId, body }: { fitmentId: string; body: TransitionInput }) =>
+      api<TransitionResponse>(`/fitments/${fitmentId}/transitions`, { method: 'POST', body }),
+    onSuccess: invalidate,
+  });
+}
+
+/** `POST /fitments/approve`: bulk final approve (OM/SA). */
+export function useApproveFitments() {
+  const invalidate = useInvalidateTasks();
+  return useMutation({
+    mutationFn: (fitmentIds: string[]) =>
+      api<ApproveFitmentsResponse>('/fitments/approve', { method: 'POST', body: { fitmentIds } }),
+    onSuccess: invalidate,
+  });
+}
+
+export function useWorkflowList(list: WorkflowListName, query: TaskListParams) {
+  return useQuery({
+    queryKey: tasksKeys.workflow(list, query),
+    queryFn: () => api<Paginated<WorkflowFitmentItemDto>>(`/fitments/${list}`, { query }),
+    placeholderData: keepPreviousData,
+  });
+}
+
+export function useTaskHistory(id: string) {
+  return useQuery({ queryKey: tasksKeys.history(id), queryFn: () => api<TaskHistoryResponse>(`/tasks/${id}/history`) });
+}
+
+export function useTaskEvents(id: string) {
+  return useQuery({
+    queryKey: tasksKeys.events(id),
+    queryFn: () => api<{ items: TaskEventDto[] }>(`/tasks/${id}/events`),
+  });
+}
+
+export const downloadTaskEvents = (id: string, omId: string) =>
+  downloadFile(`/tasks/${id}/events?format=csv`, `champ-${omId}-events.csv`);

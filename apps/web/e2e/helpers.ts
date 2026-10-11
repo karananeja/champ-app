@@ -103,6 +103,21 @@ export interface E2eOrg {
   ro: Account;
   /** F04: one untouched task per Playwright project (2 vehicles, OE = taskOe), for delete/read-only checks. */
   tasks: Record<string, { id: string; omId: string }>;
+  /** F05: workflow accounts (the OE reports to wfOm) and technician names (OTs of wfOe). */
+  wfOm: Account;
+  wfOe: Account;
+  wfTechs: string[];
+  /**
+   * F05: per Playwright project, tasks assigned to wfTechs[0] (OE = wfOe): `flow`, `reopen` and `faulty` with
+   * one fitment, `bulk` with two fitments already OE verified.
+   */
+  workflow: Record<string, Record<'flow' | 'reopen' | 'faulty' | 'bulk', WorkflowTask>>;
+}
+
+export interface WorkflowTask {
+  id: string;
+  omId: string;
+  tkIds: string[];
 }
 
 export const readOrg = (): E2eOrg => JSON.parse(fs.readFileSync(ORG_FILE, 'utf8')) as E2eOrg;
@@ -191,3 +206,37 @@ export const taskItem = (page: Page, text: string): Locator =>
 /** The visible fitment rows (table) or cards (small screens). */
 export const fitmentItems = (page: Page): Locator =>
   page.locator('[data-testid="fitment-row"], [data-testid="fitment-card"]').filter({ visible: true });
+
+// --- F05 ---
+
+/** The visible fitment row or card of a TK id (by `data-tk`; a replacement's row also mentions the original's TK). */
+export const fitmentItem = (page: Page, tkId: string): Locator => fitmentItems(page).and(page.locator(`[data-tk="${tkId}"]`));
+
+/** Runs a fitment review action: the row button on desktop, the card's actions menu on small screens. */
+export async function fitmentAction(page: Page, tkId: string, action: 'Verify' | 'Final approve' | 'Reopen') {
+  const button = page.getByRole('button', { name: `${action} ${tkId}`, exact: true });
+  if (await button.isVisible()) {
+    await button.click();
+  } else {
+    await page.getByRole('button', { name: `Actions for ${tkId}` }).click();
+    await page.getByRole('menuitem', { name: action, exact: true }).click();
+  }
+}
+
+/** Opens the dev simulator panel on a task page and runs a technician step (Start work or Submit). */
+export async function simulate(page: Page, step: 'Start work' | 'Submit') {
+  const panel = page.getByTestId('simulator-panel');
+  if (!(await panel.getByRole('button', { name: 'Start work' }).isVisible())) {
+    await panel.getByRole('button', { name: /Simulate technician \(dev only\)/ }).click();
+  }
+  const button = panel.getByRole('button', { name: step, exact: true });
+  await expect(button).toBeEnabled();
+  await button.click();
+  await expect(page.getByText(/\(simulated\)$/).last()).toBeVisible();
+}
+
+/** Signs out by dropping the session cookie, so the next `login` starts clean. */
+export async function switchUser(page: Page, email: string, password: string) {
+  await page.context().clearCookies();
+  await login(page, email, password);
+}

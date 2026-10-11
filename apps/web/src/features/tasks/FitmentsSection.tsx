@@ -1,8 +1,28 @@
 import { useState } from 'react';
 import { toast } from 'sonner';
-import { Loader2, Pencil } from 'lucide-react';
-import { isFitmentAssignable, type FitmentDto, type TaskDto, type UpdateFitmentInput } from '@champ/shared';
+import { CheckCheck, Loader2, MoreHorizontal, Pencil, RotateCcw } from 'lucide-react';
+import {
+  FITMENT_ACTION_LABELS,
+  FITMENT_STATUS_LABELS,
+  REVIEW_ACTIONS,
+  isFitmentAssignable,
+  type FitmentDto,
+  type TaskDto,
+  type UpdateFitmentInput,
+} from '@champ/shared';
+import { FitmentStatusBadge } from '@/components/fitment-status-badge';
 import { SearchableSelect } from '@/components/SearchableSelect';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -14,34 +34,92 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { ApiError } from '@/lib/api';
-import { useAssignFitments, useTaskOptions, useUpdateFitment } from './queries';
-import { FitmentStatusBadge } from './TaskStatusBadge';
+import { useCurrentUser } from '@/lib/auth';
+import { FitmentActionDialog, type ReviewAction } from './fitment-action-dialog';
+import { useApproveFitments, useAssignFitments, useTaskOptions, useUpdateFitment } from './queries';
 
 const vehicleText = (f: FitmentDto) =>
   [f.vehicleRegNo, f.chassisNo && `Chassis ${f.chassisNo}`, f.assetNumber && `Asset ${f.assetNumber}`, f.oldDeviceId && `Old device ${f.oldDeviceId}`]
     .filter(Boolean)
     .join(' · ') || '—';
 
+/** The review actions (Verify, Final approve, Reopen) the server says the caller may take on this fitment. */
+const reviewActions = (f: FitmentDto) => f.availableActions.filter((a): a is ReviewAction => REVIEW_ACTIONS.includes(a));
+
+/** Scrolls to the visible row or card of a fitment (replacement links). */
+function scrollToFitment(tkId: string) {
+  const target = Array.from(document.querySelectorAll<HTMLElement>(`[data-tk="${tkId}"]`)).find((el) => el.offsetParent !== null);
+  target?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  target?.focus({ preventScroll: true });
+}
+
+/** Replacement links, the reopen count, and the close or fault reason, shown under the vehicle (F05). */
+function WorkflowInfo({ f }: { f: FitmentDto }) {
+  const link = (tkId: string) => (
+    <button type="button" className="font-mono underline underline-offset-2" onClick={() => scrollToFitment(tkId)}>
+      {tkId}
+    </button>
+  );
+  return (
+    <div className="mt-1 grid grid-cols-1 gap-1 text-xs text-muted-foreground" data-testid="fitment-workflow-info">
+      {f.replacementOf && <div>Replacement for {link(f.replacementOf.tkId)}</div>}
+      {f.replacement && (
+        <div>
+          Replaced by {link(f.replacement.tkId)} ({FITMENT_STATUS_LABELS[f.replacement.status]})
+        </div>
+      )}
+      {f.status === 'MOVED_TO_FT' && f.faultReason && <div className="break-words">Fault: {f.faultReason}</div>}
+      {f.status === 'CLOSED_NOT_DONE' && f.closeReason && (
+        <div className="break-words">
+          Not done: {f.closeReason.name}
+          {f.closeComments && ` — ${f.closeComments}`}
+        </div>
+      )}
+      {f.reopenCount > 0 && (
+        <div className="flex flex-wrap items-center gap-1">
+          <Badge variant="outline" className="gap-1 border-orange-200 bg-orange-50 text-orange-800" data-testid="reopen-chip">
+            <RotateCcw className="size-3" /> Reopened ×{f.reopenCount}
+          </Badge>
+          {f.lastReopenReason && <span className="break-words">{f.lastReopenReason}</span>}
+        </div>
+      )}
+    </div>
+  );
+}
+
 /**
- * The fitments of a task: per-row checkboxes for bulk assign/unassign (technician combobox) and an inline
- * vehicle editor while a fitment is Open or Assigned. Read-only for users who can't assign.
+ * The fitments of a task: status badges, per-row review actions (Verify, Final approve, Reopen) from the
+ * server's `availableActions`, checkboxes for bulk assign/unassign (Open/Assigned/Reopened) and bulk final
+ * approve (OE-verified, OM/SA), and the vehicle editor under the edit locks. Rows become cards with an
+ * actions menu on phones.
  */
 export function FitmentsSection({ task }: { task: TaskDto }) {
+  const actor = useCurrentUser();
   const manage = task.permissions.canAssign;
-  const editable = (f: FitmentDto) => manage && isFitmentAssignable(f.status);
-  const selectable = task.fitments.filter(editable);
+  const assignable = (f: FitmentDto) => manage && isFitmentAssignable(f.status);
+  const approvable = (f: FitmentDto) => f.availableActions.includes('APPROVE');
+  const selectable = task.fitments.filter((f) => assignable(f) || approvable(f));
+  const editable = (f: FitmentDto) => f.canEditData;
+  const hasActionsColumn = task.fitments.some((f) => reviewActions(f).length > 0 || editable(f));
+
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [technicianId, setTechnicianId] = useState<string | null>(null);
   const [editing, setEditing] = useState<FitmentDto | null>(null);
+  const [acting, setActing] = useState<{ fitment: FitmentDto; action: ReviewAction } | null>(null);
+  const [confirmApprove, setConfirmApprove] = useState(false);
   const options = useTaskOptions();
   const assign = useAssignFitments(task.id);
+  const approve = useApproveFitments();
 
   // Drop selections that are no longer selectable (e.g. after a refresh).
-  const chosen = selectable.filter((f) => selected.has(f.id)).map((f) => f.id);
+  const chosen = selectable.filter((f) => selected.has(f.id));
+  const toAssign = chosen.filter(assignable).map((f) => f.id);
+  const toApprove = chosen.filter(approvable);
   const allChecked = chosen.length > 0 && chosen.length === selectable.length;
   const toggle = (id: string, on: boolean) =>
     setSelected((prev) => {
@@ -52,13 +130,13 @@ export function FitmentsSection({ task }: { task: TaskDto }) {
     });
   const toggleAll = (on: boolean) => setSelected(on ? new Set(selectable.map((f) => f.id)) : new Set());
 
-  const run = (target: string | null) => {
+  const runAssign = (target: string | null) => {
     const name = options.data?.technicians.find((t) => t.id === target)?.name;
     assign.mutate(
-      { fitmentIds: chosen, technicianId: target },
+      { fitmentIds: toAssign, technicianId: target },
       {
         onSuccess: () => {
-          toast.success(target ? `Assigned ${chosen.length} fitment(s) to ${name}` : `Unassigned ${chosen.length} fitment(s)`);
+          toast.success(target ? `Assigned ${toAssign.length} fitment(s) to ${name}` : `Unassigned ${toAssign.length} fitment(s)`);
           setSelected(new Set());
         },
         onError: (err) => toast.error(err instanceof ApiError ? err.message : 'Could not update the assignment'),
@@ -66,16 +144,70 @@ export function FitmentsSection({ task }: { task: TaskDto }) {
     );
   };
 
+  const runApprove = () =>
+    approve.mutate(
+      toApprove.map((f) => f.id),
+      {
+        onSuccess: ({ approved, failed }) => {
+          if (approved.length) toast.success(`Final-approved ${approved.length} fitment(s)`);
+          for (const f of failed) toast.error(`${f.tkId}: ${f.message}`);
+          setSelected(new Set());
+          setConfirmApprove(false);
+        },
+        onError: (err) => {
+          toast.error(err instanceof ApiError ? err.message : 'Could not approve the fitments');
+          setConfirmApprove(false);
+        },
+      },
+    );
+
   const checkbox = (f: FitmentDto) =>
-    editable(f) ? (
+    selectable.includes(f) ? (
       <Checkbox aria-label={`Select ${f.tkId}`} checked={selected.has(f.id)} onCheckedChange={(v) => toggle(f.id, v === true)} />
     ) : null;
-  const editButton = (f: FitmentDto) =>
-    editable(f) ? (
-      <Button variant="ghost" size="icon-sm" aria-label={`Edit vehicle ${f.tkId}`} onClick={() => setEditing(f)}>
-        <Pencil />
-      </Button>
-    ) : null;
+
+  const actionButtons = (f: FitmentDto) => (
+    <div className="flex flex-wrap justify-end gap-1">
+      {reviewActions(f).map((action) => (
+        <Button
+          key={action}
+          size="sm"
+          variant={action === 'REOPEN' ? 'outline' : 'default'}
+          onClick={() => setActing({ fitment: f, action })}
+          aria-label={`${FITMENT_ACTION_LABELS[action]} ${f.tkId}`}
+        >
+          {FITMENT_ACTION_LABELS[action]}
+        </Button>
+      ))}
+      {editable(f) && (
+        <Button variant="ghost" size="icon-sm" aria-label={`Edit vehicle ${f.tkId}`} onClick={() => setEditing(f)}>
+          <Pencil />
+        </Button>
+      )}
+    </div>
+  );
+
+  const actionsMenu = (f: FitmentDto) => {
+    const actions = reviewActions(f);
+    if (!actions.length && !editable(f)) return null;
+    return (
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button variant="outline" size="icon-sm" aria-label={`Actions for ${f.tkId}`}>
+            <MoreHorizontal />
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end">
+          {actions.map((action) => (
+            <DropdownMenuItem key={action} onSelect={() => setActing({ fitment: f, action })}>
+              {FITMENT_ACTION_LABELS[action]}
+            </DropdownMenuItem>
+          ))}
+          {editable(f) && <DropdownMenuItem onSelect={() => setEditing(f)}>Edit vehicle</DropdownMenuItem>}
+        </DropdownMenuContent>
+      </DropdownMenu>
+    );
+  };
 
   return (
     <Card className="gap-4">
@@ -86,7 +218,7 @@ export function FitmentsSection({ task }: { task: TaskDto }) {
         </CardDescription>
       </CardHeader>
       <CardContent className="grid grid-cols-1 gap-4">
-        {manage && selectable.length > 0 && (
+        {selectable.length > 0 && (
           <div className="grid grid-cols-1 gap-2 rounded-md border bg-muted/40 p-3 sm:flex sm:flex-wrap sm:items-center">
             <label className="flex items-center gap-2 text-sm">
               <Checkbox
@@ -96,23 +228,32 @@ export function FitmentsSection({ task }: { task: TaskDto }) {
               />
               <span data-testid="selected-count">{chosen.length} selected</span>
             </label>
-            <SearchableSelect
-              aria-label="Technician to assign"
-              className="sm:w-64"
-              value={technicianId}
-              onChange={setTechnicianId}
-              options={(options.data?.technicians ?? []).map((t) => ({ value: t.id, label: t.name, hint: t.baseLocation ?? undefined }))}
-              placeholder="Choose a technician"
-              searchPlaceholder="Search technician"
-            />
-            <div className="flex gap-2">
-              <Button disabled={!chosen.length || !technicianId || assign.isPending} onClick={() => run(technicianId)}>
-                {assign.isPending && <Loader2 className="animate-spin" />} Assign
+            {manage && selectable.some(assignable) && (
+              <>
+                <SearchableSelect
+                  aria-label="Technician to assign"
+                  className="sm:w-64"
+                  value={technicianId}
+                  onChange={setTechnicianId}
+                  options={(options.data?.technicians ?? []).map((t) => ({ value: t.id, label: t.name, hint: t.baseLocation ?? undefined }))}
+                  placeholder="Choose a technician"
+                  searchPlaceholder="Search technician"
+                />
+                <div className="flex gap-2">
+                  <Button disabled={!toAssign.length || !technicianId || assign.isPending} onClick={() => runAssign(technicianId)}>
+                    {assign.isPending && <Loader2 className="animate-spin" />} Assign
+                  </Button>
+                  <Button variant="outline" disabled={!toAssign.length || assign.isPending} onClick={() => runAssign(null)}>
+                    Unassign
+                  </Button>
+                </div>
+              </>
+            )}
+            {selectable.some(approvable) && (
+              <Button disabled={!toApprove.length || approve.isPending} onClick={() => setConfirmApprove(true)}>
+                <CheckCheck /> Final approve{toApprove.length ? ` (${toApprove.length})` : ''}
               </Button>
-              <Button variant="outline" disabled={!chosen.length || assign.isPending} onClick={() => run(null)}>
-                Unassign
-              </Button>
-            </div>
+            )}
           </div>
         )}
 
@@ -120,25 +261,36 @@ export function FitmentsSection({ task }: { task: TaskDto }) {
           <Table>
             <TableHeader>
               <TableRow>
-                {manage && <TableHead className="w-10"><span className="sr-only">Select</span></TableHead>}
+                {selectable.length > 0 && (
+                  <TableHead className="w-10">
+                    <span className="sr-only">Select</span>
+                  </TableHead>
+                )}
                 <TableHead>TK id</TableHead>
                 <TableHead>Vehicle</TableHead>
                 <TableHead>Technician</TableHead>
                 <TableHead>Status</TableHead>
-                {manage && <TableHead className="w-12"><span className="sr-only">Actions</span></TableHead>}
+                {hasActionsColumn && (
+                  <TableHead className="text-right">
+                    <span className="sr-only">Actions</span>
+                  </TableHead>
+                )}
               </TableRow>
             </TableHeader>
             <TableBody>
               {task.fitments.map((f) => (
-                <TableRow key={f.id} data-testid="fitment-row" data-status={f.status}>
-                  {manage && <TableCell>{checkbox(f)}</TableCell>}
+                <TableRow key={f.id} data-testid="fitment-row" data-status={f.status} data-tk={f.tkId} tabIndex={-1}>
+                  {selectable.length > 0 && <TableCell>{checkbox(f)}</TableCell>}
                   <TableCell className="font-mono">{f.tkId}</TableCell>
-                  <TableCell className="whitespace-normal">{vehicleText(f)}</TableCell>
+                  <TableCell className="whitespace-normal">
+                    {vehicleText(f)}
+                    <WorkflowInfo f={f} />
+                  </TableCell>
                   <TableCell data-testid="fitment-technician">{f.technician?.name ?? '—'}</TableCell>
                   <TableCell>
                     <FitmentStatusBadge status={f.status} />
                   </TableCell>
-                  {manage && <TableCell>{editButton(f)}</TableCell>}
+                  {hasActionsColumn && <TableCell>{actionButtons(f)}</TableCell>}
                 </TableRow>
               ))}
             </TableBody>
@@ -146,10 +298,17 @@ export function FitmentsSection({ task }: { task: TaskDto }) {
         </div>
         <ul className="grid grid-cols-1 gap-2 md:hidden">
           {task.fitments.map((f) => (
-            <li key={f.id} data-testid="fitment-card" data-status={f.status} className="flex items-start gap-3 rounded-md border p-3">
-              {manage && <div className="pt-0.5">{checkbox(f)}</div>}
+            <li
+              key={f.id}
+              data-testid="fitment-card"
+              data-status={f.status}
+              data-tk={f.tkId}
+              tabIndex={-1}
+              className="flex items-start gap-3 rounded-md border p-3"
+            >
+              {selectable.length > 0 && <div className="pt-0.5">{checkbox(f)}</div>}
               <div className="min-w-0 flex-1">
-                <div className="flex items-center justify-between gap-2">
+                <div className="flex flex-wrap items-center justify-between gap-2">
                   <span className="font-mono font-medium">{f.tkId}</span>
                   <FitmentStatusBadge status={f.status} />
                 </div>
@@ -157,13 +316,37 @@ export function FitmentsSection({ task }: { task: TaskDto }) {
                 <div className="text-sm" data-testid="fitment-technician">
                   {f.technician?.name ?? 'No technician'}
                 </div>
+                <WorkflowInfo f={f} />
               </div>
-              {manage && editButton(f)}
+              {actionsMenu(f)}
             </li>
           ))}
         </ul>
       </CardContent>
       {editing && <VehicleDialog taskId={task.id} fitment={editing} onClose={() => setEditing(null)} />}
+      {acting && <FitmentActionDialog fitment={acting.fitment} action={acting.action} actor={actor} onClose={() => setActing(null)} />}
+      <AlertDialog open={confirmApprove} onOpenChange={setConfirmApprove}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Final approve {toApprove.length} fitment(s)?</AlertDialogTitle>
+            <AlertDialogDescription>
+              {toApprove.map((f) => f.tkId).join(', ')} become OM approved. After this only an OM can change them.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={approve.isPending}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              disabled={approve.isPending}
+              onClick={(e) => {
+                e.preventDefault();
+                runApprove();
+              }}
+            >
+              Final approve
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </Card>
   );
 }
@@ -199,7 +382,11 @@ function VehicleDialog({ taskId, fitment, onClose }: { taskId: string; fitment: 
       <DialogContent>
         <DialogHeader>
           <DialogTitle>Vehicle for {fitment.tkId}</DialogTitle>
-          <DialogDescription>All fields are optional; the technician can complete them on site.</DialogDescription>
+          <DialogDescription>
+            {fitment.status === 'OM_APPROVED'
+              ? 'This fitment is OM approved: your change is flagged in the history.'
+              : 'All fields are optional; the technician can complete them on site.'}
+          </DialogDescription>
         </DialogHeader>
         <form
           className="grid grid-cols-1 gap-3"

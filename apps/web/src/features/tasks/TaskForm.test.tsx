@@ -325,7 +325,7 @@ describe('TaskForm — edit', () => {
     createdBy: { id: 'om-1', name: 'Maya Manager' },
     createdAt: '2026-10-11T00:00:00.000Z',
     updatedAt: '2026-10-11T00:00:00.000Z',
-    permissions: { canEdit: true, canAssign: true, canDelete: true },
+    permissions: { canEdit: true, canAssign: true, canDelete: true, canViewHistory: true },
   };
 
   it('prefills IST times, shows an inactive current value, hides vehicles and the technician, and PATCHes', async () => {

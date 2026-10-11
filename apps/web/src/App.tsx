@@ -14,14 +14,16 @@ import { MastersPage } from '@/features/masters/MastersPage';
 import { ProfilePage } from '@/features/profile/ProfilePage';
 import { BulkUploadPage } from '@/features/tasks/BulkUploadPage';
 import { ComingSoonPage } from '@/features/tasks/ComingSoonPage';
+import { FitmentListPage } from '@/features/tasks/fitment-list-page';
 import { TaskDetailPage } from '@/features/tasks/TaskDetailPage';
 import { TaskFormPage } from '@/features/tasks/TaskFormPage';
 import { TaskListPage } from '@/features/tasks/TaskListPage';
 import { TechniciansPage } from '@/features/technicians/TechniciansPage';
 import { UsersPage } from '@/features/users/UsersPage';
 import { useAuth } from '@/lib/auth';
-import { RotateCcw, Route as RouteIcon, TriangleAlert } from 'lucide-react';
+import { Route as RouteIcon } from 'lucide-react';
 import {
+  canApproveFitments,
   canCreateTask,
   canEditClients,
   canViewClients,
@@ -55,12 +57,28 @@ function MastersRoute({ children }: { children: ReactNode }) {
 }
 
 /**
- * Task pages (F04): SA, OM, OE and RO can view; `create` pages (new, bulk, edit) need a task creator; the
- * Assigned view is for OEs. Others go to the dashboard with a "no access" toast.
+ * Task pages (F04/F05): SA, OM, OE and RO can view; `create` pages (new, bulk, edit) need a task creator; the
+ * Assigned view is for OEs; Awaiting approval (`approver`) for SA/OM. Others go to the dashboard with a
+ * "no access" toast.
  */
-function TasksRoute({ create = false, oeOnly = false, children }: { create?: boolean; oeOnly?: boolean; children: ReactNode }) {
+function TasksRoute({
+  create = false,
+  oeOnly = false,
+  approver = false,
+  children,
+}: {
+  create?: boolean;
+  oeOnly?: boolean;
+  approver?: boolean;
+  children: ReactNode;
+}) {
   const { user } = useAuth();
-  const allowed = user && canViewTasks(user) && (!create || canCreateTask(user)) && (!oeOnly || user.role === 'OE');
+  const allowed =
+    user &&
+    canViewTasks(user) &&
+    (!create || canCreateTask(user)) &&
+    (!oeOnly || user.role === 'OE') &&
+    (!approver || canApproveFitments(user));
   return allowed ? children : <NoAccessRedirect />;
 }
 
@@ -92,22 +110,9 @@ export function App() {
               </TasksRoute>
             }
           />
-          <Route
-            path="/tasks/faulty"
-            element={
-              <TasksRoute>
-                <ComingSoonPage title="Faulty tasks" description="Fitments moved to a faulty task (F05)." icon={TriangleAlert} />
-              </TasksRoute>
-            }
-          />
-          <Route
-            path="/tasks/reopened"
-            element={
-              <TasksRoute>
-                <ComingSoonPage title="Re-opened" description="Fitments sent back for rework (F05)." icon={RotateCcw} />
-              </TasksRoute>
-            }
-          />
+          <Route path="/tasks/awaiting-approval" element={<TasksRoute approver><FitmentListPage key="awaiting-approval" list="awaiting-approval" /></TasksRoute>} />
+          <Route path="/tasks/faulty" element={<TasksRoute><FitmentListPage key="faulty" list="faulty" /></TasksRoute>} />
+          <Route path="/tasks/reopened" element={<TasksRoute><FitmentListPage key="reopened" list="reopened" /></TasksRoute>} />
           <Route path="/tasks/:id" element={<TasksRoute><TaskDetailPage /></TasksRoute>} />
           <Route path="/tasks/:id/edit" element={<TasksRoute create><TaskFormPage /></TasksRoute>} />
           <Route path="/profile" element={<ProfilePage />} />

@@ -1,5 +1,5 @@
 import { vi } from 'vitest';
-import type { LookupsResponse, UserDto } from '@champ/shared';
+import type { FitmentDto, LookupsResponse, TaskDto, UserDto } from '@champ/shared';
 
 export function makeUser(overrides: Partial<UserDto> = {}): UserDto {
   return {
@@ -81,4 +81,81 @@ export function callsTo(fetchMock: ReturnType<typeof mockApi>, method: string, p
   return fetchMock.mock.calls
     .filter(([url, init]) => url.split('?')[0] === path && ((init?.method as string | undefined) ?? 'GET') === method)
     .map(([, init]) => (init?.body ? JSON.parse(init.body as string) : undefined));
+}
+
+// --- Tasks (F04/F05) ---
+
+export function makeFitment(overrides: Partial<FitmentDto> = {}): FitmentDto {
+  return {
+    id: 'fit-1',
+    tkId: 'TK-00001',
+    seq: 1,
+    status: 'ASSIGNED',
+    technician: { id: 'ot-1', name: 'Ravi Kumar', technicianType: 'PAYROLL' },
+    vehicleRegNo: 'KA01AB1234',
+    chassisNo: null,
+    assetNumber: null,
+    oldDeviceId: null,
+    availableActions: [],
+    canEditData: false,
+    startedAt: null,
+    startLat: null,
+    startLng: null,
+    submittedAt: null,
+    verifiedAt: null,
+    verifiedBy: null,
+    approvedAt: null,
+    approvedBy: null,
+    closedAt: null,
+    closeReason: null,
+    closeComments: null,
+    faultyAt: null,
+    faultReason: null,
+    replacementOf: null,
+    replacement: null,
+    reopenCount: 0,
+    lastReopenReason: null,
+    lastReopenedAt: null,
+    ...overrides,
+  };
+}
+
+const taskRef = (id: string, name: string, code: string | null = null) => ({ id, name, code, active: true });
+
+export function makeTask(overrides: Partial<TaskDto> = {}): TaskDto {
+  return {
+    id: 'task-1',
+    omId: 'OM-00001',
+    oeTaskId: 'OE-00001',
+    status: 'IN_PROGRESS',
+    taskType: taskRef('tt-ot', 'OT', 'OT'),
+    client: taskRef('cl-zoom', 'Zoomcar', 'ZOOM'),
+    site: { id: 'site-blr', name: 'Bengaluru depot', address: 'MG Road', lat: 12.97, lng: 77.59, active: true },
+    location: { id: 'loc-blr', city: 'Bengaluru', state: 'Karnataka' },
+    pocName: 'Priya Rao',
+    pocPhone: '+91 98765 43210',
+    pocEmail: null,
+    oeId: 'oe-1',
+    oe: { id: 'oe-1', name: 'Esha Exec', active: true },
+    technicianType: null,
+    assetType: taskRef('at-vehicle', 'Vehicle', 'VEHICLE'),
+    activity: taskRef('act-1', 'New installation'),
+    deviceType: taskRef('dt-laf5', 'LAF5', 'LAF5'),
+    makeModel: null,
+    installationType: taskRef('it-gps', 'GPS'),
+    requestedAt: '2026-10-20T04:30:00.000Z',
+    fitmentAt: '2026-10-21T05:00:00.000Z',
+    shiftType: taskRef('sh-day', 'Day', 'DAY'),
+    issueReported: taskRef('iss-1', 'Device not reporting'),
+    gpsAddress: null,
+    comments: null,
+    vehicleEntry: 'COUNT',
+    counts: { total: 1, assigned: 1, open: 0 },
+    fitments: [makeFitment()],
+    createdBy: { id: 'om-1', name: 'Maya Manager' },
+    createdAt: '2026-10-11T00:00:00.000Z',
+    updatedAt: '2026-10-11T00:00:00.000Z',
+    permissions: { canEdit: false, canAssign: false, canDelete: false, canViewHistory: false },
+    ...overrides,
+  };
 }
