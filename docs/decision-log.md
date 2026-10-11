@@ -40,3 +40,4 @@ Important decisions made during the project. Status values: Proposed, Accepted, 
 | D-034 | 2026-10-11 | Google OAuth client ID comes from an env var; Google sign-in is hidden in the UI until it is configured | Q-A1 default | Accepted (default) | User |
 | D-035 | 2026-10-11 | React Native via Expo (development build) | Default | Accepted (default) | User |
 | D-036 | 2026-10-11 | Docs as Markdown in `docs/`; git repo with one branch per feature; an "approved" reply in chat counts as sign-off and is recorded in the feature folder | Q-P1–P3 defaults | Accepted (default) | User |
+| D-037 | 2026-10-11 | Google SSO domain = intellicar.in; password rule: min 8 chars, ≥1 letter, ≥1 number | F01 intent sign-off | Accepted | User |
