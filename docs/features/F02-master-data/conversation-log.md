@@ -13,3 +13,4 @@
 - Verified on the dev DB: the migration applied on top of F01 data with both existing users kept, and the seed was run twice with the same counts. Under `pnpm dev`, `/api/health` and an authenticated `/api/lookups` as the SA both return 200. Gates: typecheck, lint and build pass; 238 unit/integration tests and 12 E2E tests pass (1 skipped by design). See `test-report.md`.
 - Ready for UAT.
 - 2026-10-11: Claude independently re-ran typecheck, lint, 238 tests and E2E (12 passed, 1 skipped by design), and reviewed the masters and technicians permission code. Moved toasts to the bottom so they no longer cover the mobile menu button (D-051); E2E re-run passes. Handed to the user for UAT.
+- 2026-10-11: The user accepted F02 in UAT ("F02 accepted"). Feature complete; merged to main.
