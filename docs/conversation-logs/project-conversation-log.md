@@ -121,4 +121,6 @@ Chronological log of the whole project conversation. Feature-level logs live in 
 - Implemented it directly because it is a one-line layout change: the sidebar is sticky at full height.
 - Added an E2E test, verified it fails without the fix and passes with it, and confirmed the full suite passes.
 
-**Status:** CR-02 ready for user acceptance.
+- Drafted the F05 intent (workflow engine) for review alongside CR-02.
+
+**Status:** CR-02 ready for user acceptance; F05 intent awaiting sign-off.
