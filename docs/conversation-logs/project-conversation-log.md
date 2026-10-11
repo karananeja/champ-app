@@ -74,4 +74,15 @@ Chronological log of the whole project conversation. Feature-level logs live in 
 
 **Claude:** Wrote the F03 intent (client onboarding with map) and sent it for sign-off.
 
-**Status:** Waiting for F03 intent sign-off.
+**User:** "approved" (F03 intent). The open points were accepted as proposed: multiple sites per client (D-052) and the proposed client fields (D-053).
+
+**Claude:**
+- Recorded the sign-off and created branch `feature/F03-clients`.
+- Wrote the F03 spec, including D-054 (geocoding proxied through the API with a throttle and cache).
+- Launched an implementation agent for F03.
+
+**Implementation agent (F03):** Finished in 4 commits. Reported 319 tests and E2E 16 passed + 1 skipped. Added D-055–D-058. Made 2 real Nominatim smoke calls.
+
+**Claude verification:** Re-ran all gates (all pass) and reviewed the route permissions.
+
+**Status:** F03 ready for UAT by the user.

@@ -71,8 +71,31 @@ read-only.
 invite (same one-time link as above). An OE only sees and edits their own technicians.
 
 `pnpm db:seed:demo` (after `pnpm db:seed`) adds `demo.om@intellicar.in`, `demo.oe@intellicar.in` and three OTs
-(`ravi.ot@`, `suresh.ot@`, `amit.ot@intellicar.in`), all with the password `Demo@1234`. It skips accounts that
-already exist.
+(`ravi.ot@`, `suresh.ot@`, `amit.ot@intellicar.in`), all with the password `Demo@1234`, plus two sample clients
+(F03). It skips accounts and clients that already exist.
+
+### Clients and sites (F03)
+
+**Clients** (sidebar) lists customers with code, primary contact, sites (active/total) and status; SA and OM can
+add and edit them, OE and RO see them read-only, OT can't open the page. *Add client* is a full page: client
+fields first, then one or more **sites**. Each site has a name, an address and an exact **map pin**: search an
+address (results come from OpenStreetMap's Nominatim, through the API) or tap the map and drag the pin; the
+address is filled in by a reverse lookup unless you typed it yourself, and the **City** (from the Locations
+master) is suggested from the pin. A client always keeps at least one active site. Clients and sites are never
+deleted, only deactivated; inactive ones are greyed out and left out of `GET /api/lookups` (used by the task form
+from F04).
+
+Geocoding is proxied by the API (D-054): at most 1 request a second to Nominatim, an identifying `User-Agent`, and
+an in-memory cache (500 entries, 24 h). If Nominatim can't be reached, the page says so and you can still place
+the pin and type the address by hand. Map tiles load straight from `tile.openstreetmap.org` (D-020).
+
+| Variable | Default | What |
+|---|---|---|
+| `NOMINATIM_URL` | `https://nominatim.openstreetmap.org` | Geocoder base URL (point it at a self-hosted Nominatim later) |
+| `GEOCODER_CONTACT_EMAIL` | `admin@intellicar.in` | Contact sent in the `User-Agent` (`Champ/0.1 (<email>)`), as the OSM usage policy asks |
+
+`pnpm db:seed:demo` also adds two sample clients (*Demo Fleet Rentals* with sites in Bengaluru and Pune, *Demo
+Logistics* in New Delhi), with hard-coded coordinates.
 
 ### Google sign-in
 
@@ -86,14 +109,14 @@ Hidden unless `GOOGLE_CLIENT_ID` is set. When set, only verified Google accounts
 |---|---|
 | `pnpm dev` | API (tsx watch) and web (Vite) in parallel |
 | `pnpm test` | Unit/integration tests: shared, API (against `champ_test`, recreated each run) and web components |
-| `pnpm test:e2e` | Playwright E2E (starts its own API on :4100 and web on :5174 against `champ_e2e`) |
+| `pnpm test:e2e` | Playwright E2E (starts its own API on :4100 and web on :5174 against `champ_e2e`; geocoding and map tiles are stubbed) |
 | `pnpm lint` / `pnpm typecheck` | ESLint / TypeScript across the workspace |
 | `pnpm build` | Type-checks the API and builds the web app into `apps/web/dist` |
 | `pnpm start` | Runs the API without watch mode |
 | `pnpm db:migrate` | Applies pending migrations (`prisma migrate deploy`) |
 | `pnpm db:migrate:dev` | Creates a new migration after editing `apps/api/prisma/schema.prisma` |
 | `pnpm db:seed` | Creates the Super Admin if missing and upserts the master data (idempotent) |
-| `pnpm db:seed:demo` | Optional demo users: an OM, an OE and three technicians (idempotent) |
+| `pnpm db:seed:demo` | Optional demo data: an OM, an OE, three technicians and two clients with sites (idempotent) |
 | `pnpm db:reset` | Drops the dev database, re-applies migrations and seeds — **deletes all local data** |
 
 First E2E run on a machine: `pnpm --filter @champ/web exec playwright install chromium`.
@@ -115,14 +138,14 @@ apps/api/src
   app.ts              Express app factory (used by tests)
   server.ts           HTTP server entry
   config/env.ts       zod-validated environment
-  lib/                prisma, jwt, tokens, password, cookies, google, logger, errors
+  lib/                prisma, jwt, tokens, password, cookies, google, logger, errors, geocoder/ (Nominatim)
   middleware/         authenticate, requireRole, validate, error handler
-  modules/            auth, invites, users, health, masters (+ /lookups), technicians (router + service)
+  modules/            auth, invites, users, health, masters (+ /lookups), technicians, clients, geo (router + service)
 apps/api/prisma       schema, migrations, seed (seed-masters.ts: master values; seed-demo.ts: demo users)
 apps/web/src
   components/ui       shadcn/ui components (generated)
-  components/         app shell, auth provider, shared widgets
-  features/           auth, invites, users, dashboard, profile, masters (config-driven), technicians
+  components/         app shell, auth provider, shared widgets, SitePicker, map/ (react-leaflet)
+  features/           auth, invites, users, dashboard, profile, masters (config-driven), technicians, clients
   lib/                API client (in-memory access token, single-flight refresh), auth context, permissions
-packages/shared/src   roles.ts, masters.ts (kinds, permission helpers), schemas.ts, dto.ts
+packages/shared/src   roles.ts, masters.ts (kinds, permission helpers), clients.ts, schemas.ts, dto.ts
 ```

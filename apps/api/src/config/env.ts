@@ -20,6 +20,9 @@ const envSchema = z.object({
   S3_ACCESS_KEY: z.preprocess(emptyToUndefined, z.string().optional()),
   S3_SECRET_KEY: z.preprocess(emptyToUndefined, z.string().optional()),
   S3_BUCKET: z.preprocess(emptyToUndefined, z.string().optional()),
+  // Geocoding (F03, D-054)
+  NOMINATIM_URL: z.preprocess(emptyToUndefined, z.url().default('https://nominatim.openstreetmap.org')),
+  GEOCODER_CONTACT_EMAIL: z.preprocess(emptyToUndefined, z.email().default('admin@intellicar.in')),
 });
 
 export type Env = z.infer<typeof envSchema>;

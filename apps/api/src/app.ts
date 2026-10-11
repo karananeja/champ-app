@@ -4,10 +4,13 @@ import express from 'express';
 import helmet from 'helmet';
 import { pinoHttp } from 'pino-http';
 import { env } from './config/env';
+import { createGeocoder, type Geocoder } from './lib/geocoder';
 import { createGoogleAuth, type GoogleAuth } from './lib/google';
 import { logger } from './lib/logger';
 import { errorHandler, notFoundHandler } from './middleware/error';
 import { authRouter } from './modules/auth/router';
+import { clientsRouter } from './modules/clients/router';
+import { geoRouter } from './modules/geo/router';
 import { healthRouter } from './modules/health/router';
 import { invitesRouter } from './modules/invites/router';
 import { lookupsRouter, mastersRouter } from './modules/masters/router';
@@ -17,10 +20,13 @@ import { usersRouter } from './modules/users/router';
 export interface AppDeps {
   /** Injected in tests to mock Google ID-token verification. */
   google?: GoogleAuth;
+  /** Injected in tests: a fake geocoder (tests must never call the real Nominatim). */
+  geocoder?: Geocoder;
 }
 
 export function createApp(deps: AppDeps = {}) {
   const google = deps.google ?? createGoogleAuth();
+  const geocoder = deps.geocoder ?? createGeocoder();
   const app = express();
 
   app.set('trust proxy', 'loopback');
@@ -49,6 +55,8 @@ export function createApp(deps: AppDeps = {}) {
   api.use('/lookups', lookupsRouter());
   api.use('/masters', mastersRouter());
   api.use('/technicians', techniciansRouter());
+  api.use('/clients', clientsRouter());
+  api.use('/geo', geoRouter(geocoder));
   api.use(notFoundHandler);
 
   app.use('/api', api);

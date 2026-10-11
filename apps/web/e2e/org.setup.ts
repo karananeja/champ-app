@@ -1,6 +1,6 @@
 /**
  * Builds a small org for the F02 specs through the API (one SA login, so the login rate limit is not hit):
- * an OM, two OEs, and one technician (OT) per OE. Credentials go to e2e/.data/org.json.
+ * an OM, two OEs, one technician (OT) per OE and (F03) one client. Credentials go to e2e/.data/org.json.
  */
 import fs from 'node:fs';
 import path from 'node:path';
@@ -64,7 +64,31 @@ setup('create the F02 test org', async ({ request }) => {
     await accept(invite.link, name);
   }
 
-  const org: E2eOrg = { om, oeA: oes[0]!, oeB: oes[1]!, techA: technicians[0]!, techB: technicians[1]! };
+  // F03: a client with one site (created by the SA) for the read-only checks, and the location ids the
+  // stubbed geocoder suggests.
+  const pune = lookups.locations.find((l) => l.city === 'Pune')!;
+  const client = `Acme Fleet ${run}`;
+  await post(
+    request,
+    '/api/clients',
+    {
+      name: client,
+      contactName: 'Asha Rao',
+      contactPhone: '+91 90000 22222',
+      sites: [{ name: 'Whitefield depot', address: 'Whitefield, Bengaluru', lat: 12.9698, lng: 77.75, locationId: location.id }],
+    },
+    sa.accessToken,
+  );
+
+  const org: E2eOrg = {
+    om,
+    oeA: oes[0]!,
+    oeB: oes[1]!,
+    techA: technicians[0]!,
+    techB: technicians[1]!,
+    client,
+    locations: { bengaluru: location.id, pune: pune.id },
+  };
   fs.mkdirSync(path.dirname(ORG_FILE), { recursive: true });
   fs.writeFileSync(ORG_FILE, JSON.stringify(org, null, 2));
 });

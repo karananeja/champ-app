@@ -7,7 +7,7 @@ A feature is **Complete** only after it has been implemented, tested and signed 
 |---|---|---|---|
 | F01 | Platform foundation + authentication and invites | — | ✅ Complete (UAT 2026-10-11) |
 | F02 | Master data and technician management | F01 | ✅ Complete (UAT 2026-10-11) |
-| F03 | Client onboarding with map | F02 | Intent awaiting sign-off |
+| F03 | Client onboarding with map | F02 | ✅ Complete (UAT 2026-10-11) |
 | F04 | Task creation (form, CSV bulk, auto-split) and task table views | F03 | Not started |
 | F05 | Workflow engine: statuses, approvals, edit locks, reopen, FT replacement, audit/history tab | F04 | Not started |
 | F06 | OE verification screen (web) and image correction | F05 | Not started |

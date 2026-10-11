@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| Status | **Awaiting user sign-off** |
+| Status | **Approved by user on 2026-10-11** |
 | Requirements | SRS §3, §6.3 · source doc: "When the client is onboarded, we can ask for their address on the map to capture the exact location" · Decision D-020 (public OSM services) |
 | Depends on | F02 (complete) |
 
