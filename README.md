@@ -195,6 +195,18 @@ First E2E run on a machine: `pnpm --filter @champ/web exec playwright install ch
 | MinIO API / console | 9000 / 9001 | `MINIO_PORT` / `MINIO_CONSOLE_PORT` (compose) |
 | E2E API / web | 4100 / 5174 | — |
 
+## Conventions
+
+- **File and folder names are kebab-case** (CR-03 / D-084): `app-shell.tsx`, `task-table.test.tsx`,
+  `require-role.ts`, `org.setup.ts`. What a file *exports* keeps its usual casing (`export function AppShell`,
+  `type TaskDto`). Middle extensions such as `.test`, `.spec`, `.setup`, `.config` and `.d` are fine.
+- Exempt: generated code (`apps/api/src/generated/**`), Prisma migration folders, tool config files whose names
+  tools expect (`vite.config.ts`, `prisma.config.ts`, `eslint.config.js`, …) and `README.md`. shadcn/ui components
+  in `components/ui` are kebab-case already.
+- `pnpm lint` enforces it with `eslint-plugin-check-file` (`check-file/filename-naming-convention` and
+  `check-file/folder-naming-convention` in `eslint.config.js`), so a new `MyThing.tsx` fails lint.
+  Rename with `git mv` (on macOS, which is case-insensitive, go through a temporary name when only the case changes).
+
 ## Project layout
 
 ```
@@ -211,7 +223,7 @@ apps/api/src
 apps/api/prisma       schema, migrations, seed (seed-masters.ts: master values; seed-demo.ts: demo users)
 apps/web/src
   components/ui       shadcn/ui components (generated)
-  components/         app shell, auth provider, shared widgets, SitePicker, map/ (react-leaflet)
+  components/         app shell, auth provider, shared widgets, site-picker, map/ (react-leaflet)
   features/           auth, invites, users, dashboard, profile, masters (config-driven), technicians, clients, tasks
   lib/                API client (in-memory access token, single-flight refresh), auth context, permissions
 packages/shared/src   roles.ts, masters.ts (kinds, permission helpers), clients.ts, tasks.ts (ids, statuses,

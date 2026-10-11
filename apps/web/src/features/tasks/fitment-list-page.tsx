@@ -4,7 +4,7 @@ import { toast } from 'sonner';
 import { CheckCheck, ChevronLeft, ChevronRight, Loader2, X } from 'lucide-react';
 import type { WorkflowFitmentItemDto } from '@champ/shared';
 import { FitmentStatusBadge } from '@/components/fitment-status-badge';
-import { SearchableSelect } from '@/components/SearchableSelect';
+import { SearchableSelect } from '@/components/searchable-select';
 import {
   AlertDialog,
   AlertDialogAction,

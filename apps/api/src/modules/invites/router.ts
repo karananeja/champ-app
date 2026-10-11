@@ -10,7 +10,7 @@ import {
 } from '@champ/shared';
 import type { GoogleAuth } from '../../lib/google';
 import { authenticate, currentUser } from '../../middleware/auth';
-import { requireRole } from '../../middleware/requireRole';
+import { requireRole } from '../../middleware/require-role';
 import { validate } from '../../middleware/validate';
 import { sendSession } from '../auth/router';
 import * as invites from './service';

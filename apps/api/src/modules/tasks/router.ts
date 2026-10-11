@@ -25,7 +25,7 @@ import {
 } from '@champ/shared';
 import { badRequest } from '../../lib/errors';
 import { authenticate, currentUser } from '../../middleware/auth';
-import { requireRole } from '../../middleware/requireRole';
+import { requireRole } from '../../middleware/require-role';
 import { validate } from '../../middleware/validate';
 import { bulkSampleCsv, importBulk, previewBulk } from './bulk';
 import { exportTaskEvents, getTaskHistory, listTaskEvents } from '../workflow/history';

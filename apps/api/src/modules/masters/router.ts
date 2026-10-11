@@ -30,7 +30,7 @@ import {
 } from '@champ/shared';
 import { forbidden, notFound } from '../../lib/errors';
 import { authenticate, currentUser } from '../../middleware/auth';
-import { requireRole } from '../../middleware/requireRole';
+import { requireRole } from '../../middleware/require-role';
 import { validate } from '../../middleware/validate';
 import { getLookups } from './lookups';
 import * as masters from './service';

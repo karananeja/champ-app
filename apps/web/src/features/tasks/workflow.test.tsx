@@ -7,7 +7,7 @@ import type { TaskDto, UserDto } from '@champ/shared';
 import { Toaster } from '@/components/ui/sonner';
 import { AuthContext, type AuthContextValue } from '@/lib/auth';
 import { callsTo, json, makeFitment, makeTask, makeUser, mockApi } from '@/test/fixtures';
-import { TaskDetailPage } from './TaskDetailPage';
+import { TaskDetailPage } from './task-detail-page';
 
 const SIMULATOR = 'Simulate technician (dev only)';
 

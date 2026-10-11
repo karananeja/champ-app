@@ -3,9 +3,9 @@ import { createRoot } from 'react-dom/client';
 import { BrowserRouter } from 'react-router-dom';
 import { QueryClientProvider } from '@tanstack/react-query';
 import { Toaster } from '@/components/ui/sonner';
-import { AuthProvider } from '@/components/AuthProvider';
-import { createQueryClient } from '@/lib/queryClient';
-import { App } from './App';
+import { AuthProvider } from '@/components/auth-provider';
+import { createQueryClient } from '@/lib/query-client';
+import { App } from './app';
 import './index.css';
 
 const queryClient = createQueryClient();

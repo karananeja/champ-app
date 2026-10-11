@@ -11,7 +11,7 @@ import {
   type WorkflowListQuery,
 } from '@champ/shared';
 import { authenticate, currentUser } from '../../middleware/auth';
-import { requireRole } from '../../middleware/requireRole';
+import { requireRole } from '../../middleware/require-role';
 import { validate } from '../../middleware/validate';
 import { approveMany, transitionFitment } from './engine';
 import { listWorkflowFitments, type WorkflowList } from './lists';
