@@ -3,7 +3,7 @@
 | | |
 |---|---|
 | Raised | 2026-10-12 by the user, during F04 UAT |
-| Status | Implemented, awaiting user acceptance |
+| Status | ✅ Complete: accepted by the user on 2026-10-12 ("CR-02 accepted") |
 | Affects | F01 app shell (`apps/web/src/components/layout/AppShell.tsx`) |
 
 ## User request
