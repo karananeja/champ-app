@@ -10,3 +10,4 @@
 - Tests: shared 141, API 238, web 74 (453 total), E2E 28 passed + 1 skipped; typecheck and lint clean. Dev smoke test (create/list/export/delete via curl) passed and its data was removed.
 - Gaps the spec left open are recorded as D-066–D-071 (DTO id names, bulk error/import shapes, IST day filters, `/tasks/options` for RO, lookups client contacts, validation edge rules, CSV parsing/export details, web POC-prefill tracking, E2E accounts, no batch transaction for the list).
 - Ready for UAT: see `test-report.md` §4.
+- 2026-10-12: Claude independently re-ran typecheck, lint, 453 tests and E2E (28 passed, 1 skipped by design), and reviewed the task route guards and service permission checks. Handed to the user for UAT.
