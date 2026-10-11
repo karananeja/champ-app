@@ -38,11 +38,11 @@ function NavLinks({ onNavigate }: { onNavigate?: () => void }) {
               {group.label}
             </div>
           )}
-          {group.items.map(({ to, label, icon: Icon }) => (
+          {group.items.map(({ to, label, icon: Icon, end }) => (
             <NavLink
               key={to}
               to={to}
-              end={to === '/'}
+              end={end ?? to === '/'}
               onClick={onNavigate}
               className={({ isActive }) =>
                 cn(

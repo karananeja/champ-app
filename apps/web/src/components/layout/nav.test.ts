@@ -16,8 +16,21 @@ describe('navGroupsFor', () => {
   });
 
   it('OE and RO keep their other menu items', () => {
-    expect(linksFor('OE')).toEqual(['/', '/users', '/technicians', '/clients', '/profile']);
-    expect(linksFor('RO')).toEqual(['/', '/users', '/technicians', '/clients', '/profile']);
-    expect(linksFor('OM')).toEqual(['/', '/users', '/technicians', '/clients', '/masters', '/profile']);
+    const top = ['/', '/users', '/technicians', '/clients'];
+    expect(linksFor('OE').filter((l) => !l.startsWith('/tasks'))).toEqual([...top, '/profile']);
+    expect(linksFor('RO').filter((l) => !l.startsWith('/tasks'))).toEqual([...top, '/profile']);
+    expect(linksFor('OM').filter((l) => !l.startsWith('/tasks'))).toEqual([...top, '/masters', '/profile']);
+  });
+
+  it('Tasks group (F04): creators get Create/Bulk upload, only OEs get Assigned, OT gets nothing', () => {
+    const placeholders = ['/tasks/travel', '/tasks/faulty', '/tasks/reopened'];
+    const tasksOf = (role: Role) => linksFor(role).filter((l) => l.startsWith('/tasks'));
+    expect(tasksOf('SUPER_ADMIN')).toEqual(['/tasks/new', '/tasks/bulk', '/tasks', ...placeholders]);
+    expect(tasksOf('OM')).toEqual(['/tasks/new', '/tasks/bulk', '/tasks', ...placeholders]);
+    expect(tasksOf('OE')).toEqual(['/tasks/new', '/tasks/bulk', '/tasks', '/tasks/assigned', ...placeholders]);
+    expect(tasksOf('RO')).toEqual(['/tasks', ...placeholders]);
+    expect(tasksOf('OT')).toEqual([]);
+    expect(groupLabelsFor('OT')).not.toContain('Tasks');
+    expect(groupLabelsFor('RO')).toContain('Tasks');
   });
 });

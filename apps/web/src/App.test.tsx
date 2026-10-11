@@ -64,3 +64,39 @@ describe('Masters route guard (CR-01)', () => {
     });
   }
 });
+
+describe('Tasks route guards (F04)', () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    vi.restoreAllMocks();
+  });
+
+  const cases: [string, Role][] = [
+    ['/tasks', 'OT'],
+    ['/tasks/new', 'RO'],
+    ['/tasks/bulk', 'RO'],
+    ['/tasks/assigned', 'OM'],
+    ['/tasks/task-1/edit', 'RO'],
+  ];
+  for (const [path, role] of cases) {
+    it(`${role} opening ${path} is sent to the dashboard`, async () => {
+      const toastError = vi.spyOn(toast, 'error');
+      renderAt(path, role);
+      expect(await screen.findByRole('heading', { name: 'Welcome, Test User' })).toBeInTheDocument();
+      expect(toastError).toHaveBeenCalledWith("You don't have access to that page", { id: 'no-access' });
+    });
+  }
+
+  it('RO opens Open tasks and the placeholder pages', async () => {
+    renderAt('/tasks', 'RO');
+    expect(await screen.findByRole('heading', { name: 'Open tasks' })).toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: 'Create task' })).not.toBeInTheDocument();
+    expect(sidebar().getByRole('link', { name: 'Travel tasks' })).toBeInTheDocument();
+  });
+
+  it('placeholder views say they are coming later', async () => {
+    renderAt('/tasks/faulty', 'OE');
+    expect(await screen.findByRole('heading', { name: 'Faulty tasks' })).toBeInTheDocument();
+    expect(screen.getByText('Coming in a later release')).toBeInTheDocument();
+  });
+});
