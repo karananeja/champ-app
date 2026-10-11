@@ -102,7 +102,7 @@ export function AppShell() {
   return (
     <div className="min-h-svh md:grid md:grid-cols-[15rem_1fr]">
       {/* Sidebar (md and up) */}
-      <aside className="hidden border-r bg-sidebar md:flex md:flex-col md:gap-6 md:p-4">
+      <aside className="hidden border-r bg-sidebar md:sticky md:top-0 md:flex md:h-svh md:flex-col md:gap-6 md:self-start md:overflow-y-auto md:p-4">
         <div className="px-3 pt-1">
           <Brand />
         </div>
