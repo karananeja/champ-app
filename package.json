@@ -1,0 +1,31 @@
+{
+  "name": "champ",
+  "private": true,
+  "type": "module",
+  "packageManager": "pnpm@10.33.3",
+  "engines": {
+    "node": ">=24"
+  },
+  "scripts": {
+    "dev": "pnpm --parallel --filter @champ/api --filter @champ/web dev",
+    "build": "pnpm -r build",
+    "start": "pnpm --filter @champ/api start",
+    "test": "pnpm -r --workspace-concurrency=1 test",
+    "test:e2e": "pnpm --filter @champ/web test:e2e",
+    "lint": "eslint .",
+    "typecheck": "pnpm -r typecheck",
+    "db:migrate": "pnpm --filter @champ/api db:migrate",
+    "db:migrate:dev": "pnpm --filter @champ/api db:migrate:dev",
+    "db:seed": "pnpm --filter @champ/api db:seed",
+    "db:reset": "pnpm --filter @champ/api db:reset"
+  },
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "eslint": "^10.12.0",
+    "eslint-plugin-react-hooks": "^7.1.1",
+    "eslint-plugin-react-refresh": "^0.5.7",
+    "globals": "^17.13.0",
+    "typescript": "~6.0.3",
+    "typescript-eslint": "^8.71.1"
+  }
+}

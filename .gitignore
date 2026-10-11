@@ -4,3 +4,9 @@ dist/
 build/
 .DS_Store
 ~$*.docx
+coverage/
+test-results/
+playwright-report/
+apps/api/src/generated/
+*.tsbuildinfo
+.env.local

@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| Status | **Awaiting user sign-off** |
+| Status | **Approved by user on 2026-10-11** |
 | Requirements | SRS §2, §3, §6.1 · Decisions D-002, D-004, D-006, D-007, D-016, D-024–D-026, D-034, D-036 |
 
 ## Why

@@ -1,0 +1,35 @@
+import path from 'node:path';
+import tailwindcss from '@tailwindcss/vite';
+import react from '@vitejs/plugin-react';
+import { defineConfig, loadEnv } from 'vite';
+
+const repoRoot = path.resolve(import.meta.dirname, '../..');
+
+export default defineConfig(({ mode }) => {
+  // Read API_PORT from the repo-root .env (process env wins, e.g. for E2E).
+  const env = { ...loadEnv(mode, repoRoot, ''), ...process.env };
+  const apiPort = env.API_PORT || '4000';
+
+  return {
+    plugins: [react(), tailwindcss()],
+    envDir: repoRoot,
+    resolve: {
+      alias: { '@': path.resolve(import.meta.dirname, 'src') },
+    },
+    server: {
+      port: 5173,
+      // Proxy the API so the refresh cookie is same-origin.
+      proxy: { '/api': { target: `http://localhost:${apiPort}`, changeOrigin: false } },
+    },
+    preview: {
+      proxy: { '/api': { target: `http://localhost:${apiPort}` } },
+    },
+    test: {
+      environment: 'jsdom',
+      globals: false,
+      setupFiles: ['./src/test/setup.ts'],
+      include: ['src/**/*.test.{ts,tsx}'],
+      css: false,
+    },
+  };
+});
