@@ -113,4 +113,14 @@ Chronological log of the whole project conversation. Feature-level logs live in 
 
 **Claude verification:** Re-ran all gates (all pass) and reviewed the route guards and permissions.
 
-**Status:** F04 ready for UAT by the user.
+**User:** "F04 accepted but the side bar should not scroll with the left side body when the content grows in height"
+
+**Claude:**
+- Recorded the F04 UAT sign-off and merged `feature/F04-task-creation` to `main`.
+- Logged CR-02 (`docs/change-requests/CR-02-fixed-sidebar.md`, D-072) on branch `cr/CR-02-fixed-sidebar`.
+- Implemented it directly because it is a one-line layout change: the sidebar is sticky at full height.
+- Added an E2E test, verified it fails without the fix and passes with it, and confirmed the full suite passes.
+
+- Drafted the F05 intent (workflow engine) for review alongside CR-02.
+
+**Status:** CR-02 ready for user acceptance; F05 intent awaiting sign-off.
