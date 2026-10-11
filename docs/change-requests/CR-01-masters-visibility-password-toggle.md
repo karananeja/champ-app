@@ -28,3 +28,58 @@
 3. As an OM or SA, Masters works exactly as before.
 4. On the login and accept-invite pages, the eye icon reveals and hides the typed password, and the icon changes. On accept-invite, the two fields toggle independently.
 5. All automated tests pass, with tests updated or added for both changes.
+
+## Implementation and test results
+Implemented on branch `cr/CR-01-masters-visibility-password-toggle` (2026-10-11).
+
+### What changed
+- **Shared:** `MASTERS_VIEW_ROLES` (`SUPER_ADMIN`, `OM`) and `canViewMasters()` in `packages/shared/src/masters.ts`. Web and API both use them.
+- **API:** `mastersRouter` now runs `authenticate, requireRole(...MASTERS_VIEW_ROLES)` before every `/masters/*` route. OE, OT and RO get 403 `FORBIDDEN` on all reads (and writes, which they already couldn't do). This check runs before kind and query validation. `GET /lookups` is unchanged and open to every signed-in user. Write rules are unchanged.
+- **Web:**
+  - `navGroupsFor` drops the Masters group unless `canViewMasters`.
+  - `/masters` and `/masters/:slug` are wrapped in `MastersRoute`. Other roles get `NoAccessRedirect`, which navigates to `/` and shows the toast "You don't have access to that page" (sonner, id `no-access`).
+  - New `components/PasswordInput.tsx` adds an Eye/EyeOff (lucide) button inside the field on the right. The button has `type="button"`, `aria-label` "Show password" / "Hide password", `aria-pressed` and `tabIndex={-1}`, and clicking it keeps focus in the field. Each instance has its own state.
+  - `PasswordInput` is used for the login password and for accept-invite's password and confirm fields. These are the only password fields in the app.
+- **README:** the Masters paragraph now describes the SA/OM-only access.
+
+### Test results
+`pnpm typecheck` and `pnpm lint` are clean.
+
+| Suite | Before | After |
+|---|---|---|
+| `packages/shared` (vitest) | 93 | **95 passed** |
+| `apps/api` (vitest) | 192 | **194 passed** |
+| `apps/web` (vitest) | 34 | **49 passed** |
+| E2E (Playwright, desktop + mobile-360) | 16 passed, 1 skipped | **20 passed, 1 skipped** (the RO spec runs on desktop only, by design) |
+
+New tests:
+- **Shared:** `canViewMasters` is SA/OM only, and every role that can edit masters can also view them.
+- **API:**
+  - The permission matrix now expects 200 for SA/OM/delegated OM and 403 `FORBIDDEN` for OE/OT/RO on `/masters/lookup/accessory|task-type|final-issue`, `/masters/activities`, `/masters/make-models` and `/masters/locations`, plus 200 on `/lookups` for every role.
+  - OE and RO get populated locations from `/lookups`.
+  - Non-viewers get 403 even for an unknown kind or an invalid query; an OM still gets 404 for an unknown kind.
+- **Web:**
+  - `PasswordInput.test.tsx` (3 tests): type switch, aria-label/aria-pressed/icon change, no form submit, focus kept, not a tab stop.
+  - `LoginForm.test.tsx`: one new test for the toggle on login.
+  - `AcceptInvitePage.test.tsx` (new): password and confirm toggle independently.
+  - `nav.test.ts` (new): Masters group shown to SA/OM only.
+  - `App.test.tsx` (new, 8 tests): OE/RO/OT on `/masters` and `/masters/final-issue` are redirected to the dashboard with the toast; SA/OM open the page.
+- **E2E:**
+  - New `e2e/cr-01.spec.ts` (both viewports): an OE has no Masters menu, both master URLs redirect with the message, and the API returns 403 on `/api/masters/locations` and 200 on `/api/lookups`. A second test checks the login show/hide toggle.
+  - `read-only.spec.ts` is extended: accept-invite toggles work independently, the RO has no Masters menu, and master URLs redirect.
+
+### Existing tests changed, and why
+- `apps/api/test/masters.test.ts`:
+  - The permission matrix asserted that every role reads every master. It now expects 403 for OE/OT/RO.
+  - "Activities: CRUD and filter" read as RO, and "Locations: CRUD and filters" read as OE. Both now read as SA, because those roles can't read masters any more.
+- `apps/web/src/features/masters/MasterTable.test.tsx`:
+  - The view-only test used an RO, who can't reach masters now. It uses a generic non-editor actor instead (the view-only mode still applies to an OM without task-type delegation).
+  - The filter test now uses an OM instead of an RO.
+- `apps/web/e2e/helpers.ts`: `login()` now uses `getByLabel('Password', { exact: true })`. The toggle's "Show password" label would otherwise also match.
+
+### Manual UAT checklist
+1. [ ] Sign in as an OE, then as an RO. There is no Masters group or "All masters" link (desktop sidebar and mobile menu). Typing `/masters` and `/masters/final-issue` lands on the dashboard with "You don't have access to that page".
+2. [ ] As an OE, open Technicians → Add technician. The Base location dropdown is populated. In DevTools, `/api/masters/locations` returns 403 for the OE, and `/api/lookups` returns 200.
+3. [ ] As an OM and as the SA, open Masters → any master. Listing, add, edit and deactivate work as before. Task types are still view-only for an OM without delegation.
+4. [ ] On the login page, type a password and click the eye. The text shows and the icon changes to eye-off; click again to hide it. On an accept-invite link, the Password and Confirm password eyes toggle independently.
+5. [ ] `pnpm typecheck`, `pnpm lint`, `pnpm test` and `pnpm test:e2e` all pass.
