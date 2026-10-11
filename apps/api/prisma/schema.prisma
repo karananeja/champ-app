@@ -1,0 +1,79 @@
+generator client {
+  provider     = "prisma-client"
+  output       = "../src/generated/prisma"
+  moduleFormat = "esm"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum Role {
+  SUPER_ADMIN
+  OM
+  OE
+  OT
+  RO
+}
+
+enum UserStatus {
+  ACTIVE
+  INACTIVE
+}
+
+enum AuthProvider {
+  PASSWORD
+  GOOGLE
+}
+
+model User {
+  id                 String       @id @default(cuid())
+  email              String       @unique // stored lowercased
+  name               String
+  phone              String?
+  jobTitle           String?
+  role               Role
+  status             UserStatus   @default(ACTIVE)
+  passwordHash       String?
+  authProvider       AuthProvider @default(PASSWORD)
+  managerId          String?
+  manager            User?        @relation("Reports", fields: [managerId], references: [id])
+  reportees          User[]       @relation("Reports")
+  canManageUsers     Boolean      @default(false) // delegation flag (OM only)
+  canManageTaskTypes Boolean      @default(false) // delegation flag (OM only, used in F02)
+  createdAt          DateTime     @default(now())
+  updatedAt          DateTime     @updatedAt
+  invitesSent        Invite[]     @relation("InvitedBy")
+  refreshTokens      RefreshToken[]
+
+  @@index([managerId])
+}
+
+model Invite {
+  id          String    @id @default(cuid())
+  email       String
+  role        Role
+  managerId   String?
+  jobTitle    String?
+  tokenHash   String    @unique // sha256 of the random token; raw token never stored
+  expiresAt   DateTime // now + 72h
+  usedAt      DateTime?
+  revokedAt   DateTime?
+  invitedById String
+  invitedBy   User      @relation("InvitedBy", fields: [invitedById], references: [id])
+  createdAt   DateTime  @default(now())
+
+  @@index([email])
+}
+
+model RefreshToken {
+  id        String    @id @default(cuid())
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tokenHash String    @unique
+  expiresAt DateTime
+  revokedAt DateTime?
+  createdAt DateTime  @default(now())
+
+  @@index([userId])
+}
