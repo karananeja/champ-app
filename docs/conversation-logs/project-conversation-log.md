@@ -43,4 +43,16 @@ Chronological log of the whole project conversation. Feature-level logs live in 
 - Wrote the F01 intent `docs/features/F01-foundation-auth/intent.md` and sent it to the user for sign-off.
 - Initialised the git repo (D-036).
 
-**Status:** Waiting for F01 intent sign-off. No implementation started.
+**User:** "Approved" (F01 intent). The open points were accepted as proposed (D-037).
+
+**Claude:**
+- Recorded the sign-off (`F01-foundation-auth/signoff.md`) and created branch `feature/F01-foundation-auth`.
+- Wrote the F01 technical spec (`spec.md`).
+- Started Docker Desktop.
+- Launched a separate implementation agent for F01.
+
+**Implementation agent (F01):** Finished in 5 commits. Reported 152 unit/API/web tests passing and E2E 3 passed + 1 deliberately skipped. Added decisions D-038–D-044 (React 19, TS 6 / Prisma 7, pgsty/minio image, bcryptjs, tsx runtime, spec gap-fills, separate test DBs).
+
+**Claude verification:** Re-ran typecheck, lint, all 152 unit tests and the E2E suite; everything passes. Reviewed the auth, invite and user services (hashed single-use invite tokens, refresh rotation with reuse detection, per-request user status check, OM privilege limits). No defects found.
+
+**Status:** F01 ready for UAT by the user.

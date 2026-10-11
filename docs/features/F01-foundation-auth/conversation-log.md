@@ -22,3 +22,4 @@
   - Fast-refresh lint warning: split the auth context/hooks (`lib/auth.ts`) from the provider (`components/AuthProvider.tsx`).
   - To avoid the destructive `prisma migrate reset` in tests, test and E2E databases are recreated by a guarded script (D-044).
 - **Decisions added:** D-038 to D-044 (versions, MinIO image, bcryptjs, tsx runtime, spec gap rules, test databases).
+- 2026-10-11: Claude independently re-ran typecheck, lint, 152 tests and E2E (all pass) and reviewed the auth, invite and user services. Handed to the user for UAT.
