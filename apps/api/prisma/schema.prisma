@@ -27,41 +27,51 @@ enum AuthProvider {
 }
 
 model User {
-  id                 String       @id @default(cuid())
-  email              String       @unique // stored lowercased
+  id                 String          @id @default(cuid())
+  email              String          @unique // stored lowercased
   name               String
   phone              String?
   jobTitle           String?
   role               Role
-  status             UserStatus   @default(ACTIVE)
+  status             UserStatus      @default(ACTIVE)
   passwordHash       String?
-  authProvider       AuthProvider @default(PASSWORD)
+  authProvider       AuthProvider    @default(PASSWORD)
   managerId          String?
-  manager            User?        @relation("Reports", fields: [managerId], references: [id])
-  reportees          User[]       @relation("Reports")
-  canManageUsers     Boolean      @default(false) // delegation flag (OM only)
-  canManageTaskTypes Boolean      @default(false) // delegation flag (OM only, used in F02)
-  createdAt          DateTime     @default(now())
-  updatedAt          DateTime     @updatedAt
-  invitesSent        Invite[]     @relation("InvitedBy")
+  manager            User?           @relation("Reports", fields: [managerId], references: [id])
+  reportees          User[]          @relation("Reports")
+  canManageUsers     Boolean         @default(false) // delegation flag (OM only)
+  canManageTaskTypes Boolean         @default(false) // delegation flag (OM only, used in F02)
+  technicianType     TechnicianType? // required for role OT (service layer), null otherwise
+  baseLocationId     String? // required for role OT (service layer), null otherwise
+  baseLocation       Location?       @relation("UserBaseLocation", fields: [baseLocationId], references: [id])
+  createdAt          DateTime        @default(now())
+  updatedAt          DateTime        @updatedAt
+  invitesSent        Invite[]        @relation("InvitedBy")
   refreshTokens      RefreshToken[]
 
   @@index([managerId])
+  @@index([role, baseLocationId])
 }
 
 model Invite {
-  id          String    @id @default(cuid())
-  email       String
-  role        Role
-  managerId   String?
-  jobTitle    String?
-  tokenHash   String    @unique // sha256 of the random token; raw token never stored
-  expiresAt   DateTime // now + 72h
-  usedAt      DateTime?
-  revokedAt   DateTime?
-  invitedById String
-  invitedBy   User      @relation("InvitedBy", fields: [invitedById], references: [id])
-  createdAt   DateTime  @default(now())
+  id             String          @id @default(cuid())
+  email          String
+  role           Role
+  managerId      String?
+  jobTitle       String?
+  // Optional prefill (technician invites) and OT profile copied to the user on accept.
+  name           String?
+  phone          String?
+  technicianType TechnicianType?
+  baseLocationId String?
+  baseLocation   Location?       @relation("InviteBaseLocation", fields: [baseLocationId], references: [id])
+  tokenHash      String          @unique // sha256 of the random token; raw token never stored
+  expiresAt      DateTime // now + 72h
+  usedAt         DateTime?
+  revokedAt      DateTime?
+  invitedById    String
+  invitedBy      User            @relation("InvitedBy", fields: [invitedById], references: [id])
+  createdAt      DateTime        @default(now())
 
   @@index([email])
 }
@@ -76,4 +86,94 @@ model RefreshToken {
   createdAt DateTime  @default(now())
 
   @@index([userId])
+}
+
+// --- Master data (F02) ---
+
+enum LookupKind {
+  ASSET_TYPE
+  DEVICE_TYPE
+  INSTALLATION_TYPE
+  STATE
+  REGION
+  ISSUE_REPORTED
+  ISSUE_OBSERVED
+  ACTION_TAKEN
+  FINAL_ISSUE
+  ACCESSORY
+  CLOSE_REASON
+  SHIFT_TYPE
+  TASK_TYPE
+}
+
+enum TechnicianType {
+  PAYROLL
+  THIRD_PARTY
+  CONTRACTUAL
+}
+
+/**
+ * Simple masters share one table keyed by kind (D-047). Never deleted, only deactivated.
+ */
+model LookupItem {
+  id                String     @id @default(cuid())
+  kind              LookupKind
+  name              String
+  nameKey           String // lower(trim(name)), used for uniqueness
+  code              String? // stable code for built-ins (VEHICLE, BATTERY, OT, TT, FT, DAY, NIGHT, EARLY_MORNING, LAF5)
+  isSystem          Boolean    @default(false) // built-in: cannot rename or deactivate
+  active            Boolean    @default(true)
+  billable          Boolean? // FINAL_ISSUE only
+  sortOrder         Int        @default(0)
+  createdAt         DateTime   @default(now())
+  updatedAt         DateTime   @updatedAt
+  activities        Activity[]
+  locationsInState  Location[] @relation("LocationState")
+  locationsInRegion Location[] @relation("LocationRegion")
+
+  @@unique([kind, nameKey])
+  @@unique([kind, code])
+}
+
+model Activity {
+  id          String     @id @default(cuid())
+  name        String
+  nameKey     String
+  assetTypeId String // LookupItem of kind ASSET_TYPE
+  assetType   LookupItem @relation(fields: [assetTypeId], references: [id])
+  active      Boolean    @default(true)
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+
+  @@unique([assetTypeId, nameKey])
+}
+
+model VehicleMakeModel {
+  id        String   @id @default(cuid())
+  make      String
+  model     String
+  key       String // lower(make)|lower(model)
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([key])
+}
+
+model Location {
+  id          String     @id @default(cuid())
+  city        String
+  cityKey     String
+  stateId     String // LookupItem of kind STATE
+  state       LookupItem @relation("LocationState", fields: [stateId], references: [id])
+  regionId    String // LookupItem of kind REGION
+  region      LookupItem @relation("LocationRegion", fields: [regionId], references: [id])
+  active      Boolean    @default(true)
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+  technicians User[]     @relation("UserBaseLocation")
+  invites     Invite[]   @relation("InviteBaseLocation")
+
+  @@unique([stateId, cityKey])
+  @@index([regionId])
 }

@@ -22,6 +22,8 @@ export function toUserDto(user: UserWithManager): UserDto {
     manager: user.manager,
     canManageUsers: user.canManageUsers,
     canManageTaskTypes: user.canManageTaskTypes,
+    technicianType: user.technicianType,
+    baseLocationId: user.baseLocationId,
     createdAt: user.createdAt.toISOString(),
   };
 }

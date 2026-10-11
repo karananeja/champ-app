@@ -10,12 +10,13 @@ import {
   type InviteStatus,
 } from '@champ/shared';
 import { env } from '../../config/env';
-import { conflict, forbidden, gone, notFound } from '../../lib/errors';
+import { badRequest, conflict, forbidden, gone, notFound } from '../../lib/errors';
 import type { GoogleAuth } from '../../lib/google';
 import { hashPassword } from '../../lib/password';
 import { prisma, type Invite, type User } from '../../lib/prisma';
 import { generateToken, hashToken } from '../../lib/tokens';
 import { createSession, verifyGoogleIdentity, type Session } from '../auth/service';
+import { requireActiveLocation } from '../masters/refs';
 import { resolveManagerId } from '../users/managers';
 
 type InviteWithInviter = Invite & { invitedBy: { id: string; name: string } };
@@ -42,6 +43,10 @@ async function toInviteDtos(invites: InviteWithInviter[]): Promise<InviteDto[]> 
     status: inviteStatus(invite),
     manager: invite.managerId ? (byId.get(invite.managerId) ?? null) : null,
     invitedBy: invite.invitedBy,
+    name: invite.name,
+    phone: invite.phone,
+    technicianType: invite.technicianType,
+    baseLocationId: invite.baseLocationId,
     expiresAt: invite.expiresAt.toISOString(),
     usedAt: invite.usedAt?.toISOString() ?? null,
     revokedAt: invite.revokedAt?.toISOString() ?? null,
@@ -70,6 +75,13 @@ export async function createInvite(actor: User, input: CreateInviteInput): Promi
   }
   managerId = await resolveManagerId(input.role, managerId);
 
+  // OT invites carry the technician profile (F02); the shared schema makes both fields required for OT.
+  const isTechnician = input.role === 'OT';
+  if (isTechnician && (!input.technicianType || !input.baseLocationId)) {
+    throw badRequest('VALIDATION_ERROR', 'A technician needs a type and a base location');
+  }
+  if (isTechnician) await requireActiveLocation(input.baseLocationId!);
+
   const token = generateToken();
   const invite = await prisma.$transaction(async (tx) => {
     // A new invite replaces any outstanding one for the same email.
@@ -83,6 +95,10 @@ export async function createInvite(actor: User, input: CreateInviteInput): Promi
         role: input.role,
         managerId,
         jobTitle: input.jobTitle || null,
+        name: input.name || null,
+        phone: input.phone || null,
+        technicianType: isTechnician ? input.technicianType : null,
+        baseLocationId: isTechnician ? input.baseLocationId : null,
         tokenHash: hashToken(token),
         expiresAt: new Date(Date.now() + INVITE_TTL_HOURS * 60 * 60 * 1000),
         invitedById: actor.id,
@@ -141,7 +157,13 @@ async function findUsableInvite(token: string): Promise<InviteWithInviter> {
 
 export async function lookupInvite(token: string): Promise<InviteLookupResponse> {
   const invite = await findUsableInvite(token);
-  return { email: invite.email, role: invite.role, inviterName: invite.invitedBy.name };
+  return {
+    email: invite.email,
+    role: invite.role,
+    inviterName: invite.invitedBy.name,
+    name: invite.name,
+    phone: invite.phone,
+  };
 }
 
 interface NewUserFromInvite {
@@ -168,6 +190,8 @@ async function redeemInvite(invite: Invite, data: NewUserFromInvite): Promise<Se
         role: invite.role,
         managerId: invite.managerId,
         jobTitle: invite.jobTitle,
+        technicianType: invite.role === 'OT' ? invite.technicianType : null,
+        baseLocationId: invite.role === 'OT' ? invite.baseLocationId : null,
         ...data,
       },
     });
@@ -192,8 +216,8 @@ export async function acceptInviteWithGoogle(google: GoogleAuth, token: string, 
     throw forbidden('GOOGLE_EMAIL_MISMATCH', `Sign in with the Google account for ${invite.email}`);
   }
   return redeemInvite(invite, {
-    name: identity.name?.trim() || invite.email.split('@')[0]!,
-    phone: null,
+    name: identity.name?.trim() || invite.name || invite.email.split('@')[0]!,
+    phone: invite.phone,
     passwordHash: null,
     authProvider: 'GOOGLE',
   });

@@ -98,6 +98,11 @@ export async function updateUser(actor: User, id: string, input: UpdateUserInput
       data.canManageUsers = false;
       data.canManageTaskTypes = false;
     }
+    // The technician profile only applies to OTs (F02). A user changed to OT gets it via PATCH /technicians/:id.
+    if (newRole !== 'OT') {
+      data.technicianType = null;
+      data.baseLocationId = null;
+    }
   }
 
   if (newRole !== target.role || input.managerId !== undefined) {
