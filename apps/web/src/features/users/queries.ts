@@ -9,11 +9,12 @@ export const usersKeys = {
   invites: ['invites'] as const,
 };
 
-export function useUsers(query: Partial<ListUsersQuery>) {
+export function useUsers(query: Partial<ListUsersQuery>, enabled = true) {
   return useQuery({
     queryKey: usersKeys.list(query),
     queryFn: () => api<Paginated<UserDto>>('/users', { query }),
     placeholderData: (prev) => prev,
+    enabled,
   });
 }
 

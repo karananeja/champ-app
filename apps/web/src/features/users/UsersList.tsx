@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { ChevronLeft, ChevronRight, Search } from 'lucide-react';
 import { ROLES, ROLE_LABELS, type Role, type UserDto, type UserStatus } from '@champ/shared';
 import { RoleBadge } from '@/components/RoleBadge';
@@ -8,21 +8,13 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { useDebounced } from '@/hooks/useDebounced';
 import { DelegationDialog } from './DelegationDialog';
 import { EditUserDialog } from './EditUserDialog';
 import { UserActions } from './UserActions';
 import { useUsers } from './queries';
 
 const PAGE_SIZE = 20;
-
-function useDebounced<T>(value: T, ms = 300): T {
-  const [debounced, setDebounced] = useState(value);
-  useEffect(() => {
-    const id = setTimeout(() => setDebounced(value), ms);
-    return () => clearTimeout(id);
-  }, [value, ms]);
-  return debounced;
-}
 
 export function UsersList({ actor }: { actor: UserDto }) {
   const [search, setSearch] = useState('');

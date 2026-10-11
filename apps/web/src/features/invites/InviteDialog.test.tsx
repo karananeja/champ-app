@@ -3,23 +3,17 @@ import userEvent from '@testing-library/user-event';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { CreateInviteResponse, UserDto } from '@champ/shared';
+import { callsTo, makeUser, mockApi } from '@/test/fixtures';
 import { InviteDialog } from './InviteDialog';
 
-const oe: UserDto = {
+const oe: UserDto = makeUser({
   id: 'oe-1',
   email: 'oe@intellicar.in',
   name: 'Omar Executive',
-  phone: null,
-  jobTitle: null,
   role: 'OE',
-  status: 'ACTIVE',
-  authProvider: 'PASSWORD',
   managerId: 'om-1',
   manager: { id: 'om-1', name: 'Maya', phone: null },
-  canManageUsers: false,
-  canManageTaskTypes: false,
-  createdAt: '2026-10-11T00:00:00.000Z',
-};
+});
 
 const response: CreateInviteResponse = {
   invite: {
@@ -30,6 +24,10 @@ const response: CreateInviteResponse = {
     status: 'PENDING',
     manager: { id: oe.id, name: oe.name },
     invitedBy: { id: oe.id, name: oe.name },
+    name: null,
+    phone: null,
+    technicianType: 'PAYROLL',
+    baseLocationId: 'loc-blr',
     expiresAt: '2026-10-14T00:00:00.000Z',
     usedAt: null,
     revokedAt: null,
@@ -38,24 +36,29 @@ const response: CreateInviteResponse = {
   link: 'http://localhost:5173/accept-invite?token=one-time-token',
 };
 
-function renderDialog(onOpenChange = vi.fn()) {
+function renderDialog(onOpenChange = vi.fn(), actor: UserDto = oe) {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   render(
     <QueryClientProvider client={client}>
-      <InviteDialog actor={oe} open onOpenChange={onOpenChange} />
+      <InviteDialog actor={actor} open onOpenChange={onOpenChange} />
     </QueryClientProvider>,
   );
   return { onOpenChange };
 }
 
+/** Fills the email and the OT fields (type and base location). */
+async function fillTechnicianInvite(user: ReturnType<typeof userEvent.setup>) {
+  await user.type(screen.getByLabelText('Email'), 'tech@intellicar.in');
+  await user.click(screen.getByRole('radio', { name: 'Payroll' }));
+  await user.click(screen.getByRole('combobox', { name: 'Base location' }));
+  await user.click(await screen.findByRole('option', { name: /Bengaluru, Karnataka/ }));
+}
+
 describe('InviteDialog', () => {
-  let fetchMock: ReturnType<typeof vi.fn>;
+  let fetchMock: ReturnType<typeof mockApi>;
 
   beforeEach(() => {
-    fetchMock = vi.fn().mockResolvedValue(
-      new Response(JSON.stringify(response), { status: 201, headers: { 'Content-Type': 'application/json' } }),
-    );
-    vi.stubGlobal('fetch', fetchMock);
+    fetchMock = mockApi({ 'POST /api/invites': response });
   });
 
   afterEach(() => {
@@ -74,16 +77,22 @@ describe('InviteDialog', () => {
     const writeText = vi.spyOn(navigator.clipboard, 'writeText').mockResolvedValue();
     renderDialog();
 
-    await user.type(screen.getByLabelText('Email'), 'tech@intellicar.in');
+    await fillTechnicianInvite(user);
     await user.click(screen.getByRole('button', { name: 'Create invite' }));
 
     expect(await screen.findByText('Invite created')).toBeInTheDocument();
     expect(screen.getByText('This link is shown only once and expires in 72 hours')).toBeInTheDocument();
     expect(screen.getByLabelText('Invite link')).toHaveValue(response.link);
 
-    const [url, init] = fetchMock.mock.calls[0]!;
-    expect(url).toBe('/api/invites');
-    expect(JSON.parse(init.body)).toEqual({ email: 'tech@intellicar.in', role: 'OT', managerId: 'oe-1' });
+    expect(callsTo(fetchMock, 'POST', '/api/invites')).toEqual([
+      {
+        email: 'tech@intellicar.in',
+        role: 'OT',
+        managerId: 'oe-1',
+        technicianType: 'PAYROLL',
+        baseLocationId: 'loc-blr',
+      },
+    ]);
 
     await user.click(screen.getByRole('button', { name: 'Copy link' }));
     expect(writeText).toHaveBeenCalledWith(response.link);
@@ -94,7 +103,7 @@ describe('InviteDialog', () => {
     const user = userEvent.setup();
     const { onOpenChange } = renderDialog();
 
-    await user.type(screen.getByLabelText('Email'), 'tech@intellicar.in');
+    await fillTechnicianInvite(user);
     await user.click(screen.getByRole('button', { name: 'Create invite' }));
     await screen.findByText('Invite created');
 
@@ -110,6 +119,26 @@ describe('InviteDialog', () => {
     renderDialog();
     await user.click(screen.getByRole('button', { name: 'Create invite' }));
     expect(await screen.findByText('Email is required')).toBeInTheDocument();
-    expect(fetchMock).not.toHaveBeenCalled();
+    expect(callsTo(fetchMock, 'POST', '/api/invites')).toHaveLength(0);
+  });
+
+  it('an OT invite shows and requires the technician type and base location', async () => {
+    const user = userEvent.setup();
+    renderDialog();
+    expect(screen.getByRole('radiogroup', { name: 'Technician type' })).toBeInTheDocument();
+    expect(screen.getByRole('combobox', { name: 'Base location' })).toBeInTheDocument();
+
+    await user.type(screen.getByLabelText('Email'), 'tech@intellicar.in');
+    await user.click(screen.getByRole('button', { name: 'Create invite' }));
+    expect(await screen.findByText('Choose a technician type')).toBeInTheDocument();
+    expect(screen.getByText('Choose a base location')).toBeInTheDocument();
+    expect(callsTo(fetchMock, 'POST', '/api/invites')).toHaveLength(0);
+  });
+
+  it('the technician fields are hidden for other roles', () => {
+    renderDialog(vi.fn(), makeUser({ id: 'sa-1', role: 'SUPER_ADMIN', name: 'Sam Admin' }));
+    expect(screen.getByRole('combobox', { name: 'Role' })).toHaveTextContent('Super Admin');
+    expect(screen.queryByRole('radiogroup', { name: 'Technician type' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('combobox', { name: 'Base location' })).not.toBeInTheDocument();
   });
 });
