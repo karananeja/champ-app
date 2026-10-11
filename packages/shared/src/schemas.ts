@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { CLIENT_CODE_PATTERN } from './clients';
 import { TECHNICIAN_TYPES } from './masters';
 import { ROLES, USER_STATUSES } from './roles';
 
@@ -270,3 +271,133 @@ export const updateTechnicianSchema = z
   })
   .refine(atLeastOne, nothingToUpdate);
 export type UpdateTechnicianInput = z.infer<typeof updateTechnicianSchema>;
+
+// --- Clients and sites (F03) ---
+
+/**
+ * An optional text field: blank (or whitespace) becomes `null`, so forms can send empty inputs and a PATCH
+ * can clear the value; `undefined` (omitted) stays `undefined`.
+ */
+const blankable = <T extends z.ZodType<unknown, string>>(schema: T) =>
+  z
+    .string()
+    .trim()
+    .transform((v) => (v === '' ? null : v))
+    .pipe(schema.nullable())
+    .nullish();
+
+export const clientCodeSchema = z
+  .string()
+  .trim()
+  .toUpperCase()
+  .regex(CLIENT_CODE_PATTERN, 'Code must be 2–12 letters, digits or dashes (e.g. ZOOM)');
+
+export const latSchema = z
+  .number({ error: 'Place the pin on the map' })
+  .min(-90, 'Latitude must be between -90 and 90')
+  .max(90, 'Latitude must be between -90 and 90');
+
+export const lngSchema = z
+  .number({ error: 'Place the pin on the map' })
+  .min(-180, 'Longitude must be between -180 and 180')
+  .max(180, 'Longitude must be between -180 and 180');
+
+const addressSchema = z
+  .string({ error: 'Address is required' })
+  .trim()
+  .min(1, 'Address is required')
+  .max(500, 'Address must be at most 500 characters');
+
+const contactNameSchema = z
+  .string({ error: 'Contact name is required' })
+  .trim()
+  .min(1, 'Contact name is required')
+  .max(100, 'Contact name must be at most 100 characters');
+
+const notesSchema = z.string().max(2000, 'Notes must be at most 2000 characters');
+
+export const siteInputSchema = z.object({
+  name: masterText('Site name'),
+  address: addressSchema,
+  lat: latSchema,
+  lng: lngSchema,
+  locationId: refId('Choose a city'),
+  contactName: blankable(contactNameSchema),
+  contactPhone: blankable(phoneSchema),
+});
+export type SiteInput = z.infer<typeof siteInputSchema>;
+
+export const createSiteSchema = siteInputSchema;
+export type CreateSiteInput = SiteInput;
+
+export const updateSiteSchema = z
+  .object({
+    name: masterText('Site name').optional(),
+    address: addressSchema.optional(),
+    lat: latSchema.optional(),
+    lng: lngSchema.optional(),
+    locationId: idSchema.optional(),
+    contactName: blankable(contactNameSchema),
+    contactPhone: blankable(phoneSchema),
+    active: z.boolean().optional(),
+  })
+  .refine(atLeastOne, nothingToUpdate)
+  .refine((v) => (v.lat === undefined) === (v.lng === undefined), {
+    message: 'Send latitude and longitude together',
+    path: ['lat'],
+  });
+export type UpdateSiteInput = z.infer<typeof updateSiteSchema>;
+
+const clientFields = {
+  name: masterText('Client name'),
+  code: blankable(clientCodeSchema),
+  contactName: contactNameSchema,
+  contactPhone: phoneSchema,
+  contactEmail: blankable(emailSchema),
+  billingEmail: blankable(emailSchema),
+  notes: blankable(notesSchema),
+};
+
+export const createClientSchema = z.object({
+  ...clientFields,
+  sites: z
+    .array(siteInputSchema, { error: 'Add at least one site' })
+    .min(1, 'Add at least one site')
+    .max(50, 'A client can have at most 50 sites in one request'),
+});
+export type CreateClientInput = z.infer<typeof createClientSchema>;
+
+export const updateClientSchema = z
+  .object({
+    name: clientFields.name.optional(),
+    code: clientFields.code,
+    contactName: contactNameSchema.optional(),
+    contactPhone: phoneSchema.optional(),
+    contactEmail: clientFields.contactEmail,
+    billingEmail: clientFields.billingEmail,
+    notes: clientFields.notes,
+    active: z.boolean().optional(),
+  })
+  .refine(atLeastOne, nothingToUpdate);
+export type UpdateClientInput = z.infer<typeof updateClientSchema>;
+
+export const listClientsQuerySchema = z.object({
+  q: searchQuery,
+  active: booleanQuery,
+  page: z.coerce.number().int().min(1).default(1),
+  pageSize: z.coerce.number().int().min(1).max(100).default(20),
+});
+export type ListClientsQuery = z.infer<typeof listClientsQuerySchema>;
+
+// --- Geocoding (F03) ---
+
+export const geoSearchQuerySchema = z.object({
+  q: z.string({ error: 'Type at least 3 characters' }).trim().min(3, 'Type at least 3 characters').max(200),
+});
+export type GeoSearchQuery = z.infer<typeof geoSearchQuerySchema>;
+
+export const geoReverseQuerySchema = z.object({
+  lat: z.coerce.number().pipe(latSchema),
+  lng: z.coerce.number().pipe(lngSchema),
+});
+export type GeoReverseQuery = z.infer<typeof geoReverseQuerySchema>;

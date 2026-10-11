@@ -163,12 +163,85 @@ export interface LookupsResponse {
   shiftTypes: LookupOption[];
   taskTypes: LookupOption[];
   technicianTypes: { value: TechnicianType; label: string }[];
+  /** Active clients with their active sites (F03); consumed by the task form (F04). */
+  clients: LookupClient[];
+}
+
+export interface LookupClient {
+  id: string;
+  name: string;
+  code: string | null;
+  sites: { id: string; name: string; locationId: string; lat: number; lng: number }[];
 }
 
 // --- Technicians (F02) ---
 
 export interface TechnicianDto extends UserDto {
   baseLocation: { id: string; city: string; state: string } | null;
+}
+
+// --- Clients and geocoding (F03) ---
+
+export interface ClientSiteDto {
+  id: string;
+  clientId: string;
+  name: string;
+  address: string;
+  lat: number;
+  lng: number;
+  locationId: string;
+  location: { id: string; city: string; state: string; active: boolean };
+  contactName: string | null;
+  contactPhone: string | null;
+  active: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+/** A row of `GET /clients`. */
+export interface ClientListItemDto {
+  id: string;
+  name: string;
+  code: string | null;
+  contactName: string;
+  contactPhone: string;
+  contactEmail: string | null;
+  billingEmail: string | null;
+  active: boolean;
+  siteCount: number;
+  activeSiteCount: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+/** `GET /clients/:id`: the client with all of its sites (active and inactive). */
+export interface ClientDto extends ClientListItemDto {
+  notes: string | null;
+  createdBy: UserRef;
+  sites: ClientSiteDto[];
+}
+
+/** A geocoder hit (search or reverse). */
+export interface GeoResult {
+  displayName: string;
+  lat: number;
+  lng: number;
+  city?: string;
+  state?: string;
+  postcode?: string;
+}
+
+/** A geocoder hit with the matching active Location (city master), when there is one. */
+export interface GeoResultDto extends GeoResult {
+  suggestedLocationId?: string;
+}
+
+export interface GeoSearchResponse {
+  items: GeoResultDto[];
+}
+
+export interface GeoReverseResponse {
+  item: GeoResultDto | null;
 }
 
 export const ERROR_CODES = [
@@ -203,6 +276,8 @@ export const ERROR_CODES = [
   'SYSTEM_ITEM',
   'INVALID_REFERENCE',
   'INACTIVE_REFERENCE',
+  'LAST_ACTIVE_SITE',
+  'GEOCODER_UNAVAILABLE',
   'INTERNAL_ERROR',
 ] as const;
 export type ErrorCode = (typeof ERROR_CODES)[number];

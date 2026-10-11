@@ -10,7 +10,7 @@ import { lookupOrder } from './service';
 
 /** All active master values in one response; every dropdown in the app reads from here. */
 export async function getLookups(): Promise<LookupsResponse> {
-  const [items, activities, makeModels, locations] = await Promise.all([
+  const [items, activities, makeModels, locations, clients] = await Promise.all([
     prisma.lookupItem.findMany({ where: { active: true }, orderBy: lookupOrder }),
     prisma.activity.findMany({
       where: { active: true, assetType: { active: true } },
@@ -21,6 +21,20 @@ export async function getLookups(): Promise<LookupsResponse> {
       where: { active: true },
       include: { state: { select: { name: true } }, region: { select: { name: true } } },
       orderBy: { city: 'asc' },
+    }),
+    prisma.client.findMany({
+      where: { active: true },
+      select: {
+        id: true,
+        name: true,
+        code: true,
+        sites: {
+          where: { active: true },
+          select: { id: true, name: true, locationId: true, lat: true, lng: true },
+          orderBy: { name: 'asc' },
+        },
+      },
+      orderBy: { name: 'asc' },
     }),
   ]);
 
@@ -54,5 +68,6 @@ export async function getLookups(): Promise<LookupsResponse> {
     shiftTypes: of('SHIFT_TYPE'),
     taskTypes: of('TASK_TYPE'),
     technicianTypes: TECHNICIAN_TYPES.map((value) => ({ value, label: TECHNICIAN_TYPE_LABELS[value] })),
+    clients,
   };
 }

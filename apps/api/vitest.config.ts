@@ -29,6 +29,9 @@ export default defineConfig({
       WEB_URL: 'http://localhost:5173',
       GOOGLE_CLIENT_ID: '',
       GOOGLE_ALLOWED_DOMAIN: 'intellicar.in',
+      // Safety net: nothing listens here, so a test that forgot to inject a fake geocoder gets a 503 and never
+      // reaches the real Nominatim.
+      NOMINATIM_URL: 'http://127.0.0.1:9',
     },
   },
 });
