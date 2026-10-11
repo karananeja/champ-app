@@ -101,8 +101,8 @@ Logistics* in New Delhi), with hard-coded coordinates.
 ### Tasks (F04)
 
 The **Tasks** menu (SA, OM, OE and RO; not OT) holds *Create task*, *Bulk upload* (creators only), *Open tasks*,
-*Assigned* (OEs: tasks where they are the operation executive) and placeholder pages for *Travel tasks*, *Faulty
-tasks* and *Re-opened* (filled in by F05/F08).
+*Assigned* (OEs: tasks where they are the operation executive), *Awaiting approval* (SA/OM), *Faulty tasks* and
+*Re-opened* (F05, below) and a placeholder for *Travel tasks* (F08).
 
 - **Create task** is a full page: customer → site (the fitment city comes from the site), POC prefilled from the
   customer's primary contact, operation executive (locked to yourself as an OE), optional technician type and
@@ -112,10 +112,10 @@ tasks* and *Re-opened* (filled in by F05/F08).
   sample on the page).
 - Saving creates the task with an **OM id** (`OM-00001`), an **OE id** (`OE-00001`) and **one fitment per vehicle**
   (`TK-00001`, …). With a technician every fitment starts *Assigned* to them, otherwise *Open*. On the task page,
-  tick fitments and assign or unassign them (any active technician) while they are Open/Assigned, and edit vehicle
-  details.
-- **Edit** (SA/OM, or the task's OE) and **Delete** (SA/OM; soft delete, kept in the audit log) only while no
-  fitment has started.
+  tick fitments and assign or unassign them (any active technician) while they are Open, Assigned or Reopened, and edit
+  vehicle details (edit locks, F05).
+- **Edit** (the task's OE only while no fitment has started; SA/OM at any stage, F05) and **Delete** (SA/OM; soft
+  delete, kept in the audit log) only while no fitment has started.
 - **Bulk upload**: download the sample, upload a CSV (one row per task, `vehicle_count` vehicles; customer code or
   name, site name, emails and master names; dates `YYYY-MM-DD HH:mm` IST; ≤ 2 MB, ≤ 1,000 rows), check the preview
   (bad cells in red with the reason), import the valid rows and download the error rows to fix.
@@ -127,6 +127,39 @@ Every change writes a `TaskEvent` row (audit trail for F05's history). Sample CS
 
 `pnpm db:seed:demo` also adds three demo tasks (comments start with `[demo]`): one Open, one Assigned and one split
 between two technicians.
+
+### Workflow: approvals, reopen, faulty and history (F05)
+
+Each fitment moves through one shared state machine (`packages/shared/src/workflow.ts`, used by the API and the
+web): **Assigned → In progress → Submitted** (technician) **→ OE verified** (the task's OE) **→ OM approved** (SA/OM),
+with the side paths **Closed – not done** (close reason + comments), **Moved to FT** (faulty device: a new Open
+replacement fitment with its own TK id is added to the same task) and **Reopened** (reason required; OE or OM; goes back
+to the same technician, who can be changed). Steps out of order are refused with a clear message (409
+`INVALID_TRANSITION`). The task status follows its fitments (Open → Assigned → In progress → Completed).
+
+- **Task page:** a status badge per fitment and the actions you may take (*Verify*, *Final approve*, *Reopen*), the
+  close/fault reason, replacement links and a reopen counter. OMs can tick OE-verified fitments and final-approve them
+  together. On phones each card has an actions menu.
+- **Edit locks:** the technician may change fitment data until the OE verifies, the OE until the OM approves, SA/OM
+  at any stage (a change after approval is flagged `postApproval` in the history). SA/OM can also edit the task header
+  after work started (flagged `postStart`); an OE only before.
+- **Lists:** *Awaiting approval* (SA/OM, with bulk final approve), *Re-opened* (count, latest reason, who, current
+  status) and *Faulty tasks* (fault reason, replacement and its status). OEs see only their own tasks; RO reads.
+  Reopens are also stored per person (`ReopenAttribution`: an OE reopen counts against the technician; an OM reopen of
+  an OE-verified fitment against the OE and the technician) for the analytics in F15.
+- **History tab** (SA/OM): the stage timeline (First → Second → Verification → Final) of the task and each fitment,
+  with reopen loops, and the raw event log with before/after values, filterable and downloadable as CSV.
+
+**Simulate technician (dev only).** Until the mobile app (F10) exists, the task page shows a *Simulate technician
+(dev only)* panel to SA, OM and the task's OE: pick a fitment, then *Start work* (at the site's location), *Submit*,
+*Close not done* or *Mark faulty*. It calls `POST /api/dev/fitments/:fid/simulate`, which acts as the fitment's assigned
+technician; its events are flagged `simulated`. The API mounts the route only when enabled and never with
+`NODE_ENV=production`; the web panel is loaded only in a Vite dev build, and `pnpm build` checks that the production
+bundle has no trace of it.
+
+| Variable | Default | What |
+|---|---|---|
+| `ENABLE_DEV_SIMULATOR` | unset → on in development, off otherwise (`true` in `.env.example`) | Mounts the technician simulator API; ignored (always off) when `NODE_ENV=production` |
 
 ### Google sign-in
 
@@ -140,9 +173,9 @@ Hidden unless `GOOGLE_CLIENT_ID` is set. When set, only verified Google accounts
 |---|---|
 | `pnpm dev` | API (tsx watch) and web (Vite) in parallel |
 | `pnpm test` | Unit/integration tests: shared, API (against `champ_test`, recreated each run) and web components |
-| `pnpm test:e2e` | Playwright E2E (starts its own API on :4100 and web on :5174 against `champ_e2e`; geocoding and map tiles are stubbed) |
+| `pnpm test:e2e` | Playwright E2E (starts its own API on :4100 and web on :5174 against `champ_e2e`, with the dev simulator on; geocoding and map tiles are stubbed) |
 | `pnpm lint` / `pnpm typecheck` | ESLint / TypeScript across the workspace |
-| `pnpm build` | Type-checks the API and builds the web app into `apps/web/dist` |
+| `pnpm build` | Type-checks the API, builds the web app into `apps/web/dist` and checks that the bundle has no dev simulator |
 | `pnpm start` | Runs the API without watch mode |
 | `pnpm db:migrate` | Applies pending migrations (`prisma migrate deploy`) |
 | `pnpm db:migrate:dev` | Creates a new migration after editing `apps/api/prisma/schema.prisma` |
@@ -173,7 +206,8 @@ apps/api/src
                       counters (transactional OM/OE/TK ids)
   middleware/         authenticate, requireRole, validate, error handler
   modules/            auth, invites, users, health, masters (+ /lookups), technicians, clients, geo,
-                      tasks (service, refs, status, filters, export, bulk + bulk-rows)
+                      tasks (service, refs, status, filters, events, export, bulk + bulk-rows),
+                      workflow (engine, lists, history, router, dev simulator)
 apps/api/prisma       schema, migrations, seed (seed-masters.ts: master values; seed-demo.ts: demo users)
 apps/web/src
   components/ui       shadcn/ui components (generated)
@@ -181,5 +215,6 @@ apps/web/src
   features/           auth, invites, users, dashboard, profile, masters (config-driven), technicians, clients, tasks
   lib/                API client (in-memory access token, single-flight refresh), auth context, permissions
 packages/shared/src   roles.ts, masters.ts (kinds, permission helpers), clients.ts, tasks.ts (ids, statuses,
-                      permissions, IST helpers, CSV columns), schemas.ts, dto.ts
+                      permissions, IST helpers, CSV columns), workflow.ts (state machine, actors, edit locks),
+                      schemas.ts, dto.ts
 ```
