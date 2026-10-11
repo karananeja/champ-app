@@ -85,4 +85,15 @@ Chronological log of the whole project conversation. Feature-level logs live in 
 
 **Claude verification:** Re-ran all gates (all pass) and reviewed the route permissions.
 
-**Status:** F03 ready for UAT by the user.
+**User:** "F03 accepted and Masters tab should only be visible to Super admin and OM, also password field do not have the eye toggle to check what is entered"
+
+**Claude:**
+- Recorded the F03 UAT sign-off and merged `feature/F03-clients` to `main`.
+- Logged the two requests as change request CR-01 (`docs/change-requests/CR-01-masters-visibility-password-toggle.md`, D-059, D-060). Masters are restricted on both web and API, while `/api/lookups` stays open so dropdowns keep working.
+- Created branch `cr/CR-01-masters-visibility-password-toggle` and launched an implementation agent.
+
+**Implementation agent (CR-01):** Finished in 2 commits. Reported 338 tests and E2E 20 passed + 1 skipped; existing masters tests were updated for the new permission rule.
+
+**Claude verification:** Re-ran all gates; all pass.
+
+**Status:** CR-01 ready for UAT by the user.
