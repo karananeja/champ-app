@@ -123,4 +123,23 @@ Chronological log of the whole project conversation. Feature-level logs live in 
 
 - Drafted the F05 intent (workflow engine) for review alongside CR-02.
 
-**Status:** CR-02 ready for user acceptance; F05 intent awaiting sign-off.
+**User:** "CR-02 accepted, F05 approved". All four F05 open points were accepted as proposed (D-073 – D-076).
+
+**Claude:**
+- Merged CR-02 to `main` and created branch `feature/F05-workflow`.
+- Wrote the F05 spec, including D-077 (one shared state machine, with transitions outside `/tasks` so OTs can act) and D-078 (OE-as-technician deferred to F09/F10).
+- Launched an implementation agent for F05.
+
+**User (during the F05 build):** "file naming convention should be kebab case and use illustrations to show error, empty screens and more so that the ui looks better and not so simple as it is currently"
+
+**Claude:**
+- Logged this as CR-03.
+- Messaged the F05 agent to name new files in kebab-case without renaming existing ones, to avoid conflicts.
+- Asked three style questions. User answers: unDraw-style illustrations; illustrations + polish; Claude picks the brand colour.
+- Drafted the CR-03 doc. It will be committed, and its decisions numbered in the decision log, after F05 merges, so the F05 agent's decision-log edits don't collide.
+
+**Implementation agent (F05):** Finished in 3 commits. Reported 583 tests, E2E 37 passed + 2 skipped, and a bundle check confirming no simulator in production. Added D-079–D-083.
+
+**Claude verification:** Re-ran all gates (all pass) and reviewed the state machine and simulator gating. Found the F05 branch had been renamed to `main`, putting unaccepted F05 commits on main. Re-created `feature/F05-workflow`; moving `main` back was blocked as destructive, so the user was asked to decide.
+
+**Status:** F05 ready for UAT; CR-03 is scheduled after the F05 merge.
