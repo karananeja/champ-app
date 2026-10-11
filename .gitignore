@@ -10,3 +10,4 @@ playwright-report/
 apps/api/src/generated/
 *.tsbuildinfo
 .env.local
+apps/web/e2e/.data/

@@ -24,7 +24,8 @@ cp .env.example .env        # defaults work as-is for local development
 docker compose up -d        # PostgreSQL + MinIO
 pnpm install
 pnpm db:migrate             # apply migrations (and generate the Prisma client)
-pnpm db:seed                # create the first Super Admin
+pnpm db:seed                # create the first Super Admin and the master data (dummy values)
+pnpm db:seed:demo           # optional: a demo OM, OE and three sample technicians
 pnpm dev                    # API on :4000, web on :5173
 ```
 
@@ -49,7 +50,29 @@ signed in.
 | Super Admin (SA) | any role |
 | Operations Manager (OM) | OE, OT, RO |
 | Operations Executive (OE) | OT (as their own reportee) |
+
+Inviting an OT also needs a technician type and base location (F02); the Technicians page does the same with
+name and contact prefilled for the invitee.
 | Operations Technician (OT), Read Only (RO) | — |
+
+### Master data and technicians (F02)
+
+**Masters** (sidebar → *All masters*) holds the 16 lists behind every dropdown: asset types, activities, device
+types, vehicle make/model, installation types, states, regions, locations, issues reported/observed, actions
+taken, final issues (with a billable flag), accessories, close reasons, shift types and task types. `pnpm db:seed`
+fills them with dummy values (D-017) that you can rename or replace. Values are never deleted, only deactivated:
+an inactive value disappears from dropdowns (`GET /api/lookups`) but stays in the admin list, greyed out.
+Built-in values (asset types Vehicle/Battery, shift types, task types OT/TT/FT) can't be renamed or deactivated.
+
+SA and OM can edit masters; task types need SA, or an OM with *Delegate task types*. Everyone else sees them
+read-only.
+
+**Technicians** lists every OT with type, base location and reporting OE. *Add technician* creates the OT's
+invite (same one-time link as above). An OE only sees and edits their own technicians.
+
+`pnpm db:seed:demo` (after `pnpm db:seed`) adds `demo.om@intellicar.in`, `demo.oe@intellicar.in` and three OTs
+(`ravi.ot@`, `suresh.ot@`, `amit.ot@intellicar.in`), all with the password `Demo@1234`. It skips accounts that
+already exist.
 
 ### Google sign-in
 
@@ -69,7 +92,8 @@ Hidden unless `GOOGLE_CLIENT_ID` is set. When set, only verified Google accounts
 | `pnpm start` | Runs the API without watch mode |
 | `pnpm db:migrate` | Applies pending migrations (`prisma migrate deploy`) |
 | `pnpm db:migrate:dev` | Creates a new migration after editing `apps/api/prisma/schema.prisma` |
-| `pnpm db:seed` | Creates the Super Admin if missing (idempotent) |
+| `pnpm db:seed` | Creates the Super Admin if missing and upserts the master data (idempotent) |
+| `pnpm db:seed:demo` | Optional demo users: an OM, an OE and three technicians (idempotent) |
 | `pnpm db:reset` | Drops the dev database, re-applies migrations and seeds — **deletes all local data** |
 
 First E2E run on a machine: `pnpm --filter @champ/web exec playwright install chromium`.
@@ -93,12 +117,12 @@ apps/api/src
   config/env.ts       zod-validated environment
   lib/                prisma, jwt, tokens, password, cookies, google, logger, errors
   middleware/         authenticate, requireRole, validate, error handler
-  modules/            auth, invites, users, health (router + service)
-apps/api/prisma       schema, migrations, seed
+  modules/            auth, invites, users, health, masters (+ /lookups), technicians (router + service)
+apps/api/prisma       schema, migrations, seed (seed-masters.ts: master values; seed-demo.ts: demo users)
 apps/web/src
   components/ui       shadcn/ui components (generated)
   components/         app shell, auth provider, shared widgets
-  features/           auth, invites, users, dashboard, profile
+  features/           auth, invites, users, dashboard, profile, masters (config-driven), technicians
   lib/                API client (in-memory access token, single-flight refresh), auth context, permissions
-packages/shared/src   roles.ts, schemas.ts, dto.ts
+packages/shared/src   roles.ts, masters.ts (kinds, permission helpers), schemas.ts, dto.ts
 ```

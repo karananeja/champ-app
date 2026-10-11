@@ -105,7 +105,8 @@ function AcceptInviteForm({ token, invite }: { token: string; invite: InviteLook
     formState: { errors, isSubmitting },
   } = useForm<FormValues>({
     resolver: zodResolver(formSchema),
-    defaultValues: { name: '', phone: '', password: '', confirmPassword: '' },
+    // Technician invites carry the name and phone entered by the inviter.
+    defaultValues: { name: invite.name ?? '', phone: invite.phone ?? '', password: '', confirmPassword: '' },
   });
 
   const finish = (session: AuthResponse) => {

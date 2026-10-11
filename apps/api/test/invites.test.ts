@@ -9,16 +9,17 @@ import {
   fakeGoogle,
   insertInvite,
   refreshCookie,
+  technicianFields,
   testApi,
   tokenFromLink,
 } from './helpers';
 
 type Org = Awaited<ReturnType<typeof createOrg>>;
 
-/** A body that is valid for `target` regardless of who invites. */
-function inviteBody(org: Org, target: Role, email: string) {
+/** A body that is valid for `target` regardless of who invites. OT invites carry the F02 technician fields. */
+async function inviteBody(org: Org, target: Role, email: string) {
   const managerId = target === 'OT' ? org.oe.id : target === 'OE' ? org.om.id : undefined;
-  return { email, role: target, managerId };
+  return { email, role: target, managerId, ...(target === 'OT' ? await technicianFields() : {}) };
 }
 
 describe('POST /api/invites — invite matrix (every actor × target role)', () => {
@@ -30,7 +31,7 @@ describe('POST /api/invites — invite matrix (every actor × target role)', () 
         const res = await testApi()
           .post('/api/invites')
           .set(bearer(org[actor]))
-          .send(inviteBody(org, target, `new-${target.toLowerCase()}@intellicar.in`));
+          .send(await inviteBody(org, target, `new-${target.toLowerCase()}@intellicar.in`));
         expect(res.status).toBe(allowed ? 201 : 403);
         if (allowed) {
           expect(res.body.invite).toMatchObject({ role: target, status: 'PENDING' });
@@ -100,17 +101,73 @@ describe('POST /api/invites — rules', () => {
   });
 });
 
+describe('POST /api/invites — technician fields (F02)', () => {
+  it('an OT invite requires a technician type and base location', async () => {
+    const { sa, oe } = await createOrg();
+    const res = await testApi()
+      .post('/api/invites')
+      .set(bearer(sa))
+      .send({ email: 'tech@intellicar.in', role: 'OT', managerId: oe.id });
+    expect(res.status).toBe(400);
+    expect(res.body.error.details.fieldErrors).toEqual({
+      technicianType: ['Choose a technician type'],
+      baseLocationId: ['Choose a base location'],
+    });
+  });
+
+  it('stores the technician fields on an OT invite and copies them to the user on accept', async () => {
+    const { sa, oe } = await createOrg();
+    const tech = await technicianFields('CONTRACTUAL');
+    const res = await testApi()
+      .post('/api/invites')
+      .set(bearer(sa))
+      .send({ email: 'tech@intellicar.in', role: 'OT', managerId: oe.id, ...tech });
+    expect(res.status).toBe(201);
+    expect(res.body.invite).toMatchObject({ technicianType: 'CONTRACTUAL', baseLocationId: tech.baseLocationId });
+
+    const accepted = await testApi()
+      .post('/api/invites/accept')
+      .send({ token: tokenFromLink(res.body.link), name: 'Tia Tech', phone: '+91 98765 43210', password: 'secret123' });
+    expect(accepted.body.user).toMatchObject({ role: 'OT', technicianType: 'CONTRACTUAL', baseLocationId: tech.baseLocationId });
+  });
+
+  it('an inactive base location is rejected', async () => {
+    const { sa, oe } = await createOrg();
+    const tech = await technicianFields();
+    await prisma.location.update({ where: { id: tech.baseLocationId }, data: { active: false } });
+    const res = await testApi()
+      .post('/api/invites')
+      .set(bearer(sa))
+      .send({ email: 'tech@intellicar.in', role: 'OT', managerId: oe.id, ...tech });
+    expect(res.status).toBe(400);
+    expect(res.body.error.code).toBe('INACTIVE_REFERENCE');
+  });
+
+  it('technician fields are ignored for other roles', async () => {
+    const { sa } = await createOrg();
+    const res = await testApi()
+      .post('/api/invites')
+      .set(bearer(sa))
+      .send({ email: 'ro@intellicar.in', role: 'RO', ...(await technicianFields()) });
+    expect(res.status).toBe(201);
+    expect(res.body.invite).toMatchObject({ technicianType: null, baseLocationId: null });
+  });
+});
+
 describe('POST /api/invites — manager rules', () => {
   const post = (actor: Parameters<typeof bearer>[0], body: object) =>
     testApi().post('/api/invites').set(bearer(actor)).send(body);
 
   it('an OT needs an OE manager', async () => {
     const { sa, om, oe } = await createOrg();
-    expect((await post(sa, { email: 'a@intellicar.in', role: 'OT' })).body.error.code).toBe('MANAGER_REQUIRED');
-    expect((await post(sa, { email: 'a@intellicar.in', role: 'OT', managerId: om.id })).body.error.code).toBe(
+    const tech = await technicianFields();
+    expect((await post(sa, { email: 'a@intellicar.in', role: 'OT', ...tech })).body.error.code).toBe(
+      'MANAGER_REQUIRED',
+    );
+    expect((await post(sa, { email: 'a@intellicar.in', role: 'OT', managerId: om.id, ...tech })).body.error.code).toBe(
       'MANAGER_INVALID',
     );
-    const ok = await post(sa, { email: 'a@intellicar.in', role: 'OT', managerId: oe.id });
+    const ok = await post(sa, { email: 'a@intellicar.in', role: 'OT', managerId: oe.id, ...tech });
     expect(ok.status).toBe(201);
     expect(ok.body.invite.manager).toEqual({ id: oe.id, name: oe.name });
   });
@@ -146,7 +203,7 @@ describe('POST /api/invites — manager rules', () => {
   it('an OE inviting an OT is forced to be the manager', async () => {
     const { oe, om } = await createOrg();
     const otherOe = await createUser({ role: 'OE', managerId: om.id });
-    const res = await post(oe, { email: 'a@intellicar.in', role: 'OT', managerId: otherOe.id });
+    const res = await post(oe, { email: 'a@intellicar.in', role: 'OT', managerId: otherOe.id, ...(await technicianFields()) });
     expect(res.status).toBe(201);
     expect(res.body.invite.manager.id).toBe(oe.id);
   });
@@ -154,7 +211,12 @@ describe('POST /api/invites — manager rules', () => {
   it('an inactive manager is rejected', async () => {
     const { sa, om } = await createOrg();
     const inactiveOe = await createUser({ role: 'OE', managerId: om.id, status: 'INACTIVE' });
-    const res = await post(sa, { email: 'a@intellicar.in', role: 'OT', managerId: inactiveOe.id });
+    const res = await post(sa, {
+      email: 'a@intellicar.in',
+      role: 'OT',
+      managerId: inactiveOe.id,
+      ...(await technicianFields()),
+    });
     expect(res.body.error.code).toBe('MANAGER_INVALID');
   });
 });
@@ -164,7 +226,10 @@ describe('GET /api/invites and revoke', () => {
     const { sa, om, oe } = await createOrg();
     const api = testApi();
     await api.post('/api/invites').set(bearer(om)).send({ email: 'a@intellicar.in', role: 'RO' });
-    await api.post('/api/invites').set(bearer(oe)).send({ email: 'b@intellicar.in', role: 'OT' });
+    await api
+      .post('/api/invites')
+      .set(bearer(oe))
+      .send({ email: 'b@intellicar.in', role: 'OT', ...(await technicianFields()) });
     await api.post('/api/invites').set(bearer(sa)).send({ email: 'c@intellicar.in', role: 'OM' });
 
     expect((await api.get('/api/invites').set(bearer(sa))).body.items).toHaveLength(3);
@@ -217,12 +282,12 @@ describe('GET /api/invites and revoke', () => {
 describe('invite lookup and accept', () => {
   const acceptBody = (token: string) => ({ token, name: 'New Person', phone: '+91 98765 43210', password: 'secret123' });
 
-  it('lookup returns email, role and inviter name', async () => {
+  it('lookup returns email, role, inviter name and the prefill fields', async () => {
     const { sa } = await createOrg();
     const { token } = await insertInvite({ invitedById: sa.id, email: 'n@intellicar.in', role: 'OM' });
     const res = await testApi().get('/api/invites/lookup').query({ token });
     expect(res.status).toBe(200);
-    expect(res.body).toEqual({ email: 'n@intellicar.in', role: 'OM', inviterName: sa.name });
+    expect(res.body).toEqual({ email: 'n@intellicar.in', role: 'OM', inviterName: sa.name, name: null, phone: null });
   });
 
   it('happy path: creates the user, marks the invite used and logs in', async () => {

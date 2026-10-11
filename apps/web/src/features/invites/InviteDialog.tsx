@@ -28,6 +28,7 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { ApiError, api } from '@/lib/api';
 import { invitableRoles } from '@/lib/permissions';
+import { BaseLocationField, TechnicianTypeField } from '../technicians/TechnicianFields';
 import { useManagerCandidates, usersKeys } from '../users/queries';
 
 interface Props {
@@ -46,7 +47,7 @@ export function InviteDialog({ actor, open, onOpenChange }: Props) {
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="max-h-[calc(100svh-2rem)] overflow-y-auto sm:max-w-md">
         {result ? (
           <InviteLinkView result={result} onDone={() => handleOpenChange(false)} />
         ) : (
@@ -108,6 +109,9 @@ function InviteForm({
           if (messages?.[0]) setError(field as keyof CreateInviteInput, { message: messages[0] });
         }
         if (err.code === 'EMAIL_EXISTS') setError('email', { message: err.message });
+        else if (err.code === 'INVALID_REFERENCE' || err.code === 'INACTIVE_REFERENCE') {
+          setError('baseLocationId', { message: err.message });
+        }
         else if (err.code.startsWith('MANAGER_')) setError('managerId', { message: err.message });
         else setServerError(err.message);
       } else {
@@ -122,10 +126,14 @@ function InviteForm({
       setError('managerId', { message: `Choose a ${ROLE_LABELS[rule.managerRole!]}` });
       return;
     }
+    const isTechnician = values.role === 'OT';
     mutation.mutate({
       ...values,
       managerId: forced ? actor.id : showManagerSelect ? values.managerId || null : null,
       jobTitle: values.jobTitle || undefined,
+      // Technician fields only travel with OT invites (F02).
+      technicianType: isTechnician ? values.technicianType : undefined,
+      baseLocationId: isTechnician ? values.baseLocationId : undefined,
     });
   });
 
@@ -221,6 +229,35 @@ function InviteForm({
           )}
           <FieldError id="invite-manager-error" message={errors.managerId?.message} />
         </div>
+      )}
+
+      {role === 'OT' && (
+        <>
+          <Controller
+            control={control}
+            name="technicianType"
+            render={({ field }) => (
+              <TechnicianTypeField
+                id="invite-technician-type"
+                value={field.value}
+                onChange={field.onChange}
+                error={errors.technicianType?.message}
+              />
+            )}
+          />
+          <Controller
+            control={control}
+            name="baseLocationId"
+            render={({ field }) => (
+              <BaseLocationField
+                id="invite-base-location"
+                value={field.value}
+                onChange={field.onChange}
+                error={errors.baseLocationId?.message}
+              />
+            )}
+          />
+        </>
       )}
 
       <div className="grid grid-cols-1 gap-2">

@@ -17,6 +17,7 @@
     "db:migrate": "pnpm --filter @champ/api db:migrate",
     "db:migrate:dev": "pnpm --filter @champ/api db:migrate:dev",
     "db:seed": "pnpm --filter @champ/api db:seed",
+    "db:seed:demo": "pnpm --filter @champ/api db:seed:demo",
     "db:reset": "pnpm --filter @champ/api db:reset"
   },
   "devDependencies": {

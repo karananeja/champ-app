@@ -1,6 +1,6 @@
-import { LayoutDashboard, UserRound, Users, type LucideIcon } from 'lucide-react';
+import { Database, HardHat, LayoutDashboard, UserRound, Users, type LucideIcon } from 'lucide-react';
 import type { UserDto } from '@champ/shared';
-import { canViewUsers } from '@/lib/permissions';
+import { canViewTechnicians, canViewUsers } from '@/lib/permissions';
 
 export interface NavItem {
   to: string;
@@ -8,11 +8,23 @@ export interface NavItem {
   icon: LucideIcon;
 }
 
-/** Role-aware menu items. */
-export function navItemsFor(user: UserDto): NavItem[] {
+export interface NavGroup {
+  /** Group heading; omitted for the top group. */
+  label?: string;
+  items: NavItem[];
+}
+
+/** Role-aware menu, in groups. */
+export function navGroupsFor(user: UserDto): NavGroup[] {
   return [
-    { to: '/', label: 'Dashboard', icon: LayoutDashboard },
-    ...(canViewUsers(user) ? [{ to: '/users', label: 'Users', icon: Users }] : []),
-    { to: '/profile', label: 'Profile', icon: UserRound },
+    {
+      items: [
+        { to: '/', label: 'Dashboard', icon: LayoutDashboard },
+        ...(canViewUsers(user) ? [{ to: '/users', label: 'Users', icon: Users }] : []),
+        ...(canViewTechnicians(user) ? [{ to: '/technicians', label: 'Technicians', icon: HardHat }] : []),
+      ],
+    },
+    { label: 'Masters', items: [{ to: '/masters', label: 'All masters', icon: Database }] },
+    { items: [{ to: '/profile', label: 'Profile', icon: UserRound }] },
   ];
 }

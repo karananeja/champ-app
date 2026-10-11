@@ -16,7 +16,7 @@ import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTr
 import { useAuth, useCurrentUser } from '@/lib/auth';
 import { initials } from '@/lib/format';
 import { cn } from '@/lib/utils';
-import { navItemsFor } from './nav';
+import { navGroupsFor } from './nav';
 
 function Brand() {
   return (
@@ -30,23 +30,32 @@ function Brand() {
 function NavLinks({ onNavigate }: { onNavigate?: () => void }) {
   const user = useCurrentUser();
   return (
-    <nav className="grid grid-cols-1 gap-1" aria-label="Main">
-      {navItemsFor(user).map(({ to, label, icon: Icon }) => (
-        <NavLink
-          key={to}
-          to={to}
-          end={to === '/'}
-          onClick={onNavigate}
-          className={({ isActive }) =>
-            cn(
-              'flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium text-sidebar-foreground/80 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground',
-              isActive && 'bg-sidebar-accent text-sidebar-accent-foreground',
-            )
-          }
-        >
-          <Icon className="size-4" />
-          {label}
-        </NavLink>
+    <nav className="grid grid-cols-1 gap-4" aria-label="Main">
+      {navGroupsFor(user).map((group, index) => (
+        <div key={group.label ?? index} className="grid grid-cols-1 gap-1">
+          {group.label && (
+            <div className="px-3 pb-1 text-xs font-medium tracking-wide text-sidebar-foreground/60 uppercase">
+              {group.label}
+            </div>
+          )}
+          {group.items.map(({ to, label, icon: Icon }) => (
+            <NavLink
+              key={to}
+              to={to}
+              end={to === '/'}
+              onClick={onNavigate}
+              className={({ isActive }) =>
+                cn(
+                  'flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium text-sidebar-foreground/80 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground',
+                  isActive && 'bg-sidebar-accent text-sidebar-accent-foreground',
+                )
+              }
+            >
+              <Icon className="size-4" />
+              {label}
+            </NavLink>
+          ))}
+        </div>
       ))}
     </nav>
   );

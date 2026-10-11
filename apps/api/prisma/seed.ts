@@ -1,12 +1,14 @@
 /**
- * Seeds the first Super Admin. Idempotent: an existing user with the same email is left untouched.
+ * Base seed: the first Super Admin and the master data (F02). Idempotent: an existing Super Admin is left
+ * untouched and master values are upserted (see seed-masters.ts).
  */
 import { passwordSchema } from '@champ/shared';
 import { hashPassword } from '../src/lib/password';
 import { logger } from '../src/lib/logger';
 import { prisma } from '../src/lib/prisma';
+import { seedMasters } from './seed-masters';
 
-async function main() {
+async function seedSuperAdmin() {
   const email = (process.env.SEED_SUPERADMIN_EMAIL || 'admin@intellicar.in').trim().toLowerCase();
   const password = process.env.SEED_SUPERADMIN_PASSWORD || 'Admin@1234';
   passwordSchema.parse(password);
@@ -26,6 +28,20 @@ async function main() {
     },
   });
   logger.info(`Seed: created Super Admin ${email}`);
+}
+
+async function main() {
+  await seedSuperAdmin();
+  await seedMasters(prisma);
+  const [lookups, activities, makeModels, locations] = await Promise.all([
+    prisma.lookupItem.count(),
+    prisma.activity.count(),
+    prisma.vehicleMakeModel.count(),
+    prisma.location.count(),
+  ]);
+  logger.info(
+    `Seed: master data ready (${lookups} lookup values, ${activities} activities, ${makeModels} make/models, ${locations} locations)`,
+  );
 }
 
 main()

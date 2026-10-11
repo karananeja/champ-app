@@ -53,16 +53,16 @@ export function InvitesList({ actor }: { actor: UserDto }) {
           <TableBody>
             {invites.map((invite) => (
               <TableRow key={invite.id} data-testid="invite-row">
-                <TableCell className="font-medium">{invite.email}</TableCell>
+                <TableCell className="font-medium break-all whitespace-normal">{invite.email}</TableCell>
                 <TableCell>
                   <RoleBadge role={invite.role} />
                 </TableCell>
-                <TableCell>{invite.manager?.name ?? '—'}</TableCell>
+                <TableCell className="whitespace-normal">{invite.manager?.name ?? '—'}</TableCell>
                 <TableCell>
                   <StatusBadge status={invite.status} />
                 </TableCell>
                 <TableCell>{formatDateTime(invite.expiresAt)}</TableCell>
-                {actor.role === 'SUPER_ADMIN' && <TableCell>{invite.invitedBy.name}</TableCell>}
+                {actor.role === 'SUPER_ADMIN' && <TableCell className="whitespace-normal">{invite.invitedBy.name}</TableCell>}
                 <TableCell>{revokeButton(invite)}</TableCell>
               </TableRow>
             ))}

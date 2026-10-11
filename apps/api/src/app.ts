@@ -10,6 +10,8 @@ import { errorHandler, notFoundHandler } from './middleware/error';
 import { authRouter } from './modules/auth/router';
 import { healthRouter } from './modules/health/router';
 import { invitesRouter } from './modules/invites/router';
+import { lookupsRouter, mastersRouter } from './modules/masters/router';
+import { techniciansRouter } from './modules/technicians/router';
 import { usersRouter } from './modules/users/router';
 
 export interface AppDeps {
@@ -44,6 +46,9 @@ export function createApp(deps: AppDeps = {}) {
   api.use('/auth', authRouter(google));
   api.use('/invites', invitesRouter(google));
   api.use(usersRouter());
+  api.use('/lookups', lookupsRouter());
+  api.use('/masters', mastersRouter());
+  api.use('/technicians', techniciansRouter());
   api.use(notFoundHandler);
 
   app.use('/api', api);

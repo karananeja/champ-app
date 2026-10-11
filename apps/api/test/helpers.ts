@@ -1,5 +1,5 @@
 import request from 'supertest';
-import type { Role } from '@champ/shared';
+import { toNameKey, type LookupKind, type Role, type TechnicianType } from '@champ/shared';
 import { createApp } from '../src/app';
 import type { GoogleAuth, GoogleIdentity } from '../src/lib/google';
 import { signAccessToken } from '../src/lib/jwt';
@@ -20,6 +20,8 @@ interface UserOptions {
   status?: 'ACTIVE' | 'INACTIVE';
   canManageUsers?: boolean;
   canManageTaskTypes?: boolean;
+  technicianType?: TechnicianType | null;
+  baseLocationId?: string | null;
 }
 
 export async function createUser(options: UserOptions): Promise<User> {
@@ -34,6 +36,8 @@ export async function createUser(options: UserOptions): Promise<User> {
       passwordHash: PASSWORD_HASH,
       canManageUsers: options.canManageUsers ?? false,
       canManageTaskTypes: options.canManageTaskTypes ?? false,
+      technicianType: options.technicianType ?? null,
+      baseLocationId: options.baseLocationId ?? null,
     },
   });
 }
@@ -111,4 +115,40 @@ export function tokenFromLink(link: string): string {
   const token = new URL(link).searchParams.get('token');
   if (!token) throw new Error(`No token in ${link}`);
   return token;
+}
+
+// --- Master data fixtures (F02) ---
+
+export async function createLookup(kind: LookupKind, name: string, extra: { active?: boolean; isSystem?: boolean; code?: string; billable?: boolean; sortOrder?: number } = {}) {
+  return prisma.lookupItem.create({
+    data: {
+      kind,
+      name,
+      nameKey: toNameKey(name),
+      active: extra.active ?? true,
+      isSystem: extra.isSystem ?? false,
+      code: extra.code ?? null,
+      billable: kind === 'FINAL_ISSUE' ? (extra.billable ?? false) : null,
+      sortOrder: extra.sortOrder ?? 0,
+    },
+  });
+}
+
+/** Creates a location (with its own state and region unless given). */
+export async function createLocation(
+  options: { city?: string; stateId?: string; regionId?: string; active?: boolean } = {},
+) {
+  counter += 1;
+  const stateId = options.stateId ?? (await createLookup('STATE', `State ${counter}`)).id;
+  const regionId = options.regionId ?? (await createLookup('REGION', `Region ${counter}`)).id;
+  const city = options.city ?? `City ${counter}`;
+  return prisma.location.create({
+    data: { city, cityKey: toNameKey(city), stateId, regionId, active: options.active ?? true },
+  });
+}
+
+/** Valid technician fields for an OT invite. */
+export async function technicianFields(type: TechnicianType = 'PAYROLL') {
+  const location = await createLocation();
+  return { technicianType: type, baseLocationId: location.id };
 }
