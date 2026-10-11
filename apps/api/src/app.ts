@@ -14,6 +14,7 @@ import { geoRouter } from './modules/geo/router';
 import { healthRouter } from './modules/health/router';
 import { invitesRouter } from './modules/invites/router';
 import { lookupsRouter, mastersRouter } from './modules/masters/router';
+import { tasksRouter } from './modules/tasks/router';
 import { techniciansRouter } from './modules/technicians/router';
 import { usersRouter } from './modules/users/router';
 
@@ -33,7 +34,10 @@ export function createApp(deps: AppDeps = {}) {
   app.disable('x-powered-by');
   app.use(helmet());
   app.use(cors({ origin: env.WEB_URL, credentials: true }));
-  app.use(express.json({ limit: '100kb' }));
+  // The bulk task import sends back up to 1,000 preview rows; every other body stays small.
+  const largeJson = express.json({ limit: '3mb' });
+  const smallJson = express.json({ limit: '100kb' });
+  app.use((req, res, next) => (req.path === '/api/tasks/bulk/import' ? largeJson : smallJson)(req, res, next));
   app.use(cookieParser());
   app.use(
     pinoHttp({
@@ -57,6 +61,7 @@ export function createApp(deps: AppDeps = {}) {
   api.use('/technicians', techniciansRouter());
   api.use('/clients', clientsRouter());
   api.use('/geo', geoRouter(geocoder));
+  api.use('/tasks', tasksRouter());
   api.use(notFoundHandler);
 
   app.use('/api', api);

@@ -29,6 +29,9 @@ export function errorHandler(err: unknown, _req: Request, res: Response, _next: 
   } else if (isBodyParserError(err)) {
     status = 400;
     body = { error: { code: 'VALIDATION_ERROR', message: 'Malformed request body' } };
+  } else if (isBodyTooLarge(err)) {
+    status = 413;
+    body = { error: { code: 'VALIDATION_ERROR', message: 'The request is too large' } };
   } else {
     logger.error({ err }, 'Unhandled error');
   }
@@ -38,4 +41,8 @@ export function errorHandler(err: unknown, _req: Request, res: Response, _next: 
 
 function isBodyParserError(err: unknown): boolean {
   return err instanceof SyntaxError && 'type' in err && err.type === 'entity.parse.failed';
+}
+
+function isBodyTooLarge(err: unknown): boolean {
+  return err instanceof Error && 'type' in err && err.type === 'entity.too.large';
 }

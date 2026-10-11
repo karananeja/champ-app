@@ -152,3 +152,123 @@ export async function technicianFields(type: TechnicianType = 'PAYROLL') {
   const location = await createLocation();
   return { technicianType: type, baseLocationId: location.id };
 }
+
+// --- Task fixtures (F04) ---
+
+/**
+ * An org plus the masters, client and technicians a task needs: task type OT, Vehicle/Battery asset types
+ * with one activity each, LAF5, a make/model, GPS installation, Day/Night shifts, one issue, client Zoomcar
+ * (code ZOOM) with two sites, a second client, and two technicians (Payroll, Third party).
+ */
+export async function createTaskWorld() {
+  const org = await createOrg();
+  const taskType = await createLookup('TASK_TYPE', 'OT', { code: 'OT', isSystem: true });
+  const vehicle = await createLookup('ASSET_TYPE', 'Vehicle', { code: 'VEHICLE', isSystem: true });
+  const battery = await createLookup('ASSET_TYPE', 'Battery', { code: 'BATTERY', isSystem: true });
+  const activity = async (name: string, assetTypeId: string, active = true) =>
+    prisma.activity.create({ data: { name, nameKey: toNameKey(name), assetTypeId, active } });
+  const vehicleInstall = await activity('New installation', vehicle.id);
+  const batteryInstall = await activity('New installation', battery.id);
+  const laf5 = await createLookup('DEVICE_TYPE', 'LAF5', { code: 'LAF5' });
+  const makeModel = await prisma.vehicleMakeModel.create({ data: { make: 'Tata', model: 'Ace', key: 'tata|ace' } });
+  const gps = await createLookup('INSTALLATION_TYPE', 'GPS');
+  const day = await createLookup('SHIFT_TYPE', 'Day', { code: 'DAY', isSystem: true, sortOrder: 1 });
+  const night = await createLookup('SHIFT_TYPE', 'Night', { code: 'NIGHT', isSystem: true, sortOrder: 2 });
+  const issue = await createLookup('ISSUE_REPORTED', 'Device not reporting');
+  const location = await createLocation({ city: 'Bengaluru' });
+  const pune = await createLocation({ city: 'Pune' });
+
+  const client = await prisma.client.create({
+    data: {
+      name: 'Zoomcar',
+      nameKey: 'zoomcar',
+      code: 'ZOOM',
+      contactName: 'Priya Rao',
+      contactPhone: '+91 98765 43210',
+      contactEmail: 'priya@zoom.example',
+      createdById: org.sa.id,
+      sites: {
+        create: [
+          { name: 'Bengaluru depot', nameKey: 'bengaluru depot', address: 'MG Road', lat: 12.97, lng: 77.59, locationId: location.id },
+          { name: 'Pune yard', nameKey: 'pune yard', address: 'Hinjewadi', lat: 18.59, lng: 73.73, locationId: pune.id },
+        ],
+      },
+    },
+    include: { sites: { orderBy: { name: 'asc' } } },
+  });
+  const otherClient = await prisma.client.create({
+    data: {
+      name: 'Other Fleet',
+      nameKey: 'other fleet',
+      contactName: 'Ravi',
+      contactPhone: '+91 90000 11111',
+      createdById: org.sa.id,
+      sites: { create: [{ name: 'Delhi hub', nameKey: 'delhi hub', address: 'Okhla', lat: 28.5, lng: 77.2, locationId: location.id }] },
+    },
+    include: { sites: true },
+  });
+
+  const techA = await createUser({
+    role: 'OT',
+    name: 'Arjun Tech',
+    email: 'arjun.ot@intellicar.in',
+    managerId: org.oe.id,
+    technicianType: 'PAYROLL',
+    baseLocationId: location.id,
+  });
+  const techB = await createUser({
+    role: 'OT',
+    name: 'Bhavna Tech',
+    email: 'bhavna.ot@intellicar.in',
+    managerId: org.oe.id,
+    technicianType: 'THIRD_PARTY',
+    baseLocationId: pune.id,
+  });
+
+  /** A valid `POST /tasks` body (Vehicle, 2 vehicles by count, no technician, the org's OE). */
+  const taskBody = (overrides: Record<string, unknown> = {}) => ({
+    clientId: client.id,
+    siteId: client.sites[0]!.id,
+    pocName: 'Priya Rao',
+    pocPhone: '+91 98765 43210',
+    pocEmail: '',
+    oeId: org.oe.id,
+    technicianType: null,
+    assetTypeId: vehicle.id,
+    activityId: vehicleInstall.id,
+    deviceTypeId: laf5.id,
+    makeModelId: makeModel.id,
+    installationTypeId: gps.id,
+    requestedAt: '2026-10-20T04:30:00.000Z',
+    fitmentAt: '2026-10-21T05:00:00.000Z',
+    shiftTypeId: day.id,
+    issueReportedId: issue.id,
+    gpsAddress: '',
+    comments: '',
+    vehicles: { entry: 'COUNT', count: 2 },
+    technicianId: null,
+    ...overrides,
+  });
+
+  return {
+    ...org,
+    taskType,
+    vehicle,
+    battery,
+    vehicleInstall,
+    batteryInstall,
+    laf5,
+    makeModel,
+    gps,
+    day,
+    night,
+    issue,
+    location,
+    pune,
+    client,
+    otherClient,
+    techA,
+    techB,
+    taskBody,
+  };
+}

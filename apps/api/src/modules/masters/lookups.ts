@@ -28,6 +28,9 @@ export async function getLookups(): Promise<LookupsResponse> {
         id: true,
         name: true,
         code: true,
+        contactName: true,
+        contactPhone: true,
+        contactEmail: true,
         sites: {
           where: { active: true },
           select: { id: true, name: true, locationId: true, lat: true, lng: true },

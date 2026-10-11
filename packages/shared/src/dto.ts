@@ -1,5 +1,6 @@
 import type { LookupKind, TechnicianType } from './masters';
 import type { AuthProvider, InviteStatus, Role, UserStatus } from './roles';
+import type { BulkTaskColumn, FitmentStatus, TaskStatus } from './tasks';
 
 export interface UserRef {
   id: string;
@@ -171,6 +172,10 @@ export interface LookupClient {
   id: string;
   name: string;
   code: string | null;
+  /** Primary contact, prefilled as the task POC (F04). */
+  contactName: string;
+  contactPhone: string;
+  contactEmail: string | null;
   sites: { id: string; name: string; locationId: string; lat: number; lng: number }[];
 }
 
@@ -244,6 +249,130 @@ export interface GeoReverseResponse {
   item: GeoResultDto | null;
 }
 
+// --- Tasks (F04) ---
+
+/** A master value referenced by a task, with its active flag (inactive values show as "(inactive)"). */
+export interface TaskRef {
+  id: string;
+  name: string;
+  code: string | null;
+  active: boolean;
+}
+
+export interface TaskTechnicianRef {
+  id: string;
+  name: string;
+  technicianType: TechnicianType | null;
+}
+
+export interface FitmentCounts {
+  total: number;
+  assigned: number;
+  open: number;
+}
+
+/** A row of `GET /tasks`. */
+export interface TaskListItemDto {
+  id: string;
+  /** `OM-00001` */
+  omId: string;
+  /** `OE-00001` (the OE task id; `oe` is the operation executive). */
+  oeTaskId: string;
+  status: TaskStatus;
+  client: { id: string; name: string; code: string | null };
+  site: { id: string; name: string };
+  city: string;
+  assetType: { id: string; name: string };
+  activity: { id: string; name: string };
+  oe: UserRef;
+  fitments: FitmentCounts;
+  fitmentAt: string;
+  createdAt: string;
+}
+
+export interface FitmentDto {
+  id: string;
+  /** `TK-00001` */
+  tkId: string;
+  seq: number;
+  status: FitmentStatus;
+  technician: TaskTechnicianRef | null;
+  vehicleRegNo: string | null;
+  chassisNo: string | null;
+  assetNumber: string | null;
+  oldDeviceId: string | null;
+}
+
+/** `GET /tasks/:id`: the task with resolved names, its fitments and what the caller may do. */
+export interface TaskDto {
+  id: string;
+  omId: string;
+  oeTaskId: string;
+  status: TaskStatus;
+  taskType: TaskRef;
+  client: TaskRef;
+  site: { id: string; name: string; address: string; lat: number; lng: number; active: boolean };
+  location: { id: string; city: string; state: string };
+  pocName: string;
+  pocPhone: string;
+  pocEmail: string | null;
+  oeId: string;
+  oe: UserRef & { active: boolean };
+  technicianType: TechnicianType | null;
+  assetType: TaskRef;
+  activity: TaskRef;
+  deviceType: TaskRef;
+  makeModel: { id: string; make: string; model: string; active: boolean } | null;
+  installationType: TaskRef;
+  requestedAt: string;
+  fitmentAt: string;
+  shiftType: TaskRef;
+  issueReported: TaskRef;
+  gpsAddress: string | null;
+  comments: string | null;
+  vehicleEntry: 'COUNT' | 'CSV';
+  counts: FitmentCounts;
+  fitments: FitmentDto[];
+  createdBy: UserRef;
+  createdAt: string;
+  updatedAt: string;
+  /** Whether the caller may edit, assign or delete (spec §3, untouched rule). */
+  permissions: { canEdit: boolean; canAssign: boolean; canDelete: boolean };
+}
+
+/** `GET /tasks/options`: people the task form and filters offer. */
+export interface TaskOptionsResponse {
+  /** Active OEs (an OE gets only themselves). */
+  oes: UserRef[];
+  /** Active technicians (OT). */
+  technicians: (TaskTechnicianRef & { baseLocation: string | null })[];
+}
+
+export interface BulkCellError {
+  /** A bulk CSV column, or '' for a row-level error. */
+  column: BulkTaskColumn | '';
+  message: string;
+}
+
+export interface BulkPreviewRow {
+  /** Line number in the file (the header is line 1). */
+  rowNumber: number;
+  data: Record<string, string>;
+  errors: BulkCellError[];
+  valid: boolean;
+}
+
+export interface BulkPreviewResponse {
+  rows: BulkPreviewRow[];
+  validCount: number;
+  invalidCount: number;
+}
+
+export interface BulkImportResponse {
+  created: { rowNumber: number; id: string; omId: string }[];
+  failed: { rowNumber: number; errors: BulkCellError[] }[];
+}
+
 export const ERROR_CODES = [
   'VALIDATION_ERROR',
   'UNAUTHENTICATED',
@@ -278,6 +407,8 @@ export const ERROR_CODES = [
   'INACTIVE_REFERENCE',
   'LAST_ACTIVE_SITE',
   'GEOCODER_UNAVAILABLE',
+  'TASK_STARTED',
+  'FITMENT_LOCKED',
   'INTERNAL_ERROR',
 ] as const;
 export type ErrorCode = (typeof ERROR_CODES)[number];
