@@ -185,7 +185,7 @@ export function MasterTable({ config, actor }: Props) {
                     className={cn(!row.active && 'text-muted-foreground opacity-60')}
                   >
                     {config.columns.map((c, i) => (
-                      <TableCell key={c.header} className={cn(i === 0 && 'font-medium', c.className)}>
+                      <TableCell key={c.header} className={cn('whitespace-normal', i === 0 && 'font-medium', c.className)}>
                         {c.cell(row)}
                       </TableCell>
                     ))}

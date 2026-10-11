@@ -33,10 +33,13 @@ export default defineConfig({
     screenshot: 'only-on-failure',
   },
   projects: [
-    { name: 'desktop', use: { ...devices['Desktop Chrome'] } },
+    // Creates the org used by the F02 specs (see e2e/org.setup.ts).
+    { name: 'setup', testMatch: /org\.setup\.ts/ },
+    { name: 'desktop', use: { ...devices['Desktop Chrome'] }, dependencies: ['setup'] },
     {
       name: 'mobile-360',
       use: { ...devices['Desktop Chrome'], viewport: { width: 360, height: 740 }, isMobile: true, hasTouch: true },
+      dependencies: ['setup'],
     },
   ],
   webServer: [

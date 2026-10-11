@@ -103,3 +103,10 @@
     @apply bg-background text-foreground antialiased;
   }
 }
+
+/* On small screens sonner gives the toaster both left/right offsets and width: 100%, which overflows the viewport. */
+@media (max-width: 600px) {
+  [data-sonner-toaster] {
+    width: auto !important;
+  }
+}

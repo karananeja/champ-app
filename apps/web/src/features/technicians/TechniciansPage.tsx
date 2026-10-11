@@ -180,16 +180,16 @@ export function TechniciansPage() {
               <TableBody>
                 {technicians.map((tech) => (
                   <TableRow key={tech.id} data-testid="technician-row">
-                    <TableCell className="font-medium">
+                    <TableCell className="font-medium whitespace-normal">
                       {tech.name}
-                      <div className="text-xs font-normal text-muted-foreground">{tech.email}</div>
+                      <div className="text-xs font-normal break-all text-muted-foreground">{tech.email}</div>
                     </TableCell>
                     <TableCell>{tech.phone ?? '—'}</TableCell>
                     <TableCell>
                       <Badge variant="secondary">{typeLabel(tech)}</Badge>
                     </TableCell>
-                    <TableCell>{locationLabel(tech)}</TableCell>
-                    <TableCell>{tech.manager?.name ?? '—'}</TableCell>
+                    <TableCell className="whitespace-normal">{locationLabel(tech)}</TableCell>
+                    <TableCell className="whitespace-normal">{tech.manager?.name ?? '—'}</TableCell>
                     <TableCell>
                       <StatusBadge status={tech.status} />
                     </TableCell>

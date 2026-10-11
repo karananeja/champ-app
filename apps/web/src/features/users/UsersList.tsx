@@ -132,15 +132,15 @@ export function UsersList({ actor }: { actor: UserDto }) {
               <TableBody>
                 {users.map((user) => (
                   <TableRow key={user.id} data-testid="user-row">
-                    <TableCell className="font-medium">
+                    <TableCell className="font-medium whitespace-normal">
                       {user.name}
                       {user.jobTitle && <div className="text-xs text-muted-foreground">{user.jobTitle}</div>}
                     </TableCell>
-                    <TableCell>{user.email}</TableCell>
+                    <TableCell className="break-all whitespace-normal">{user.email}</TableCell>
                     <TableCell>
                       <RoleBadge role={user.role} />
                     </TableCell>
-                    <TableCell>{user.manager?.name ?? '—'}</TableCell>
+                    <TableCell className="whitespace-normal">{user.manager?.name ?? '—'}</TableCell>
                     <TableCell>
                       <StatusBadge status={user.status} />
                     </TableCell>
