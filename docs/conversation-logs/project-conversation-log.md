@@ -55,4 +55,8 @@ Chronological log of the whole project conversation. Feature-level logs live in 
 
 **Claude verification:** Re-ran typecheck, lint, all 152 unit tests and the E2E suite; everything passes. Reviewed the auth, invite and user services (hashed single-use invite tokens, refresh rotation with reuse detection, per-request user status check, OM privilege limits). No defects found.
 
-**Status:** F01 ready for UAT by the user.
+**User:** "F01 accepted". UAT sign-off recorded and `feature/F01-foundation-auth` merged to `main`.
+
+**Claude:** Wrote the F02 intent (master data and technician management) and sent it for sign-off.
+
+**Status:** Waiting for F02 intent sign-off.
