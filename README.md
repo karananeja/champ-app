@@ -64,8 +64,9 @@ fills them with dummy values (D-017) that you can rename or replace. Values are 
 an inactive value disappears from dropdowns (`GET /api/lookups`) but stays in the admin list, greyed out.
 Built-in values (asset types Vehicle/Battery, shift types, task types OT/TT/FT) can't be renamed or deactivated.
 
-SA and OM can edit masters; task types need SA, or an OM with *Delegate task types*. Everyone else sees them
-read-only.
+Only SA and OM see the Masters menu and pages (and `/api/masters/*`; other roles get 403 and are sent to the
+dashboard, CR-01 / D-059). SA and OM can edit masters; task types need SA, or an OM with *Delegate task types*.
+Every signed-in user still gets the active values for dropdowns from `GET /api/lookups`.
 
 **Technicians** lists every OT with type, base location and reporting OE. *Add technician* creates the OT's
 invite (same one-time link as above). An OE only sees and edits their own technicians.

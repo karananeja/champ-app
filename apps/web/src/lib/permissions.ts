@@ -8,6 +8,7 @@ export {
   canEditMasters,
   canManageTechnician,
   canViewClients,
+  canViewMasters,
   canViewTechnicians,
 } from '@champ/shared';
 

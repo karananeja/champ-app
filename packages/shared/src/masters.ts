@@ -72,6 +72,15 @@ interface Actor {
   canManageTaskTypes?: boolean;
 }
 
+/**
+ * Roles that can open the Masters admin pages and read `/masters/*` (D-059, CR-01). Everyone signed in can
+ * still read the active values through `GET /lookups`.
+ */
+export const MASTERS_VIEW_ROLES: readonly Role[] = ['SUPER_ADMIN', 'OM'];
+
+/** SA or OM may view the Masters admin (pages and `/masters/*` reads). */
+export const canViewMasters = (user: Actor): boolean => MASTERS_VIEW_ROLES.includes(user.role);
+
 /** SA or OM may add, edit and deactivate master data. */
 export const canEditMasters = (user: Actor): boolean => user.role === 'SUPER_ADMIN' || user.role === 'OM';
 

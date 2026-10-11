@@ -140,7 +140,7 @@ describe('LookupItem masters — duplicates, system items, billable', () => {
 
 describe('Activities', () => {
   it('CRUD and filter by asset type', async () => {
-    const { om, ro } = await createOrg();
+    const { om, sa } = await createOrg();
     const vehicle = await createLookup('ASSET_TYPE', 'Vehicle', { code: 'VEHICLE', isSystem: true });
     const battery = await createLookup('ASSET_TYPE', 'Battery', { code: 'BATTERY', isSystem: true });
 
@@ -150,9 +150,9 @@ describe('Activities', () => {
     await api().post('/api/masters/activities').set(bearer(om)).send({ name: 'Removal', assetTypeId: battery.id }).expect(201);
     await api().post('/api/masters/activities').set(bearer(om)).send({ name: 'Health check', assetTypeId: vehicle.id }).expect(201);
 
-    const forBattery = await api().get('/api/masters/activities').query({ assetTypeId: battery.id }).set(bearer(ro));
+    const forBattery = await api().get('/api/masters/activities').query({ assetTypeId: battery.id }).set(bearer(sa));
     expect(forBattery.body.items.map((a: { name: string }) => a.name)).toEqual(['Removal']);
-    const forVehicle = await api().get('/api/masters/activities').query({ assetTypeId: vehicle.id }).set(bearer(ro));
+    const forVehicle = await api().get('/api/masters/activities').query({ assetTypeId: vehicle.id }).set(bearer(sa));
     expect(forVehicle.body.items).toHaveLength(2);
 
     const moved = await api()
@@ -231,7 +231,7 @@ describe('Vehicle make/models', () => {
 
 describe('Locations', () => {
   it('CRUD and filters by state and region', async () => {
-    const { om, oe } = await createOrg();
+    const { om, sa } = await createOrg();
     const ka = await createLookup('STATE', 'Karnataka');
     const mh = await createLookup('STATE', 'Maharashtra');
     const south = await createLookup('REGION', 'South');
@@ -247,11 +247,11 @@ describe('Locations', () => {
     });
     await api().post('/api/masters/locations').set(bearer(om)).send({ city: 'Pune', stateId: mh.id, regionId: west.id }).expect(201);
 
-    const byState = await api().get('/api/masters/locations').query({ stateId: mh.id }).set(bearer(oe));
+    const byState = await api().get('/api/masters/locations').query({ stateId: mh.id }).set(bearer(sa));
     expect(byState.body.items.map((l: { city: string }) => l.city)).toEqual(['Pune']);
-    const byRegion = await api().get('/api/masters/locations').query({ regionId: south.id }).set(bearer(oe));
+    const byRegion = await api().get('/api/masters/locations').query({ regionId: south.id }).set(bearer(sa));
     expect(byRegion.body.items.map((l: { city: string }) => l.city)).toEqual(['Bengaluru']);
-    const search = await api().get('/api/masters/locations').query({ q: 'beng' }).set(bearer(oe));
+    const search = await api().get('/api/masters/locations').query({ q: 'beng' }).set(bearer(sa));
     expect(search.body.items).toHaveLength(1);
 
     const edited = await api().patch(`/api/masters/locations/${blr.body.id}`).set(bearer(om)).send({ regionId: west.id, active: false });
@@ -364,22 +364,31 @@ describe('Permission matrix', () => {
     return { SA: org.sa, OM: org.om, OE: org.oe, OT: org.ot, RO: org.ro }[actor];
   }
 
+  const canViewMasters: Actor[] = ['SA', 'OM', 'OM_DELEGATED'];
+  const masterReadPaths = [
+    '/api/masters/lookup/accessory',
+    '/api/masters/lookup/task-type',
+    '/api/masters/lookup/final-issue',
+    '/api/masters/activities',
+    '/api/masters/make-models',
+    '/api/masters/locations',
+  ];
+
   for (const actor of actors) {
-    it(`${actor}: reads every master; writes ${canEditMasters.includes(actor) ? 'masters' : 'nothing'}${canEditTaskTypes.includes(actor) ? ' and task types' : ''}`, async () => {
+    const reads = canViewMasters.includes(actor) ? 'reads every master' : 'gets 403 on master reads';
+    it(`${actor}: ${reads}; /lookups is open; writes ${canEditMasters.includes(actor) ? 'masters' : 'nothing'}${canEditTaskTypes.includes(actor) ? ' and task types' : ''}`, async () => {
       const user = await actorFor(actor);
       const auth = bearer(user);
       const masterStatus = canEditMasters.includes(actor) ? [201, 200] : [403, 403];
       const taskStatus = canEditTaskTypes.includes(actor) ? [201, 200] : [403, 403];
 
-      for (const path of [
-        '/api/lookups',
-        '/api/masters/lookup/accessory',
-        '/api/masters/lookup/task-type',
-        '/api/masters/activities',
-        '/api/masters/make-models',
-        '/api/masters/locations',
-      ]) {
-        expect((await api().get(path).set(auth)).status, path).toBe(200);
+      // CR-01 (D-059): the masters admin reads are SA/OM only; /lookups stays open to every signed-in user.
+      expect((await api().get('/api/lookups').set(auth)).status).toBe(200);
+      const readStatus = canViewMasters.includes(actor) ? 200 : 403;
+      for (const path of masterReadPaths) {
+        const res = await api().get(path).set(auth);
+        expect(res.status, path).toBe(readStatus);
+        if (readStatus === 403) expect(res.body.error.code, path).toBe('FORBIDDEN');
       }
 
       // LookupItem (non task type)
@@ -407,6 +416,25 @@ describe('Permission matrix', () => {
       expect((await api().patch(`/api/masters/locations/${location.id}`).set(auth).send({ active: false })).status).toBe(masterStatus[1]);
     });
   }
+
+  it('OE and RO still get dropdown values from /lookups (CR-01)', async () => {
+    const { oe, ro } = await createOrg();
+    const location = await createLocation({ city: 'Bengaluru' });
+    for (const user of [oe, ro]) {
+      const res = await api().get('/api/lookups').set(bearer(user));
+      expect(res.status).toBe(200);
+      expect(res.body.locations).toEqual([expect.objectContaining({ id: location.id, city: 'Bengaluru' })]);
+    }
+  });
+
+  it('non-viewers get 403 before the kind or query is checked (CR-01)', async () => {
+    const { om, oe, ot, ro } = await createOrg();
+    for (const user of [oe, ot, ro]) {
+      expect((await api().get('/api/masters/lookup/nope').set(bearer(user))).status).toBe(403);
+      expect((await api().get('/api/masters/lookup/accessory').query({ active: 'yes' }).set(bearer(user))).status).toBe(403);
+    }
+    expect((await api().get('/api/masters/lookup/nope').set(bearer(om))).status).toBe(404);
+  });
 
   it('write permission is checked before body validation', async () => {
     const { ro } = await createOrg();
