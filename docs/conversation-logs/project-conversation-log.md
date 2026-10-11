@@ -70,4 +70,8 @@ Chronological log of the whole project conversation. Feature-level logs live in 
 
 **Claude verification:** Re-ran all gates (all pass) and reviewed the permission code. Fixed toasts covering the mobile menu button (D-051).
 
-**Status:** F02 ready for UAT by the user.
+**User:** "F02 accepted". UAT sign-off recorded and `feature/F02-master-data` merged to `main`.
+
+**Claude:** Wrote the F03 intent (client onboarding with map) and sent it for sign-off.
+
+**Status:** Waiting for F03 intent sign-off.
