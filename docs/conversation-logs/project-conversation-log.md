@@ -96,4 +96,8 @@ Chronological log of the whole project conversation. Feature-level logs live in 
 
 **Claude verification:** Re-ran all gates; all pass.
 
-**Status:** CR-01 ready for UAT by the user.
+**User:** "CR-01 accepted". CR-01 marked complete and merged to `main`.
+
+**Claude:** Wrote the F04 intent (task creation, CSV bulk upload, auto-split and task views) and sent it for sign-off.
+
+**Status:** Waiting for F04 intent sign-off.
