@@ -8,7 +8,8 @@ export const ADMIN_PASSWORD = process.env.SEED_SUPERADMIN_PASSWORD || 'Admin@123
 export async function login(page: Page, email: string, password: string) {
   await page.goto('/login');
   await page.getByLabel('Email').fill(email);
-  await page.getByLabel('Password').fill(password);
+  // exact: the eye toggle's "Show password" label would match too (CR-01).
+  await page.getByLabel('Password', { exact: true }).fill(password);
   await page.getByRole('button', { name: 'Sign in' }).click();
 }
 

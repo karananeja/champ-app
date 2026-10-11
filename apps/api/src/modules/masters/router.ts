@@ -1,5 +1,6 @@
 import { Router, type NextFunction, type Request, type Response } from 'express';
 import {
+  MASTERS_VIEW_ROLES,
   activityListQuerySchema,
   canEditLookupKind,
   canEditMasters,
@@ -29,6 +30,7 @@ import {
 } from '@champ/shared';
 import { forbidden, notFound } from '../../lib/errors';
 import { authenticate, currentUser } from '../../middleware/auth';
+import { requireRole } from '../../middleware/requireRole';
 import { validate } from '../../middleware/validate';
 import { getLookups } from './lookups';
 import * as masters from './service';
@@ -59,12 +61,13 @@ function canWrite(req: Request, _res: Response, next: NextFunction) {
 }
 
 /**
- * `/masters/*`: admin CRUD. Reads are open to any signed-in user; write permissions
- * (canEditMasters / canEditTaskTypes) are checked in the service.
+ * `/masters/*`: admin CRUD, for SA and OM only (D-059): other roles get 403 on every route, reads included,
+ * and use `GET /lookups` for dropdown values. Write permissions (canEditMasters / canEditTaskTypes) are
+ * checked by `canWrite` and again in the service.
  */
 export function mastersRouter() {
   const router = Router();
-  router.use(authenticate);
+  router.use(authenticate, requireRole(...MASTERS_VIEW_ROLES));
 
   // Simple masters (LookupItem), e.g. /masters/lookup/final-issue
   router.get('/lookup/:kind', validate({ query: masterListQuerySchema }), async (req, res) => {

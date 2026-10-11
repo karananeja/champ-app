@@ -1,6 +1,6 @@
 import { Building2, Database, HardHat, LayoutDashboard, UserRound, Users, type LucideIcon } from 'lucide-react';
 import type { UserDto } from '@champ/shared';
-import { canViewClients, canViewTechnicians, canViewUsers } from '@/lib/permissions';
+import { canViewClients, canViewMasters, canViewTechnicians, canViewUsers } from '@/lib/permissions';
 
 export interface NavItem {
   to: string;
@@ -25,7 +25,8 @@ export function navGroupsFor(user: UserDto): NavGroup[] {
         ...(canViewClients(user) ? [{ to: '/clients', label: 'Clients', icon: Building2 }] : []),
       ],
     },
-    { label: 'Masters', items: [{ to: '/masters', label: 'All masters', icon: Database }] },
+    // Masters admin: SA and OM only (D-059).
+    ...(canViewMasters(user) ? [{ label: 'Masters', items: [{ to: '/masters', label: 'All masters', icon: Database }] }] : []),
     { items: [{ to: '/profile', label: 'Profile', icon: UserRound }] },
   ];
 }

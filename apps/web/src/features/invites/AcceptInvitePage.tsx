@@ -15,6 +15,7 @@ import {
 } from '@champ/shared';
 import { FieldError } from '@/components/FieldError';
 import { FullPageSpinner } from '@/components/FullPageSpinner';
+import { PasswordInput } from '@/components/PasswordInput';
 import { GoogleSignInButton } from '@/components/GoogleSignInButton';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
@@ -178,13 +179,13 @@ function AcceptInviteForm({ token, invite }: { token: string; invite: InviteLook
         </div>
         <div className="grid grid-cols-1 gap-2">
           <Label htmlFor="password">Password</Label>
-          <Input type="password" autoComplete="new-password" {...field('password')} />
+          <PasswordInput autoComplete="new-password" {...field('password')} />
           <p className="text-xs text-muted-foreground">At least 8 characters, with a letter and a number.</p>
           <FieldError id="password-error" message={errors.password?.message} />
         </div>
         <div className="grid grid-cols-1 gap-2">
           <Label htmlFor="confirmPassword">Confirm password</Label>
-          <Input type="password" autoComplete="new-password" {...field('confirmPassword')} />
+          <PasswordInput autoComplete="new-password" {...field('confirmPassword')} />
           <FieldError id="confirmPassword-error" message={errors.confirmPassword?.message} />
         </div>
         <Button type="submit" className="w-full" disabled={isSubmitting}>

@@ -6,6 +6,7 @@ import { loginSchema, type LoginInput } from '@champ/shared';
 import { FieldError } from '@/components/FieldError';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
+import { PasswordInput } from '@/components/PasswordInput';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { ApiError } from '@/lib/api';
@@ -53,9 +54,8 @@ export function LoginForm({ onSubmit }: Props) {
       </div>
       <div className="grid grid-cols-1 gap-2">
         <Label htmlFor="password">Password</Label>
-        <Input
+        <PasswordInput
           id="password"
-          type="password"
           autoComplete="current-password"
           aria-invalid={!!errors.password}
           aria-describedby={errors.password ? 'password-error' : undefined}

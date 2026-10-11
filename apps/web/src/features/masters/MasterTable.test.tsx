@@ -33,7 +33,6 @@ const taskTypes = [
 ];
 
 const om = makeUser({ id: 'om-1', role: 'OM', name: 'Maya Manager' });
-const ro = makeUser({ id: 'ro-1', role: 'RO', name: 'Riya Reader' });
 
 function renderTable(slug: string, actor: UserDto) {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
@@ -67,9 +66,11 @@ describe('MasterTable', () => {
     expect(within(rows[2]!).getByText('Inactive')).toBeInTheDocument();
   });
 
-  it('read-only users see the same list without add, edit or toggle controls', async () => {
+  // Only SA and OM reach the masters pages (CR-01); the view-only mode remains for an OM without task-type
+  // delegation, and for any actor without edit rights.
+  it('users without edit rights see the same list without add, edit or toggle controls', async () => {
     mockApi({ 'GET /api/masters/lookup/final-issue': { items: finalIssues } });
-    renderTable('final-issue', ro);
+    renderTable('final-issue', makeUser({ id: 'oe-1', role: 'OE' }));
     const t = await table();
 
     expect(t.getAllByTestId('master-row')).toHaveLength(3);
@@ -176,7 +177,7 @@ describe('MasterTable', () => {
   it('passes search and filters to the API', async () => {
     const user = userEvent.setup();
     const fetchMock = mockApi({ 'GET /api/masters/locations': { items: [] } });
-    renderTable('locations', ro);
+    renderTable('locations', om);
     expect(await screen.findByText('No locations found.')).toBeInTheDocument();
 
     await user.click(screen.getByRole('combobox', { name: 'Filter by state' }));

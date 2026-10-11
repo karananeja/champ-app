@@ -2,12 +2,14 @@ import { describe, expect, it } from 'vitest';
 import { z } from 'zod';
 import {
   LOOKUP_KINDS,
+  MASTERS_VIEW_ROLES,
   ROLES,
   canAddTechnician,
   canEditLookupKind,
   canEditMasters,
   canEditTaskTypes,
   canManageTechnician,
+  canViewMasters,
   canViewTechnicians,
   createActivitySchema,
   createInviteSchema,
@@ -36,6 +38,16 @@ describe('master permissions', () => {
       expect(canEditMasters({ role })).toBe(editors.includes(role));
     });
   }
+
+  it('only SA and OM can view the masters admin (CR-01)', () => {
+    expect(ROLES.filter((role) => canViewMasters({ role }))).toEqual(['SUPER_ADMIN', 'OM']);
+    expect(MASTERS_VIEW_ROLES).toEqual(['SUPER_ADMIN', 'OM']);
+    for (const role of ['OE', 'OT', 'RO'] as const) expect(canViewMasters({ role })).toBe(false);
+  });
+
+  it('every role that can edit masters can also view them', () => {
+    for (const role of ROLES) if (canEditMasters({ role })) expect(canViewMasters({ role })).toBe(true);
+  });
 
   it('task types: SA always, OM only with delegation, nobody else', () => {
     expect(canEditTaskTypes({ role: 'SUPER_ADMIN' })).toBe(true);
