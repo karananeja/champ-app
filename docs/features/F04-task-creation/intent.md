@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| Status | **Awaiting user sign-off** |
+| Status | **Approved by user on 2026-10-11** |
 | Requirements | SRS §4, §6.4 (items 1–3, 5 delete) · source doc "Create task form fields", "Bulk upload", "Open task dashboard", "Task can only be deleted…" · Decisions D-009, D-011, D-052 |
 | Depends on | F02, F03 (complete) |
 
