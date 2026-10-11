@@ -23,3 +23,4 @@
   - To avoid the destructive `prisma migrate reset` in tests, test and E2E databases are recreated by a guarded script (D-044).
 - **Decisions added:** D-038 to D-044 (versions, MinIO image, bcryptjs, tsx runtime, spec gap rules, test databases).
 - 2026-10-11: Claude independently re-ran typecheck, lint, 152 tests and E2E (all pass) and reviewed the auth, invite and user services. Handed to the user for UAT.
+- 2026-10-11: The user accepted F01 in UAT ("F01 accepted"). Feature complete; merged to main.

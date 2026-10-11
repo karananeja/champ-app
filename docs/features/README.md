@@ -5,7 +5,7 @@ A feature is **Complete** only after it has been implemented, tested and signed 
 
 | ID | Feature | Depends on | Status |
 |---|---|---|---|
-| F01 | Platform foundation + authentication and invites | — | Awaiting UAT |
+| F01 | Platform foundation + authentication and invites | — | ✅ Complete (UAT 2026-10-11) |
 | F02 | Master data and technician management | F01 | Not started |
 | F03 | Client onboarding with map | F02 | Not started |
 | F04 | Task creation (form, CSV bulk, auto-split) and task table views | F03 | Not started |

@@ -3,4 +3,4 @@
 | Stage | Date | By | Notes |
 |---|---|---|---|
 | Intent | 2026-10-11 | User ("Approved") | Open points accepted as proposed: Google SSO domain `intellicar.in`; password rule min 8 chars with ≥1 letter and ≥1 number |
-| UAT | — | — | Pending |
+| UAT | 2026-10-11 | User ("F01 accepted") | All 9 acceptance criteria accepted. Feature complete. |
