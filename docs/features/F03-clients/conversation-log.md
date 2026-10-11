@@ -12,3 +12,4 @@
 - Verification: dev DB migrated with F01/F02 data kept (2 users, 80 lookup values, 8 locations, 1 invite unchanged); `pnpm dev` health OK; `GET /api/clients` as SA → 200; two real Nominatim calls through the API (one search, one reverse), both 200. Servers stopped.
 - Decisions added: D-055 (API details), D-056 (geocoder details), D-057 (web), D-058 (test isolation).
 - 2026-10-11: Claude independently re-ran typecheck, lint, 319 tests and E2E (16 passed, 1 skipped by design), and reviewed the clients and geo route permissions. Handed to the user for UAT.
+- 2026-10-11: The user accepted F03 in UAT ("F03 accepted"). Feature complete; merged to main. The user also raised two change requests (CR-01: Masters only for SA/OM; password visibility toggle).
