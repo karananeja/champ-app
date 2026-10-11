@@ -11,3 +11,4 @@
 - Gaps the spec left open are recorded as D-066–D-071 (DTO id names, bulk error/import shapes, IST day filters, `/tasks/options` for RO, lookups client contacts, validation edge rules, CSV parsing/export details, web POC-prefill tracking, E2E accounts, no batch transaction for the list).
 - Ready for UAT: see `test-report.md` §4.
 - 2026-10-12: Claude independently re-ran typecheck, lint, 453 tests and E2E (28 passed, 1 skipped by design), and reviewed the task route guards and service permission checks. Handed to the user for UAT.
+- 2026-10-12: The user accepted F04 in UAT ("F04 accepted"). Feature complete; merged to main. The user raised CR-02: the sidebar should not scroll with the page content.
