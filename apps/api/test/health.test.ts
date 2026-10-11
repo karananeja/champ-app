@@ -10,12 +10,17 @@ describe('health and config', () => {
 
   it('GET /api/config returns null googleClientId when Google is not configured', async () => {
     const res = await testApi(fakeGoogle(null)).get('/api/config');
-    expect(res.body).toEqual({ googleClientId: null });
+    expect(res.body).toEqual({ googleClientId: null, devSimulator: false });
   });
 
   it('GET /api/config returns the client id when configured', async () => {
     const res = await testApi(fakeGoogle('abc.apps.googleusercontent.com')).get('/api/config');
-    expect(res.body).toEqual({ googleClientId: 'abc.apps.googleusercontent.com' });
+    expect(res.body).toEqual({ googleClientId: 'abc.apps.googleusercontent.com', devSimulator: false });
+  });
+
+  it('GET /api/config says whether the dev simulator is mounted (F05)', async () => {
+    const res = await testApi(fakeGoogle(null), { devSimulator: true }).get('/api/config');
+    expect(res.body).toEqual({ googleClientId: null, devSimulator: true });
   });
 
   it('unknown routes return the standard error format', async () => {

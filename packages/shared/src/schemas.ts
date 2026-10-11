@@ -9,6 +9,7 @@ import {
   VEHICLE_CSV_COLUMNS,
   type VehicleCsvColumn,
 } from './tasks';
+import { MAX_BULK_APPROVE } from './workflow';
 
 export const roleSchema = z.enum(ROLES);
 export const userStatusSchema = z.enum(USER_STATUSES);
@@ -622,3 +623,115 @@ export function vehicleRowsFromCsv(
   });
   return { rows, errors };
 }
+
+// --- Workflow (F05) ---
+
+const noteSchema = blankable(z.string().max(500, 'The note must be at most 500 characters'));
+const gpsCoordinate = (min: number, max: number) =>
+  z.number({ error: 'The current GPS location is required' }).min(min, 'Invalid GPS location').max(max, 'Invalid GPS location');
+const startPayload = z.object(
+  { lat: gpsCoordinate(-90, 90), lng: gpsCoordinate(-180, 180), note: noteSchema },
+  { error: 'The current GPS location is required' },
+);
+const notePayload = z.object({ note: noteSchema });
+const closeNotDonePayload = z.object(
+  {
+    closeReasonId: refId('Choose a close reason'),
+    comments: z
+      .string({ error: 'Add comments' })
+      .trim()
+      .min(1, 'Add comments')
+      .max(1000, 'Comments must be at most 1000 characters'),
+    note: noteSchema,
+  },
+  { error: 'Choose a close reason and add comments' },
+);
+const markFaultyPayload = z.object(
+  {
+    reason: z
+      .string({ error: 'Give the fault reason' })
+      .trim()
+      .min(1, 'Give the fault reason')
+      .max(500, 'The fault reason must be at most 500 characters'),
+    note: noteSchema,
+  },
+  { error: 'Give the fault reason' },
+);
+export const REOPEN_REASON_MIN = 3;
+/** Reason of a reopen (D-027): 3–500 characters. Also used by the web dialog. */
+export const reopenReasonSchema = z
+  .string({ error: 'Give a reason for reopening' })
+  .trim()
+  .min(REOPEN_REASON_MIN, `Give a reason for reopening (at least ${REOPEN_REASON_MIN} characters)`)
+  .max(500, 'The reason must be at most 500 characters');
+const reopenPayload = z.object({ reason: reopenReasonSchema, note: noteSchema }, { error: 'Give a reason for reopening' });
+
+/** `POST /fitments/:fid/transitions`: `{ action, payload }`, the payload validated per action. */
+export const transitionSchema = z.discriminatedUnion(
+  'action',
+  [
+    z.object({ action: z.literal('START'), payload: startPayload }),
+    z.object({ action: z.literal('SUBMIT'), payload: notePayload.optional() }),
+    z.object({ action: z.literal('CLOSE_NOT_DONE'), payload: closeNotDonePayload }),
+    z.object({ action: z.literal('MARK_FAULTY'), payload: markFaultyPayload }),
+    z.object({ action: z.literal('VERIFY'), payload: notePayload.optional() }),
+    z.object({ action: z.literal('APPROVE'), payload: notePayload.optional() }),
+    z.object({ action: z.literal('REOPEN'), payload: reopenPayload }),
+  ],
+  { error: 'Choose a valid action' },
+);
+export type TransitionInput = z.infer<typeof transitionSchema>;
+/** The payload of any action (the engine reads the fields its action needs). */
+export type TransitionPayload = {
+  lat?: number;
+  lng?: number;
+  closeReasonId?: string;
+  comments?: string;
+  reason?: string;
+  note?: string | null;
+};
+
+/**
+ * `POST /dev/fitments/:fid/simulate` (D-073): a technician step. START may leave out the location (the
+ * site's coordinates are used).
+ */
+export const simulateSchema = z.discriminatedUnion(
+  'action',
+  [
+    z.object({ action: z.literal('START'), payload: startPayload.optional() }),
+    z.object({ action: z.literal('SUBMIT'), payload: notePayload.optional() }),
+    z.object({ action: z.literal('CLOSE_NOT_DONE'), payload: closeNotDonePayload }),
+    z.object({ action: z.literal('MARK_FAULTY'), payload: markFaultyPayload }),
+  ],
+  { error: 'Choose a technician step' },
+);
+export type SimulateInput = z.infer<typeof simulateSchema>;
+
+/** `POST /fitments/approve`: bulk final approve. */
+export const approveFitmentsSchema = z.object({
+  fitmentIds: z
+    .array(idSchema, { error: 'Choose at least one fitment' })
+    .min(1, 'Choose at least one fitment')
+    .max(MAX_BULK_APPROVE, `At most ${MAX_BULK_APPROVE} fitments at a time`),
+});
+export type ApproveFitmentsInput = z.infer<typeof approveFitmentsSchema>;
+
+/**
+ * Filters of the workflow fitment lists (Awaiting approval, Re-opened, Faulty). `from`/`to` are IST days on
+ * the list's date (verified, last reopened or moved to FT), both inclusive. `current` (Re-opened only):
+ * still in status Reopened.
+ */
+export const workflowListQuerySchema = z.object({
+  clientId: idSchema.optional(),
+  oeId: idSchema.optional(),
+  technicianId: idSchema.optional(),
+  from: istDay.optional(),
+  to: istDay.optional(),
+  current: booleanQuery,
+  page: z.coerce.number().int().min(1).default(1),
+  pageSize: z.coerce.number().int().min(1).max(100).default(20),
+});
+export type WorkflowListQuery = z.infer<typeof workflowListQuerySchema>;
+
+export const taskEventsQuerySchema = z.object({ format: z.enum(['json', 'csv']).default('json') });
+export type TaskEventsQuery = z.infer<typeof taskEventsQuerySchema>;

@@ -1,6 +1,6 @@
 import request from 'supertest';
 import { toNameKey, type LookupKind, type Role, type TechnicianType } from '@champ/shared';
-import { createApp } from '../src/app';
+import { createApp, type AppDeps } from '../src/app';
 import type { GoogleAuth, GoogleIdentity } from '../src/lib/google';
 import { signAccessToken } from '../src/lib/jwt';
 import { prisma, type User } from '../src/lib/prisma';
@@ -72,8 +72,8 @@ export function fakeGoogle(clientId: string | null = 'test-client-id.apps.google
   return fake;
 }
 
-export function testApi(google: GoogleAuth = fakeGoogle(null)) {
-  return request(createApp({ google }));
+export function testApi(google: GoogleAuth = fakeGoogle(null), deps: Omit<AppDeps, 'google'> = {}) {
+  return request(createApp({ google, ...deps }));
 }
 
 /** Extracts the raw champ_rt cookie value from a response. */

@@ -3,7 +3,7 @@ import type { ConfigResponse, HealthResponse } from '@champ/shared';
 import type { GoogleAuth } from '../../lib/google';
 import { checkDatabase } from './service';
 
-export function healthRouter(google: GoogleAuth) {
+export function healthRouter(google: GoogleAuth, devSimulator = false) {
   const router = Router();
 
   router.get('/health', async (_req, res) => {
@@ -13,7 +13,7 @@ export function healthRouter(google: GoogleAuth) {
   });
 
   router.get('/config', (_req, res) => {
-    const body: ConfigResponse = { googleClientId: google.clientId };
+    const body: ConfigResponse = { googleClientId: google.clientId, devSimulator };
     res.json(body);
   });
 

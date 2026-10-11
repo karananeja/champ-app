@@ -39,19 +39,41 @@ export const FITMENT_STATUS_LABELS: Record<FitmentStatus, string> = {
   REOPENED: 'Reopened',
 };
 
-/** Fitment states in which a fitment can still be assigned, unassigned or have its vehicle edited. */
-export const ASSIGNABLE_FITMENT_STATUSES: readonly FitmentStatus[] = ['OPEN', 'ASSIGNED'];
+/** Fitment states before any work: a task whose fitments are all in them is "untouched". */
+export const UNTOUCHED_FITMENT_STATUSES: readonly FitmentStatus[] = ['OPEN', 'ASSIGNED'];
+
+/**
+ * Fitment states in which a fitment can be assigned, reassigned or unassigned. F05 adds REOPENED (D-075): the
+ * OE/OM can hand a reopened fitment to another technician.
+ */
+export const ASSIGNABLE_FITMENT_STATUSES: readonly FitmentStatus[] = ['OPEN', 'ASSIGNED', 'REOPENED'];
 
 /** Fitment states that end a fitment (a task whose fitments are all final is COMPLETED). */
 export const FINAL_FITMENT_STATUSES: readonly FitmentStatus[] = ['OM_APPROVED', 'CLOSED_NOT_DONE', 'MOVED_TO_FT'];
 
 export const isFitmentAssignable = (status: FitmentStatus): boolean => ASSIGNABLE_FITMENT_STATUSES.includes(status);
 
-/** "Untouched" (edit and delete allowed): every fitment is still Open or Assigned. */
-export const isTaskUntouched = (fitments: readonly { status: FitmentStatus }[]): boolean =>
-  fitments.every((f) => isFitmentAssignable(f.status));
+/** Whether the fitment has gone past Assigned (work started, or a later state). */
+export const isFitmentStarted = (status: FitmentStatus): boolean => !UNTOUCHED_FITMENT_STATUSES.includes(status);
 
-/** The task status implied by its fitment statuses (the rule behind `recomputeTaskStatus`). */
+/** "Untouched" (OE edit and delete allowed): every fitment is still Open or Assigned. */
+export const isTaskUntouched = (fitments: readonly { status: FitmentStatus }[]): boolean =>
+  fitments.every((f) => !isFitmentStarted(f.status));
+
+/**
+ * The status after an assignment change (F04, amended by F05): assigning gives ASSIGNED, except that a
+ * REOPENED fitment stays REOPENED; unassigning gives OPEN.
+ */
+export function statusAfterAssignment(current: FitmentStatus, technicianId: string | null): FitmentStatus {
+  if (!technicianId) return 'OPEN';
+  return current === 'REOPENED' ? 'REOPENED' : 'ASSIGNED';
+}
+
+/**
+ * The task status implied by its fitment statuses (the rule behind `recomputeTaskStatus`): any Open → OPEN;
+ * all Assigned → ASSIGNED; all final (OM approved, Closed – not done, Moved to FT) → COMPLETED; anything
+ * else, including REOPENED, → IN_PROGRESS. An Open replacement fitment keeps the task Open.
+ */
 export function deriveTaskStatus(statuses: readonly FitmentStatus[]): TaskStatus {
   if (statuses.length === 0 || statuses.some((s) => s === 'OPEN')) return 'OPEN';
   if (statuses.every((s) => s === 'ASSIGNED')) return 'ASSIGNED';

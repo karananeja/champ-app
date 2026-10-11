@@ -27,33 +27,37 @@ enum AuthProvider {
 }
 
 model User {
-  id                 String          @id @default(cuid())
-  email              String          @unique // stored lowercased
+  id                 String              @id @default(cuid())
+  email              String              @unique // stored lowercased
   name               String
   phone              String?
   jobTitle           String?
   role               Role
-  status             UserStatus      @default(ACTIVE)
+  status             UserStatus          @default(ACTIVE)
   passwordHash       String?
-  authProvider       AuthProvider    @default(PASSWORD)
+  authProvider       AuthProvider        @default(PASSWORD)
   managerId          String?
-  manager            User?           @relation("Reports", fields: [managerId], references: [id])
-  reportees          User[]          @relation("Reports")
-  canManageUsers     Boolean         @default(false) // delegation flag (OM only)
-  canManageTaskTypes Boolean         @default(false) // delegation flag (OM only, used in F02)
+  manager            User?               @relation("Reports", fields: [managerId], references: [id])
+  reportees          User[]              @relation("Reports")
+  canManageUsers     Boolean             @default(false) // delegation flag (OM only)
+  canManageTaskTypes Boolean             @default(false) // delegation flag (OM only, used in F02)
   technicianType     TechnicianType? // required for role OT (service layer), null otherwise
   baseLocationId     String? // required for role OT (service layer), null otherwise
-  baseLocation       Location?       @relation("UserBaseLocation", fields: [baseLocationId], references: [id])
-  createdAt          DateTime        @default(now())
-  updatedAt          DateTime        @updatedAt
-  invitesSent        Invite[]        @relation("InvitedBy")
+  baseLocation       Location?           @relation("UserBaseLocation", fields: [baseLocationId], references: [id])
+  createdAt          DateTime            @default(now())
+  updatedAt          DateTime            @updatedAt
+  invitesSent        Invite[]            @relation("InvitedBy")
   refreshTokens      RefreshToken[]
-  clientsCreated     Client[]        @relation("ClientCreatedBy")
-  tasksAsOe          Task[]          @relation("TaskOe")
-  tasksCreated       Task[]          @relation("TaskCreatedBy")
-  tasksDeleted       Task[]          @relation("TaskDeletedBy")
-  fitments           Fitment[]       @relation("FitmentTechnician")
-  taskEvents         TaskEvent[]     @relation("TaskEventActor")
+  clientsCreated     Client[]            @relation("ClientCreatedBy")
+  tasksAsOe          Task[]              @relation("TaskOe")
+  tasksCreated       Task[]              @relation("TaskCreatedBy")
+  tasksDeleted       Task[]              @relation("TaskDeletedBy")
+  fitments           Fitment[]           @relation("FitmentTechnician")
+  taskEvents         TaskEvent[]         @relation("TaskEventActor")
+  fitmentsVerified   Fitment[]           @relation("FitmentVerifiedBy")
+  fitmentsApproved   Fitment[]           @relation("FitmentApprovedBy")
+  fitmentsReopened   Fitment[]           @relation("FitmentLastReopenedBy")
+  reopenAttributions ReopenAttribution[]
 
   @@index([managerId])
   @@index([role, baseLocationId])
@@ -142,6 +146,7 @@ model LookupItem {
   tasksByInstall    Task[]     @relation("TaskInstallationType")
   tasksByShift      Task[]     @relation("TaskShiftType")
   tasksByIssue      Task[]     @relation("TaskIssueReported")
+  fitmentsClosed    Fitment[]  @relation("FitmentCloseReason")
 
   @@unique([kind, nameKey])
   @@unique([kind, code])
@@ -341,45 +346,92 @@ model Task {
 }
 
 /**
- * One vehicle of a task: the technician's unit of work (TK-00001).
+ * One vehicle of a task: the technician's unit of work (TK-00001). F05 adds the workflow fields.
  */
 model Fitment {
-  id           String        @id @default(cuid())
-  tkNo         Int           @unique // TK-00001
-  taskId       String
-  task         Task          @relation(fields: [taskId], references: [id])
-  seq          Int // 1..N within the task
-  status       FitmentStatus @default(OPEN)
-  technicianId String?
-  technician   User?         @relation("FitmentTechnician", fields: [technicianId], references: [id])
-  vehicleRegNo String?
-  chassisNo    String?
-  assetNumber  String?
-  oldDeviceId  String?
-  createdAt    DateTime      @default(now())
-  updatedAt    DateTime      @updatedAt
-  events       TaskEvent[]
+  id                 String              @id @default(cuid())
+  tkNo               Int                 @unique // TK-00001
+  taskId             String
+  task               Task                @relation(fields: [taskId], references: [id])
+  seq                Int // 1..N within the task
+  status             FitmentStatus       @default(OPEN)
+  technicianId       String?
+  technician         User?               @relation("FitmentTechnician", fields: [technicianId], references: [id])
+  vehicleRegNo       String?
+  chassisNo          String?
+  assetNumber        String?
+  oldDeviceId        String?
+  // --- Workflow (F05) ---
+  startedAt          DateTime?
+  startLat           Float?
+  startLng           Float?
+  submittedAt        DateTime?
+  verifiedAt         DateTime? // cleared by a reopen (the history keeps it)
+  verifiedById       String?
+  verifiedBy         User?               @relation("FitmentVerifiedBy", fields: [verifiedById], references: [id])
+  approvedAt         DateTime? // cleared by a reopen
+  approvedById       String?
+  approvedBy         User?               @relation("FitmentApprovedBy", fields: [approvedById], references: [id])
+  closedAt           DateTime?
+  closeReasonId      String? // LookupItem CLOSE_REASON
+  closeReason        LookupItem?         @relation("FitmentCloseReason", fields: [closeReasonId], references: [id])
+  closeComments      String?
+  faultyAt           DateTime?
+  faultReason        String?
+  replacementOfId    String?             @unique // set on the replacement of a fitment moved to FT (D-012)
+  replacementOf      Fitment?            @relation("Replacement", fields: [replacementOfId], references: [id])
+  replacement        Fitment?            @relation("Replacement")
+  reopenCount        Int                 @default(0)
+  lastReopenReason   String?
+  lastReopenedAt     DateTime?
+  lastReopenedById   String?
+  lastReopenedBy     User?               @relation("FitmentLastReopenedBy", fields: [lastReopenedById], references: [id])
+  createdAt          DateTime            @default(now())
+  updatedAt          DateTime            @updatedAt
+  events             TaskEvent[]
+  reopenAttributions ReopenAttribution[]
 
   @@unique([taskId, seq])
   @@index([technicianId, status])
+  @@index([status])
+  @@index([reopenCount])
+}
+
+/**
+ * One row per person a reopen counts against (D-074), for the reopen analytics (F15).
+ */
+model ReopenAttribution {
+  id        String    @id @default(cuid())
+  eventId   String // TaskEvent of type FITMENT_REOPENED
+  event     TaskEvent @relation(fields: [eventId], references: [id])
+  fitmentId String
+  fitment   Fitment   @relation(fields: [fitmentId], references: [id])
+  userId    String
+  user      User      @relation(fields: [userId], references: [id])
+  role      Role // OT or OE at the time
+  createdAt DateTime  @default(now())
+
+  @@index([userId])
+  @@index([fitmentId])
 }
 
 /**
  * Audit trail of a task (D-065); F05 adds workflow event types.
  */
 model TaskEvent {
-  id         String   @id @default(cuid())
-  taskId     String
-  task       Task     @relation(fields: [taskId], references: [id])
-  fitmentId  String?
-  fitment    Fitment? @relation(fields: [fitmentId], references: [id])
-  actorId    String
-  actor      User     @relation("TaskEventActor", fields: [actorId], references: [id])
-  type       String // TASK_CREATED | TASK_UPDATED | FITMENT_ASSIGNED | FITMENT_UNASSIGNED | FITMENT_UPDATED | TASK_DELETED
-  fromStatus String?
-  toStatus   String?
-  data       Json? // a diff { field: [before, after] } or a payload
-  createdAt  DateTime @default(now())
+  id           String              @id @default(cuid())
+  taskId       String
+  task         Task                @relation(fields: [taskId], references: [id])
+  fitmentId    String?
+  fitment      Fitment?            @relation(fields: [fitmentId], references: [id])
+  actorId      String
+  actor        User                @relation("TaskEventActor", fields: [actorId], references: [id])
+  type         String // TASK_EVENT_TYPES in @champ/shared (F04 types plus the F05 FITMENT_* workflow events)
+  fromStatus   String?
+  toStatus     String?
+  data         Json? // a diff { field: [before, after] } or a payload (+ simulated / postStart / postApproval flags)
+  createdAt    DateTime            @default(now())
+  attributions ReopenAttribution[]
 
   @@index([taskId, createdAt])
 }

@@ -303,16 +303,21 @@ describe('tasks — detail and permissions', () => {
     const task = await createTask(w, w.om);
     const otherOe = await createUser({ role: 'OE', managerId: w.om.id });
     const flags = async (actor: User) => (await api().get(`/api/tasks/${task.id}`).set(bearer(actor))).body.permissions;
-    expect(await flags(w.sa)).toEqual({ canEdit: true, canAssign: true, canDelete: true });
-    expect(await flags(w.om)).toEqual({ canEdit: true, canAssign: true, canDelete: true });
-    expect(await flags(w.oe)).toEqual({ canEdit: true, canAssign: true, canDelete: false });
-    expect(await flags(otherOe)).toEqual({ canEdit: false, canAssign: false, canDelete: false });
-    expect(await flags(w.ro)).toEqual({ canEdit: false, canAssign: false, canDelete: false });
+    expect(await flags(w.sa)).toEqual({ canEdit: true, canAssign: true, canDelete: true, canViewHistory: true });
+    expect(await flags(w.om)).toEqual({ canEdit: true, canAssign: true, canDelete: true, canViewHistory: true });
+    expect(await flags(w.oe)).toEqual({ canEdit: true, canAssign: true, canDelete: false, canViewHistory: false });
+    expect(await flags(otherOe)).toEqual({ canEdit: false, canAssign: false, canDelete: false, canViewHistory: false });
+    expect(await flags(w.ro)).toEqual({ canEdit: false, canAssign: false, canDelete: false, canViewHistory: false });
 
+    // F05: SA/OM may edit the header at any stage; an OE only while untouched.
     await prisma.fitment.updateMany({ where: { taskId: task.id, seq: 1 }, data: { status: 'IN_PROGRESS' } });
-    expect(await flags(w.om)).toEqual({ canEdit: false, canAssign: true, canDelete: false });
+    expect(await flags(w.om)).toEqual({ canEdit: true, canAssign: true, canDelete: false, canViewHistory: true });
+    expect(await flags(w.oe)).toEqual({ canEdit: false, canAssign: true, canDelete: false, canViewHistory: false });
     await prisma.fitment.updateMany({ where: { taskId: task.id }, data: { status: 'SUBMITTED' } });
-    expect(await flags(w.om)).toEqual({ canEdit: false, canAssign: false, canDelete: false });
+    expect(await flags(w.om)).toEqual({ canEdit: true, canAssign: false, canDelete: false, canViewHistory: true });
+    // F05: a Reopened fitment can be reassigned.
+    await prisma.fitment.updateMany({ where: { taskId: task.id, seq: 2 }, data: { status: 'REOPENED' } });
+    expect((await flags(w.oe)).canAssign).toBe(true);
   });
 
   it('404 for unknown and deleted tasks', async () => {
@@ -367,7 +372,7 @@ describe('tasks — detail and permissions', () => {
 });
 
 describe('tasks — edit', () => {
-  it('edits header fields while untouched and records the diff; 409 once a fitment has started', async () => {
+  it('edits header fields while untouched and records the diff; after a start the OE gets 409, the OM edits (flagged)', async () => {
     const w = await createTaskWorld();
     const task = await createTask(w, w.oe);
     const res = await api()
@@ -397,9 +402,16 @@ describe('tasks — edit', () => {
     expect((await eventsOf(task.id)).filter((e) => e.type === 'TASK_UPDATED')).toHaveLength(1);
 
     await prisma.fitment.updateMany({ where: { taskId: task.id, seq: 1 }, data: { status: 'IN_PROGRESS' } });
-    const started = await api().patch(`/api/tasks/${task.id}`).set(bearer(w.om)).send({ pocName: 'Late' });
+    const started = await api().patch(`/api/tasks/${task.id}`).set(bearer(w.oe)).send({ pocName: 'Late' });
     expect(started.status).toBe(409);
     expect(started.body.error.code).toBe('TASK_STARTED');
+    // F05: SA/OM may still edit; the event is flagged postStart.
+    const late = await api().patch(`/api/tasks/${task.id}`).set(bearer(w.om)).send({ pocName: 'Late' });
+    expect(late.status).toBe(200);
+    expect(late.body.pocName).toBe('Late');
+    const updates = (await eventsOf(task.id)).filter((e) => e.type === 'TASK_UPDATED');
+    expect(updates.at(-1)).toMatchObject({ actorId: w.om.id, data: { pocName: ['Anil', 'Late'], postStart: true } });
+    expect(updates[0]!.data).not.toHaveProperty('postStart');
   });
 
   it('keeps an unchanged reference that was deactivated, but rejects switching to an inactive one', async () => {
@@ -447,7 +459,7 @@ describe('tasks — edit', () => {
     expect(moved.body.oe.id).toBe(otherOe.id);
   });
 
-  it('edits one fitment vehicle while Open/Assigned; 409 FITMENT_LOCKED later', async () => {
+  it('edits fitment vehicle data under the F05 edit locks: OE until OM approval, OM after it (flagged)', async () => {
     const w = await createTaskWorld();
     const task = await createTask(w, w.oe);
     const [f1, f2] = task.fitments;
@@ -460,10 +472,18 @@ describe('tasks — edit', () => {
     const event = (await eventsOf(task.id)).find((e) => e.type === 'FITMENT_UPDATED');
     expect(event).toMatchObject({ fitmentId: f1!.id, data: { vehicleRegNo: [null, 'KA01AB1234'] } });
 
-    await prisma.fitment.update({ where: { id: f2!.id }, data: { status: 'IN_PROGRESS' } });
+    // F05: the OE may still edit after work started (until the OM approves).
+    await prisma.fitment.update({ where: { id: f2!.id }, data: { status: 'SUBMITTED' } });
+    const submitted = await api().patch(`/api/tasks/${task.id}/fitments/${f2!.id}`).set(bearer(w.oe)).send({ chassisNo: 'S1' });
+    expect(submitted.status).toBe(200);
+    await prisma.fitment.update({ where: { id: f2!.id }, data: { status: 'OM_APPROVED' } });
     const locked = await api().patch(`/api/tasks/${task.id}/fitments/${f2!.id}`).set(bearer(w.oe)).send({ chassisNo: 'X' });
     expect(locked.status).toBe(409);
-    expect(locked.body.error).toMatchObject({ code: 'FITMENT_LOCKED', message: 'TK-00002 has already started, so it can\'t be changed.' });
+    expect(locked.body.error).toMatchObject({ code: 'FITMENT_LOCKED', message: 'TK-00002 is OM approved, so you can no longer change it.' });
+    const byOm = await api().patch(`/api/tasks/${task.id}/fitments/${f2!.id}`).set(bearer(w.om)).send({ chassisNo: 'OM1' });
+    expect(byOm.status).toBe(200);
+    const edits = (await eventsOf(task.id)).filter((e) => e.type === 'FITMENT_UPDATED' && e.fitmentId === f2!.id);
+    expect(edits.map((e) => e.data)).toEqual([{ chassisNo: [null, 'S1'] }, { chassisNo: ['S1', 'OM1'], postApproval: true }]);
     expect((await api().patch(`/api/tasks/${task.id}/fitments/nope`).set(bearer(w.oe)).send({ chassisNo: 'X' })).status).toBe(404);
   });
 });

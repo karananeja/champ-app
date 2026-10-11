@@ -1,11 +1,11 @@
-import { deriveTaskStatus, isFitmentAssignable, type FitmentStatus, type TaskStatus } from '@champ/shared';
+import { FITMENT_STATUS_LABELS, deriveTaskStatus, isTaskUntouched, type FitmentStatus, type TaskStatus } from '@champ/shared';
 import type { Prisma } from '../../generated/prisma/client';
 import { conflict } from '../../lib/errors';
 
 /**
  * The single place that sets `Task.status` (spec §2): reads the task's fitments and stores the aggregate
- * (any Open → OPEN; all Assigned → ASSIGNED; all final → COMPLETED; otherwise IN_PROGRESS). F05 extends
- * the rule through `deriveTaskStatus`.
+ * (any Open → OPEN; all Assigned → ASSIGNED; all final → COMPLETED; otherwise IN_PROGRESS, which includes
+ * Reopened). The rule lives in the shared `deriveTaskStatus`.
  */
 export async function recomputeTaskStatus(tx: Prisma.TransactionClient, taskId: string): Promise<TaskStatus> {
   const fitments = await tx.fitment.findMany({ where: { taskId }, select: { status: true } });
@@ -28,7 +28,11 @@ export const taskStarted = () =>
 export const fitmentLocked = (tkId: string) =>
   conflict('FITMENT_LOCKED', `${tkId} has already started, so it can't be changed.`);
 
+/** 409 when the edit locks (shared `canEditFitmentData`) don't let the caller change the fitment data. */
+export const fitmentDataLocked = (tkId: string, status: FitmentStatus) =>
+  conflict('FITMENT_LOCKED', `${tkId} is ${FITMENT_STATUS_LABELS[status]}, so you can no longer change it.`);
+
 /** Throws 409 TASK_STARTED unless every fitment is still Open or Assigned (spec §2, "untouched"). */
 export function assertUntouched(fitments: readonly { status: FitmentStatus }[]): void {
-  if (!fitments.every((f) => isFitmentAssignable(f.status))) throw taskStarted();
+  if (!isTaskUntouched(fitments)) throw taskStarted();
 }

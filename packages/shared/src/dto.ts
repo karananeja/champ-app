@@ -1,6 +1,7 @@
 import type { LookupKind, TechnicianType } from './masters';
 import type { AuthProvider, InviteStatus, Role, UserStatus } from './roles';
 import type { BulkTaskColumn, FitmentStatus, TaskStatus } from './tasks';
+import type { FitmentAction, TaskEventType } from './workflow';
 
 export interface UserRef {
   id: string;
@@ -38,6 +39,8 @@ export interface AuthResponse {
 
 export interface ConfigResponse {
   googleClientId: string | null;
+  /** Whether the dev-only technician simulator API is mounted (D-073; never in production). */
+  devSimulator: boolean;
 }
 
 export interface HealthResponse {
@@ -301,6 +304,31 @@ export interface FitmentDto {
   chassisNo: string | null;
   assetNumber: string | null;
   oldDeviceId: string | null;
+  // --- Workflow (F05) ---
+  /** What the caller may do with this fitment now (shared `availableActions`). */
+  availableActions: FitmentAction[];
+  /** Whether the caller may change the fitment data (shared `canEditFitmentData`). */
+  canEditData: boolean;
+  startedAt: string | null;
+  startLat: number | null;
+  startLng: number | null;
+  submittedAt: string | null;
+  verifiedAt: string | null;
+  verifiedBy: UserRef | null;
+  approvedAt: string | null;
+  approvedBy: UserRef | null;
+  closedAt: string | null;
+  closeReason: { id: string; name: string } | null;
+  closeComments: string | null;
+  faultyAt: string | null;
+  faultReason: string | null;
+  /** On a replacement: the faulty fitment it replaces. */
+  replacementOf: { id: string; tkId: string } | null;
+  /** On a fitment moved to FT: its replacement. */
+  replacement: { id: string; tkId: string; status: FitmentStatus } | null;
+  reopenCount: number;
+  lastReopenReason: string | null;
+  lastReopenedAt: string | null;
 }
 
 /** `GET /tasks/:id`: the task with resolved names, its fitments and what the caller may do. */
@@ -336,8 +364,8 @@ export interface TaskDto {
   createdBy: UserRef;
   createdAt: string;
   updatedAt: string;
-  /** Whether the caller may edit, assign or delete (spec §3, untouched rule). */
-  permissions: { canEdit: boolean; canAssign: boolean; canDelete: boolean };
+  /** Whether the caller may edit, assign or delete (spec §3, untouched rule), and see the History tab (F05). */
+  permissions: { canEdit: boolean; canAssign: boolean; canDelete: boolean; canViewHistory: boolean };
 }
 
 /** `GET /tasks/options`: people the task form and filters offer. */
@@ -371,6 +399,99 @@ export interface BulkPreviewResponse {
 export interface BulkImportResponse {
   created: { rowNumber: number; id: string; omId: string }[];
   failed: { rowNumber: number; errors: BulkCellError[] }[];
+}
+
+// --- Workflow (F05) ---
+
+/** The task part of a transition response. */
+export interface TaskSummaryDto {
+  id: string;
+  omId: string;
+  status: TaskStatus;
+  counts: FitmentCounts;
+}
+
+/** `POST /fitments/:fid/transitions` and `POST /dev/fitments/:fid/simulate`. */
+export interface TransitionResponse {
+  fitment: FitmentDto;
+  task: TaskSummaryDto;
+}
+
+/** `POST /fitments/approve`: per-fitment results (each fitment is approved in its own transaction). */
+export interface ApproveFitmentsResponse {
+  approved: string[];
+  failed: { tkId: string; code: string; message: string }[];
+}
+
+/** A row of the Awaiting approval, Re-opened and Faulty lists. */
+export interface WorkflowFitmentItemDto {
+  id: string;
+  tkId: string;
+  status: FitmentStatus;
+  task: { id: string; omId: string };
+  client: { id: string; name: string };
+  site: { id: string; name: string };
+  technician: UserRef | null;
+  oe: UserRef;
+  vehicleRegNo: string | null;
+  verifiedAt: string | null;
+  verifiedBy: UserRef | null;
+  reopenCount: number;
+  lastReopenReason: string | null;
+  lastReopenedAt: string | null;
+  lastReopenedBy: UserRef | null;
+  faultReason: string | null;
+  faultyAt: string | null;
+  replacement: { id: string; tkId: string; status: FitmentStatus; technician: UserRef | null } | null;
+}
+
+/** One stage of a timeline: when it started and who did it; `completedAt`/`completedBy` when it finished. */
+export interface StageStep {
+  at: string;
+  by: UserRef | null;
+  completedAt: string | null;
+  completedBy: UserRef | null;
+}
+
+/** First (Open/Assigned) → Second (In progress/Submitted) → Verification (OE verified) → Final (OM approved). */
+export interface StageTimeline {
+  first: StageStep | null;
+  second: StageStep | null;
+  verification: StageStep | null;
+  final: StageStep | null;
+}
+
+export interface ReopenLoopDto {
+  at: string;
+  by: UserRef;
+  fromStatus: FitmentStatus;
+  reason: string;
+  attributions: { user: UserRef; role: Role }[];
+}
+
+/** `GET /tasks/:id/history` (SA/OM, D-033). */
+export interface TaskHistoryResponse {
+  task: StageTimeline;
+  fitments: {
+    id: string;
+    tkId: string;
+    status: FitmentStatus;
+    technician: UserRef | null;
+    stages: StageTimeline;
+    reopenLoops: ReopenLoopDto[];
+  }[];
+}
+
+/** A row of `GET /tasks/:id/events` (the raw data). `data` is the diff `{ field: [before, after] }` or a payload. */
+export interface TaskEventDto {
+  id: string;
+  at: string;
+  actor: UserRef;
+  fitment: { id: string; tkId: string } | null;
+  type: TaskEventType;
+  fromStatus: string | null;
+  toStatus: string | null;
+  data: unknown;
 }
 
 export const ERROR_CODES = [
@@ -409,6 +530,7 @@ export const ERROR_CODES = [
   'GEOCODER_UNAVAILABLE',
   'TASK_STARTED',
   'FITMENT_LOCKED',
+  'INVALID_TRANSITION',
   'INTERNAL_ERROR',
 ] as const;
 export type ErrorCode = (typeof ERROR_CODES)[number];

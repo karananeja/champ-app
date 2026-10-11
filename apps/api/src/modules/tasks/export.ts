@@ -77,7 +77,7 @@ const COLUMNS: { header: string; width: number; value: (t: ExportRow) => string 
  * Neutralises spreadsheet formulas in text cells (CSV injection): a cell starting with =, @, or +/- followed
  * by something other than a digit gets a leading apostrophe. Phone numbers like "+91 …" stay as they are.
  */
-const safeText = (value: string | number) =>
+export const safeText = (value: string | number) =>
   typeof value === 'string' && /^(?:[=@\t\r]|[+-][^\d\s])/.test(value) ? `'${value}` : value;
 
 export interface ExportFile {

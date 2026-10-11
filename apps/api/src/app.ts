@@ -3,7 +3,7 @@ import cors from 'cors';
 import express from 'express';
 import helmet from 'helmet';
 import { pinoHttp } from 'pino-http';
-import { env } from './config/env';
+import { devSimulatorEnabled, env } from './config/env';
 import { createGeocoder, type Geocoder } from './lib/geocoder';
 import { createGoogleAuth, type GoogleAuth } from './lib/google';
 import { logger } from './lib/logger';
@@ -17,17 +17,22 @@ import { lookupsRouter, mastersRouter } from './modules/masters/router';
 import { tasksRouter } from './modules/tasks/router';
 import { techniciansRouter } from './modules/technicians/router';
 import { usersRouter } from './modules/users/router';
+import { fitmentsRouter } from './modules/workflow/router';
+import { devSimulatorRouter } from './modules/workflow/simulator';
 
 export interface AppDeps {
   /** Injected in tests to mock Google ID-token verification. */
   google?: GoogleAuth;
   /** Injected in tests: a fake geocoder (tests must never call the real Nominatim). */
   geocoder?: Geocoder;
+  /** Mount the dev technician simulator (D-073); defaults to `ENABLE_DEV_SIMULATOR`, never in production. */
+  devSimulator?: boolean;
 }
 
 export function createApp(deps: AppDeps = {}) {
   const google = deps.google ?? createGoogleAuth();
   const geocoder = deps.geocoder ?? createGeocoder();
+  const devSimulator = env.NODE_ENV !== 'production' && (deps.devSimulator ?? devSimulatorEnabled());
   const app = express();
 
   app.set('trust proxy', 'loopback');
@@ -52,7 +57,7 @@ export function createApp(deps: AppDeps = {}) {
   );
 
   const api = express.Router();
-  api.use(healthRouter(google));
+  api.use(healthRouter(google, devSimulator));
   api.use('/auth', authRouter(google));
   api.use('/invites', invitesRouter(google));
   api.use(usersRouter());
@@ -62,6 +67,8 @@ export function createApp(deps: AppDeps = {}) {
   api.use('/clients', clientsRouter());
   api.use('/geo', geoRouter(geocoder));
   api.use('/tasks', tasksRouter());
+  api.use('/fitments', fitmentsRouter());
+  if (devSimulator) api.use('/dev', devSimulatorRouter());
   api.use(notFoundHandler);
 
   app.use('/api', api);

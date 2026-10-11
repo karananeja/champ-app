@@ -1,6 +1,9 @@
 import {
+  availableActions,
   canDeleteTask,
+  canEditFitmentData,
   canManageTask,
+  canViewHistory,
   formatOeId,
   formatOmId,
   formatTkId,
@@ -16,6 +19,7 @@ import type { Prisma } from '../../generated/prisma/client';
 import type { User } from '../../lib/prisma';
 
 const iso = (d: Date) => d.toISOString();
+const isoOrNull = (d: Date | null) => (d ? d.toISOString() : null);
 
 const refSelect = { id: true, name: true, code: true, active: true } satisfies Prisma.LookupItemSelect;
 const toRef = (r: { id: string; name: string; code: string | null; active: boolean }): TaskRef => ({
@@ -69,6 +73,19 @@ export function toTaskListItem(task: TaskListRow): TaskListItemDto {
 
 // --- Detail ---
 
+const userRef = { select: { id: true, name: true } } as const;
+
+/** A fitment with the names its DTO shows (technician, reviewers, close reason, replacement links). */
+export const fitmentInclude = {
+  technician: { select: technicianSelect },
+  verifiedBy: userRef,
+  approvedBy: userRef,
+  closeReason: { select: { id: true, name: true } },
+  replacementOf: { select: { id: true, tkNo: true } },
+  replacement: { select: { id: true, tkNo: true, status: true } },
+} satisfies Prisma.FitmentInclude;
+export type FitmentRow = Prisma.FitmentGetPayload<{ include: typeof fitmentInclude }>;
+
 export const taskDetailInclude = {
   taskType: { select: refSelect },
   client: { select: { id: true, name: true, code: true, active: true } },
@@ -83,32 +100,64 @@ export const taskDetailInclude = {
   shiftType: { select: refSelect },
   issueReported: { select: refSelect },
   createdBy: { select: { id: true, name: true } },
-  fitments: { include: { technician: { select: technicianSelect } }, orderBy: { seq: 'asc' } },
+  fitments: { include: fitmentInclude, orderBy: { seq: 'asc' } },
 } satisfies Prisma.TaskInclude;
 export type TaskDetailRow = Prisma.TaskGetPayload<{ include: typeof taskDetailInclude }>;
 
-type FitmentRow = TaskDetailRow['fitments'][number];
+/**
+ * A fitment as the caller sees it: data, workflow fields and, from the shared state machine, the actions
+ * the caller may take and whether they may edit the data.
+ */
+export function toFitmentDto(f: FitmentRow, task: { oeId: string }, actor: User): FitmentDto {
+  const ctx = { task, fitment: f };
+  return {
+    id: f.id,
+    tkId: formatTkId(f.tkNo),
+    seq: f.seq,
+    status: f.status,
+    technician: f.technician,
+    vehicleRegNo: f.vehicleRegNo,
+    chassisNo: f.chassisNo,
+    assetNumber: f.assetNumber,
+    oldDeviceId: f.oldDeviceId,
+    availableActions: availableActions(actor, ctx),
+    canEditData: canEditFitmentData(actor, ctx),
+    startedAt: isoOrNull(f.startedAt),
+    startLat: f.startLat,
+    startLng: f.startLng,
+    submittedAt: isoOrNull(f.submittedAt),
+    verifiedAt: isoOrNull(f.verifiedAt),
+    verifiedBy: f.verifiedBy,
+    approvedAt: isoOrNull(f.approvedAt),
+    approvedBy: f.approvedBy,
+    closedAt: isoOrNull(f.closedAt),
+    closeReason: f.closeReason,
+    closeComments: f.closeComments,
+    faultyAt: isoOrNull(f.faultyAt),
+    faultReason: f.faultReason,
+    replacementOf: f.replacementOf && { id: f.replacementOf.id, tkId: formatTkId(f.replacementOf.tkNo) },
+    replacement: f.replacement && {
+      id: f.replacement.id,
+      tkId: formatTkId(f.replacement.tkNo),
+      status: f.replacement.status,
+    },
+    reopenCount: f.reopenCount,
+    lastReopenReason: f.lastReopenReason,
+    lastReopenedAt: isoOrNull(f.lastReopenedAt),
+  };
+}
 
-export const toFitmentDto = (f: FitmentRow): FitmentDto => ({
-  id: f.id,
-  tkId: formatTkId(f.tkNo),
-  seq: f.seq,
-  status: f.status,
-  technician: f.technician,
-  vehicleRegNo: f.vehicleRegNo,
-  chassisNo: f.chassisNo,
-  assetNumber: f.assetNumber,
-  oldDeviceId: f.oldDeviceId,
-});
-
-/** What the caller may do with the task (spec §3 and the untouched rule). */
+/** What the caller may do with the task (spec §3, the untouched rule and the F05 History tab). */
 export function taskPermissions(actor: User, task: { oeId: string; fitments: readonly { status: FitmentDto['status'] }[] }) {
   const manage = canManageTask(actor, task);
   const untouched = isTaskUntouched(task.fitments);
+  // F05: SA/OM can edit the header at any stage (flagged postStart once work started); an OE only while untouched.
+  const editAnyStage = actor.role === 'SUPER_ADMIN' || actor.role === 'OM';
   return {
-    canEdit: manage && untouched,
+    canEdit: manage && (untouched || editAnyStage),
     canAssign: manage && task.fitments.some((f) => isFitmentAssignable(f.status)),
     canDelete: canDeleteTask(actor) && untouched,
+    canViewHistory: canViewHistory(actor),
   };
 }
 
@@ -141,7 +190,7 @@ export function toTaskDto(task: TaskDetailRow, actor: User): TaskDto {
     comments: task.comments,
     vehicleEntry: task.vehicleEntry,
     counts: countFitments(task.fitments),
-    fitments: task.fitments.map(toFitmentDto),
+    fitments: task.fitments.map((f) => toFitmentDto(f, task, actor)),
     createdBy: task.createdBy,
     createdAt: iso(task.createdAt),
     updatedAt: iso(task.updatedAt),

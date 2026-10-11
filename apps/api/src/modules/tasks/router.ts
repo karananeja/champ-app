@@ -2,6 +2,7 @@ import { Router, type NextFunction, type Request, type Response } from 'express'
 import multer from 'multer';
 import {
   BULK_MAX_FILE_BYTES,
+  HISTORY_ROLES,
   TASK_CREATE_ROLES,
   TASK_DELETE_ROLES,
   TASK_VIEW_ROLES,
@@ -10,6 +11,7 @@ import {
   createTaskSchema,
   exportTasksQuerySchema,
   listTasksQuerySchema,
+  taskEventsQuerySchema,
   updateFitmentSchema,
   updateTaskSchema,
   type AssignFitmentsInput,
@@ -17,6 +19,7 @@ import {
   type CreateTaskInput,
   type ExportTasksQuery,
   type ListTasksQuery,
+  type TaskEventsQuery,
   type UpdateFitmentInput,
   type UpdateTaskInput,
 } from '@champ/shared';
@@ -25,6 +28,7 @@ import { authenticate, currentUser } from '../../middleware/auth';
 import { requireRole } from '../../middleware/requireRole';
 import { validate } from '../../middleware/validate';
 import { bulkSampleCsv, importBulk, previewBulk } from './bulk';
+import { exportTaskEvents, getTaskHistory, listTaskEvents } from '../workflow/history';
 import { exportTasks } from './export';
 import * as tasks from './service';
 
@@ -49,7 +53,8 @@ function uploadCsv(req: Request, res: Response, next: NextFunction) {
 }
 
 /**
- * `/tasks` (F04). Every route needs a task viewer (OT gets 403); creation and bulk upload need a creator.
+ * `/tasks` (F04, F05 history). Every route needs a task viewer (OT gets 403); creation and bulk upload need a
+ * creator; history and raw events need SA/OM.
  * Edit, assign and delete rules that depend on the task (canManageTask, untouched) are checked in the
  * service. Fixed paths come before `/:id`.
  */
@@ -101,6 +106,21 @@ export function tasksRouter() {
     res.json(
       await tasks.updateFitment(currentUser(req), id(req), req.params.fid as string, req.body as UpdateFitmentInput),
     );
+  });
+  // F05: History tab and raw data (SA/OM, D-033).
+  const canViewHistory = requireRole(...HISTORY_ROLES);
+  router.get('/:id/history', canViewHistory, async (req, res) => {
+    res.json(await getTaskHistory(id(req)));
+  });
+  router.get('/:id/events', canViewHistory, validate({ query: taskEventsQuerySchema }), async (req, res) => {
+    if ((req.query as unknown as TaskEventsQuery).format === 'csv') {
+      const file = await exportTaskEvents(id(req));
+      res.setHeader('Content-Type', file.contentType);
+      res.attachment(file.filename);
+      res.send(file.body);
+      return;
+    }
+    res.json(await listTaskEvents(id(req)));
   });
   router.post('/:id/assign', canCreate, validate({ body: assignFitmentsSchema }), async (req, res) => {
     res.json(await tasks.assignFitments(currentUser(req), id(req), req.body as AssignFitmentsInput));
