@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| Status | **Awaiting user sign-off** |
+| Status | **Approved by user on 2026-10-12** |
 | Requirements | SRS §5, §6.4 (items 5, 7) · source doc: approval flow OT → OE → OM, edit rules, re-opened tasks, FT, history tab · Decisions D-011, D-012, D-014, D-027, D-033, D-065 |
 | Depends on | F04 (complete) |
 
