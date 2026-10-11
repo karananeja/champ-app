@@ -54,6 +54,9 @@ export default defineConfig({
         API_PORT: String(API_PORT),
         WEB_URL,
         GOOGLE_CLIENT_ID: '',
+        // Geocoding is stubbed in the browser (page.route); this unreachable URL guarantees the API itself
+        // never calls the real Nominatim during E2E.
+        NOMINATIM_URL: 'http://127.0.0.1:9',
         JWT_ACCESS_SECRET: process.env.JWT_ACCESS_SECRET || 'e2e-secret-not-for-production',
       },
     },

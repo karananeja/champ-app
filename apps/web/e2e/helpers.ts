@@ -60,7 +60,10 @@ export async function expectNoHorizontalScroll(page: Page) {
   // Also catch content that is clipped by an overflowing child rather than scrolling the page.
   const { overflow, culprits } = await page.evaluate(() => {
     const width = document.documentElement.clientWidth;
-    const visible = Array.from(document.querySelectorAll('body *')).filter((el) => el.getClientRects().length > 0);
+    // Map tiles and panes extend past the map, but the map container clips them (overflow: hidden).
+    const visible = Array.from(document.querySelectorAll('body *')).filter(
+      (el) => el.getClientRects().length > 0 && !el.closest('.leaflet-container'),
+    );
     const widest = Math.max(...visible.map((el) => el.getBoundingClientRect().right));
     const culprits = visible
       .filter((el) => el.getBoundingClientRect().right > width + 1)
@@ -89,6 +92,10 @@ export interface E2eOrg {
   /** Technician names (OTs reporting to oeA and oeB). */
   techA: string;
   techB: string;
+  /** F03: a client (one active site) created by the SA. */
+  client: string;
+  /** F03: location ids used as geocoder suggestions. */
+  locations: { bengaluru: string; pune: string };
 }
 
 export const readOrg = (): E2eOrg => JSON.parse(fs.readFileSync(ORG_FILE, 'utf8')) as E2eOrg;
@@ -118,4 +125,52 @@ export async function pickSearchable(page: Page, combobox: Locator, search: stri
   await combobox.click();
   await page.getByPlaceholder(/^Search/).last().fill(search);
   await page.getByRole('option', { name: option }).click();
+}
+
+// --- F03 ---
+
+/** The visible client row (desktop table) or card (small screens) that contains `text`. */
+export const clientItem = (page: Page, text: string): Locator =>
+  page.locator('[data-testid="client-row"], [data-testid="client-card"]').filter({ hasText: text, visible: true });
+
+/** A 1×1 transparent PNG served instead of real OpenStreetMap tiles. */
+const BLANK_TILE = Buffer.from(
+  'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=',
+  'base64',
+);
+
+export interface StubPlace {
+  displayName: string;
+  lat: number;
+  lng: number;
+  city?: string;
+  state?: string;
+  suggestedLocationId?: string;
+}
+
+/**
+ * Stubs geocoding (`/api/geo/*`, so the API never calls Nominatim) and the OSM tile server. `search` maps a
+ * query substring to results; reverse returns `reverse(lat, lng)`. Returns the reverse calls seen.
+ */
+export async function stubMaps(
+  page: Page,
+  options: { search: Record<string, StubPlace[]>; reverse: (lat: number, lng: number) => StubPlace | null },
+) {
+  const reverseCalls: { lat: number; lng: number }[] = [];
+  await page.route('https://tile.openstreetmap.org/**', (route) =>
+    route.fulfill({ status: 200, contentType: 'image/png', body: BLANK_TILE }),
+  );
+  await page.route('**/api/geo/search?**', (route) => {
+    const q = (new URL(route.request().url()).searchParams.get('q') ?? '').toLowerCase();
+    const key = Object.keys(options.search).find((k) => q.includes(k.toLowerCase()));
+    return route.fulfill({ json: { items: key ? options.search[key] : [] } });
+  });
+  await page.route('**/api/geo/reverse?**', (route) => {
+    const url = new URL(route.request().url());
+    const lat = Number(url.searchParams.get('lat'));
+    const lng = Number(url.searchParams.get('lng'));
+    reverseCalls.push({ lat, lng });
+    return route.fulfill({ json: { item: options.reverse(lat, lng) } });
+  });
+  return reverseCalls;
 }
