@@ -16,6 +16,8 @@ if (typeof Element !== 'undefined') {
   Element.prototype.scrollIntoView ??= function scrollIntoView() {};
   Element.prototype.hasPointerCapture ??= () => false;
   Element.prototype.releasePointerCapture ??= () => {};
+  // sonner's toast swipe handling (F13 toast actions).
+  Element.prototype.setPointerCapture ??= () => {};
 }
 // jsdom has no matchMedia; sonner's "system" theme (CR-03 dark mode) reads it.
 if (typeof window !== 'undefined' && !window.matchMedia) {

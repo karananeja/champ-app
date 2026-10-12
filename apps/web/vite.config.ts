@@ -21,10 +21,17 @@ export default defineConfig(({ mode }) => {
       port: 3000,
       strictPort: true,
       // Proxy the API so the refresh cookie is same-origin.
-      proxy: { '/api': { target: `http://localhost:${apiPort}`, changeOrigin: false } },
+      // F13: the notification socket (Socket.IO, WebSocket upgrade) goes through the same origin.
+      proxy: {
+        '/api': { target: `http://localhost:${apiPort}`, changeOrigin: false },
+        '/socket.io': { target: `http://localhost:${apiPort}`, ws: true },
+      },
     },
     preview: {
-      proxy: { '/api': { target: `http://localhost:${apiPort}` } },
+      proxy: {
+        '/api': { target: `http://localhost:${apiPort}` },
+        '/socket.io': { target: `http://localhost:${apiPort}`, ws: true },
+      },
     },
     test: {
       environment: 'jsdom',

@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { toast } from 'sonner';
 import { CheckCheck, ClipboardCheck, Images, Loader2, MoreHorizontal, Pencil, RotateCcw } from 'lucide-react';
 import {
@@ -145,6 +146,28 @@ export function FitmentsSection({ task }: { task: TaskDto }) {
   const [photosId, setPhotosId] = useState<string | null>(null);
   const verifying = task.fitments.find((f) => f.id === verifyingId);
   const viewingPhotos = task.fitments.find((f) => f.id === photosId);
+  // F13: a notification links here with `?fitment=<id>`; open its verification sheet when the viewer may see it
+  // (else just scroll to it), then drop the parameter so closing the sheet doesn't reopen it.
+  const [searchParams, setSearchParams] = useSearchParams();
+  const linkedId = searchParams.get('fitment');
+  const linked = task.fitments.find((f) => f.id === linkedId);
+  const [handledLink, setHandledLink] = useState<string | null>(null);
+  if (linkedId !== handledLink) {
+    setHandledLink(linkedId);
+    if (linked && verificationLabel(linked)) setVerifyingId(linked.id);
+  }
+  useEffect(() => {
+    if (!linkedId) return;
+    if (linked && !verificationLabel(linked)) scrollToFitment(linked.tkId);
+    setSearchParams(
+      (prev) => {
+        const next = new URLSearchParams(prev);
+        next.delete('fitment');
+        return next;
+      },
+      { replace: true },
+    );
+  }, [linkedId, linked, setSearchParams]);
   const [confirmApprove, setConfirmApprove] = useState(false);
   const options = useTaskOptions();
   const assign = useAssignFitments(task.id);
