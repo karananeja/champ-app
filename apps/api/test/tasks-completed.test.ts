@@ -4,7 +4,7 @@ import Papa from 'papaparse';
 import { describe, expect, it } from 'vitest';
 import type { FitmentAction, Paginated, TaskDto, TaskListItemDto } from '@champ/shared';
 import { prisma, type User } from '../src/lib/prisma';
-import { bearer, createTaskWorld, testApi } from './helpers';
+import { bearer, createTaskWorld, testApi, fillSubmitReady } from './helpers';
 
 // CR-04 / D-087: view=completed, Task.completedAt and its default sort.
 const api = () => testApi();
@@ -21,6 +21,7 @@ async function world() {
     return res.body as TaskDto;
   };
   const step = async (actor: User, fid: string, action: FitmentAction, payload?: unknown) => {
+    if (action === 'SUBMIT') await fillSubmitReady(fid);
     const res = await api().post(`/api/fitments/${fid}/transitions`).set(bearer(actor)).send({ action, payload });
     expect(res.status, `${action}: ${JSON.stringify(res.body)}`).toBe(200);
   };

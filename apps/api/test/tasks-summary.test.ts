@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { DashboardSummaryDto, FitmentAction, Paginated, TaskDto } from '@champ/shared';
 import { prisma, type User } from '../src/lib/prisma';
-import { bearer, createTaskWorld, createUser, testApi } from './helpers';
+import { bearer, createTaskWorld, createUser, testApi, fillSubmitReady } from './helpers';
 
 // CR-03: GET /tasks/summary, the role-aware dashboard counts. Each count must equal its list's total.
 const api = () => testApi();
@@ -19,6 +19,7 @@ async function world() {
     return res.body as TaskDto;
   };
   const step = async (actor: User, fid: string, action: FitmentAction, payload?: unknown) => {
+    if (action === 'SUBMIT') await fillSubmitReady(fid);
     const res = await api().post(`/api/fitments/${fid}/transitions`).set(bearer(actor)).send({ action, payload });
     expect(res.status, `${action}: ${JSON.stringify(res.body)}`).toBe(200);
   };

@@ -287,3 +287,36 @@ export async function createTaskWorld() {
     taskBody,
   };
 }
+
+/**
+ * F10B: makes a fitment pass the SUBMIT form check (spec §3) without the app: fills the required form fields
+ * and adds an ACTIVE row for each missing technician photo kind (no stored object, no events). Tests that
+ * submit through the real transition call it first.
+ */
+export async function fillSubmitReady(fitmentId: string) {
+  const f = await prisma.fitment.findUniqueOrThrow({ where: { id: fitmentId } });
+  await prisma.fitment.update({
+    where: { id: fitmentId },
+    data: {
+      checks: { assetCondition: 'OK', accessories: 'OK', batteryCondition: 'OK', clusterMeter: 'OK', canVoltage: 'OK' },
+      deviceReplacement: f.deviceReplacement ?? 'NONE',
+      deviceId: f.deviceId ?? 'DEV-TEST',
+      vehicleRegNo: f.vehicleRegNo ?? 'KA01TS0001',
+      clusterReadingKm: f.clusterReadingKm ?? 1000,
+    },
+  });
+  const have = new Set((await prisma.fitmentPhoto.findMany({ where: { fitmentId, status: 'ACTIVE' }, select: { kind: true } })).map((p) => p.kind));
+  const kinds = (['BEFORE', 'ASSET', 'CLUSTER', 'AFTER'] as const).filter((k) => !have.has(k));
+  if (!kinds.length) return;
+  await prisma.fitmentPhoto.createMany({
+    data: kinds.map((kind) => ({
+      fitmentId,
+      kind,
+      objectKey: `fitments/${fitmentId}/test-${kind.toLowerCase()}.jpg`,
+      contentType: 'image/jpeg',
+      sizeBytes: 100,
+      uploadedById: f.technicianId!,
+      source: 'OT' as const,
+    })),
+  });
+}
