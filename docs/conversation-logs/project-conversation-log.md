@@ -377,3 +377,7 @@ Chronological log of the whole project conversation. Feature-level logs live in 
 **User:** "separate button for create task in the side bar is unnecessary and the tasks should be present in single place with tabs separated in the page, also why is faulty task read only?"
 
 **Claude:** Logged CR-10 and launched an agent for the web Tasks page with tabs. Explained that a fitment Moved to FT is final by design (D-011, D-012): its replacement fitment carries the work, so the Faulty view is a record; offered an *Assign replacement* action there or undoing a mistaken faulty if wanted.
+
+**User:** "both options seem to be good for FT and show the action buttons such as bulk upload and create task in open task tab only"
+
+**Claude:** Passed the header-buttons change to the CR-10 agent (Create task and Bulk upload on the Open tab only). Logged CR-11: *Assign replacement* in the Faulty view and a new *Undo faulty* action (back to Assigned; the unstarted replacement is closed as "Faulty marked by mistake"), D-256 – D-257. Backend agent launched; the web part follows CR-10, which is changing the same pages.
