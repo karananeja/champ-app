@@ -22,13 +22,13 @@ describe('navGroupsFor', () => {
     expect(linksFor('OM').filter((l) => !l.startsWith('/tasks'))).toEqual([...top, '/masters', '/profile']);
   });
 
-  it('one Tasks item for task viewers (CR-10: the views are tabs on the Tasks page), none for OT; Settings for SA only', () => {
+  it('one Tasks item for task viewers (CR-10: the views are tabs), opening the Board for SA/OM; none for OT; Settings for SA only', () => {
     const tasksOf = (role: Role) => linksFor(role).filter((l) => l.startsWith('/tasks'));
     for (const role of ['SUPER_ADMIN', 'OM', 'OE', 'RO'] as const) {
-      expect(tasksOf(role), role).toEqual(['/tasks']);
-      const item = navGroupsFor(makeUser({ role })).flatMap((g) => g.items).find((i) => i.to === '/tasks');
+      expect(tasksOf(role), role).toEqual([role === 'SUPER_ADMIN' || role === 'OM' ? '/tasks/board' : '/tasks']);
+      const item = navGroupsFor(makeUser({ role })).flatMap((g) => g.items).find((i) => i.label === 'Tasks');
       expect(item?.label).toBe('Tasks');
-      expect(item?.alsoActiveOn).toEqual(['/search']);
+      expect(item?.alsoActiveOn).toEqual(['/tasks', '/search']);
     }
     expect(tasksOf('OT')).toEqual([]);
     for (const role of ROLES) {

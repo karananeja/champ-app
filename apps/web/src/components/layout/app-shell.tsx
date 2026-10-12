@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
+import { Link, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { LogOut, Menu, Monitor, Moon, Sun, UserRound, WifiOff } from 'lucide-react';
 import { ROLE_LABELS } from '@champ/shared';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
@@ -48,25 +48,26 @@ function NavLinks({ onNavigate }: { onNavigate?: () => void }) {
               {group.label}
             </div>
           )}
-          {group.items.map(({ to, label, icon: Icon, end, alsoActiveOn }) => (
-            <NavLink
-              key={to}
-              to={to}
-              end={end ?? to === '/'}
-              onClick={onNavigate}
-              className={({ isActive: linkActive }) => {
-                const isActive = linkActive || !!alsoActiveOn?.some(onPath);
-                return cn(
+          {group.items.map(({ to, label, icon: Icon, end, alsoActiveOn }) => {
+            // Active state computed here (not by NavLink) so `alsoActiveOn` also sets aria-current (CR-10).
+            const active = ((end ?? to === '/') ? pathname === to : onPath(to)) || !!alsoActiveOn?.some(onPath);
+            return (
+              <Link
+                key={to}
+                to={to}
+                onClick={onNavigate}
+                aria-current={active ? 'page' : undefined}
+                className={cn(
                   'relative flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium text-sidebar-foreground/80 transition-colors hover:bg-sidebar-accent/60 hover:text-sidebar-accent-foreground',
-                  isActive &&
+                  active &&
                     'bg-sidebar-accent text-sidebar-accent-foreground before:absolute before:inset-y-1.5 before:left-0 before:w-1 before:rounded-full before:bg-sidebar-primary [&>svg]:text-sidebar-primary',
-                );
-              }}
-            >
-              <Icon className="size-4" />
-              {label}
-            </NavLink>
-          ))}
+                )}
+              >
+                <Icon className="size-4" />
+                {label}
+              </Link>
+            );
+          })}
         </div>
       ))}
     </nav>

@@ -16,8 +16,15 @@ test('the menu has a single Tasks item and the tab bar switches between Open and
   }
   await nav.getByRole('link', { name: 'Tasks', exact: true }).click();
 
-  await expect(page).toHaveURL(/\/tasks$/);
+  // An OM lands on the Board (the first tab); the menu item stays active on every tab.
+  await expect(page).toHaveURL(/\/tasks\/board$/);
   await expect(page.getByRole('heading', { name: 'Tasks', level: 1 })).toBeVisible();
+  await expect(taskTabs(page).getByRole('link', { name: 'Board', exact: true })).toHaveAttribute('aria-current', 'page');
+  await expect(taskTabs(page).getByRole('link')).toHaveText(['Board', 'Open', 'Awaiting approval', 'Re-opened', 'Faulty', 'Completed', 'All', 'Travel']);
+  await expect(page.getByRole('main').getByRole('link', { name: 'Create task' })).toHaveCount(0);
+  await taskTabs(page).getByRole('link', { name: 'Open', exact: true }).click();
+
+  await expect(page).toHaveURL(/\/tasks$/);
   await expect(page.getByRole('heading', { name: 'Open tasks' })).toBeVisible();
   await expect(taskTabs(page).getByRole('link', { name: 'Open', exact: true })).toHaveAttribute('aria-current', 'page');
   await expect(page.getByRole('main').getByRole('link', { name: 'Create task' })).toBeVisible();

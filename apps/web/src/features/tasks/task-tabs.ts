@@ -7,11 +7,13 @@ export interface TaskTab {
 }
 
 /**
- * CR-10: the task views shown as tabs on the Tasks page, each at its own URL. Same per-role rules the menu had:
+ * CR-10: the task views shown as tabs on the Tasks page, each at its own URL; the Board first (where the Tasks menu
+ * item opens for SA/OM). Same per-role rules the menu had:
  * Assigned for OEs, Awaiting approval for approvers (SA/OM), the Board (F07) for SA/OM; the rest for every task viewer.
  */
 export function taskTabsFor(user: UserDto): TaskTab[] {
   return [
+    ...(canUseBoard(user) ? [{ to: '/tasks/board', label: 'Board' }] : []),
     { to: '/tasks', label: 'Open' },
     ...(user.role === 'OE' ? [{ to: '/tasks/assigned', label: 'Assigned' }] : []),
     ...(canApproveFitments(user) ? [{ to: '/tasks/awaiting-approval', label: 'Awaiting approval' }] : []),
@@ -20,6 +22,5 @@ export function taskTabsFor(user: UserDto): TaskTab[] {
     { to: '/tasks/completed', label: 'Completed' },
     { to: '/tasks/all', label: 'All' },
     { to: '/tasks/travel', label: 'Travel' },
-    ...(canUseBoard(user) ? [{ to: '/tasks/board', label: 'Board' }] : []),
   ];
 }

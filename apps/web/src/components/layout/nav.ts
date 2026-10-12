@@ -10,7 +10,7 @@ import {
   type LucideIcon,
 } from 'lucide-react';
 import type { UserDto } from '@champ/shared';
-import { canManageSearchSettings, canViewClients, canViewMasters, canViewTasks, canViewTechnicians, canViewUsers } from '@/lib/permissions';
+import { canManageSearchSettings, canUseBoard, canViewClients, canViewMasters, canViewTasks, canViewTechnicians, canViewUsers } from '@/lib/permissions';
 
 export interface NavItem {
   to: string;
@@ -18,7 +18,7 @@ export interface NavItem {
   icon: LucideIcon;
   /** Active only on this exact path (not on child paths). */
   end?: boolean;
-  /** Also active on these paths and their child paths (CR-10: Tasks stays active on Search). */
+  /** Also active on these paths and their child paths (CR-10: Tasks stays active on every task route and Search). */
   alsoActiveOn?: string[];
 }
 
@@ -39,9 +39,11 @@ export function navGroupsFor(user: UserDto): NavGroup[] {
         ...(canViewClients(user) ? [{ to: '/clients', label: 'Clients', icon: Building2 }] : []),
       ],
     },
-    // CR-10: one Tasks item; the task views are tabs on the Tasks page (task-tabs.ts). Active on every /tasks
-    // route (lists, new, bulk, detail) and on Search, whose results are tasks.
-    ...(canViewTasks(user) ? [{ items: [{ to: '/tasks', label: 'Tasks', icon: ClipboardList, alsoActiveOn: ['/search'] }] }] : []),
+    // CR-10: one Tasks item; the task views are tabs on the Tasks page (task-tabs.ts). It opens the Board for SA/OM
+    // and the Open tab for others, and is active on every /tasks route (lists, new, bulk, detail) and on Search.
+    ...(canViewTasks(user)
+      ? [{ items: [{ to: canUseBoard(user) ? '/tasks/board' : '/tasks', label: 'Tasks', icon: ClipboardList, alsoActiveOn: ['/tasks', '/search'] }] }]
+      : []),
     // Masters admin: SA and OM only (D-059).
     ...(canViewMasters(user) ? [{ label: 'Masters', items: [{ to: '/masters', label: 'All masters', icon: Database }] }] : []),
     // F14: SA only.
