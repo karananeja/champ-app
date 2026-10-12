@@ -120,6 +120,20 @@ describe('photos (spec §4)', () => {
     expect(added.map((e) => e.data)).toEqual([{ tkId: 'TK-00001', photoId: photo.id, kind: 'DEBUG' }]);
   });
 
+  it('OT and RO are refused before the upload is read (403 even for a non-image body)', async () => {
+    const w = await setup();
+    const ro = await createUser({ role: 'RO' });
+    const pid = items(await w.list(w.oe))[0]!.id;
+    const junk = Buffer.from('not an image');
+    for (const actor of [w.techA, ro]) {
+      let res = await w.upload(actor, junk, 'junk.txt', { kind: 'DEBUG' });
+      expect(res.status).toBe(403);
+      expect(res.body.error.code).toBe('FORBIDDEN');
+      res = await w.replace(actor, pid, junk, 'wrong photo');
+      expect(res.status).toBe(403);
+    }
+  });
+
   it('replace keeps the original as REPLACED and links it; remove needs a reason; history per role', async () => {
     const w = await setup();
     const [before, asset] = items(await w.list(w.oe));

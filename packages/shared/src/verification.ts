@@ -1,4 +1,5 @@
 import { FITMENT_STATUS_LABELS, type FitmentStatus } from './tasks';
+import type { Role } from './roles';
 import type { WorkflowActor, WorkflowContext } from './workflow';
 
 /**
@@ -53,6 +54,9 @@ export function canEditVerification(actor: WorkflowActor, ctx: WorkflowContext):
 }
 
 /** Who may replace or remove photos and upload debug images: the same people and statuses as the verification. */
+/** Roles that can ever upload or replace photos (checked before an upload is read; the per-fitment rule is canManagePhotos). */
+export const PHOTO_MANAGER_ROLES = ['OM', 'OE'] as const satisfies readonly Role[];
+
 export function canManagePhotos(actor: WorkflowActor, ctx: WorkflowContext): boolean {
   return canEditVerification(actor, ctx);
 }

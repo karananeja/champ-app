@@ -2,6 +2,7 @@ import { Router, type Request } from 'express';
 import {
   type Role,
   APPROVER_ROLES,
+  PHOTO_MANAGER_ROLES,
   WORKFLOW_VIEW_ROLES,
   approveFitmentsSchema,
   photoListQuerySchema,
@@ -65,10 +66,10 @@ export function fitmentsRouter(storage: Storage) {
   router.get('/:fid/photos', validate({ query: photoListQuerySchema }), async (req, res) => {
     res.json(await listPhotos(storage, currentUser(req), fid(req), (req.query as unknown as PhotoListQuery).history ?? false));
   });
-  router.post('/:fid/photos', uploadPhoto, validate({ body: uploadPhotoSchema }), async (req, res) => {
+  router.post('/:fid/photos', requireRole(...PHOTO_MANAGER_ROLES), uploadPhoto, validate({ body: uploadPhotoSchema }), async (req, res) => {
     res.status(201).json({ photo: await uploadDebugPhoto(storage, currentUser(req), fid(req), req.file!) });
   });
-  router.post('/:fid/photos/:pid/replace', uploadPhoto, validate({ body: replacePhotoSchema }), async (req, res) => {
+  router.post('/:fid/photos/:pid/replace', requireRole(...PHOTO_MANAGER_ROLES), uploadPhoto, validate({ body: replacePhotoSchema }), async (req, res) => {
     const { reason } = req.body as PhotoChangeInput;
     res.status(201).json({ photo: await replacePhoto(storage, currentUser(req), fid(req), req.params.pid as string, req.file!, reason) });
   });
