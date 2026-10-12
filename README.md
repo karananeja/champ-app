@@ -163,6 +163,48 @@ bundle has no trace of it.
 |---|---|---|
 | `ENABLE_DEV_SIMULATOR` | unset → on in development, off otherwise (`true` in `.env.example`) | Mounts the technician simulator API; ignored (always off) when `NODE_ENV=production` |
 
+### OE verification and photos (F06)
+
+- **Verify** on a Submitted fitment opens the **verification sheet** (right side on desktop, full screen on phones):
+  the technician's work on the left (technician, OT remarks, photos) and the form on the right: *Issue observed at
+  site*, *Action taken*, *Accessories* (checkboxes), *Remarks from OE*, a *Debug image* upload (drag-and-drop or picker)
+  and the *Final issue* with a live **Billable: Yes/No** badge. *Save draft* keeps partial entries; *Verify* needs
+  issue observed, action taken and final issue (D-098) and shows what is missing. Only active master values are
+  offered; a saved value deactivated later shows as "(inactive)".
+- **Billable** is snapshotted from the final issue's flag when the fitment is verified, and again only when its final
+  issue is changed later (D-101). Changing the flag in Masters doesn't touch verified fitments; a reopen clears it until
+  the next verification.
+- **Who:** the task's OE edits the verification while Submitted or OE verified; an OM also after approval (flagged
+  `postApproval` in the history). SA and RO only view. Verified fitments show the final issue and billable badge in
+  their row, and the button becomes *Edit verification* or *View verification*.
+- **Photos:** *Photos (n)* opens a viewer grouped by kind (Before, Asset, Cluster reading, Device/SIM placement, After,
+  Debug image) with a zoomable lightbox (keyboard and swipe). The OE (until OM approval) and the OM can **Replace** a
+  photo or **Remove** it, with a reason; the original is never deleted (D-100) and shows under **Show history** (SA, OM
+  and the task's OE), greyed out with who, when and why. Uploads accept JPEG, PNG or WebP up to 10 MB; the server checks
+  the real type from the file's bytes.
+- **Simulator:** *Submit* now also stores five labelled sample photos and sample OT remarks
+  (`apps/api/src/modules/dev/sample-photos/`).
+- **Lists and export:** Completed and All tasks show a **Billable** column (billable / verified fitments, e.g. "3 / 5").
+  The Download menu adds **Fitments (CSV)** and **Fitments (Excel)** (`/api/tasks/export?level=fitment`): one row per
+  fitment with issue observed, action taken, accessories, final issue, billable, verified and approved times. The task
+  export gains *Verified fitments* and *Billable fitments*.
+- Every verification save and photo change is in the History tab with before/after values.
+
+**Storage (D-102).** Photos live in a **private** S3 bucket (MinIO locally). Uploads go through the API; browsers read
+photos through presigned GET URLs valid for 10 minutes (the photo list refreshes every ~8 minutes and on window focus).
+The API creates the bucket at start if it is missing (a storage outage is logged; photo calls then fail with 503
+`STORAGE_UNAVAILABLE`). Object keys are `fitments/{fitmentId}/{photoId}.{ext}`. Tests use an in-memory driver; E2E uses
+the real MinIO with its own bucket `champ-e2e`.
+
+| Variable | Default | What |
+|---|---|---|
+| `STORAGE_DRIVER` | `s3` | `s3` or `memory` (tests) |
+| `S3_ENDPOINT` | — | S3/MinIO endpoint the API uses (`http://localhost:9000` locally) |
+| `S3_PUBLIC_URL` | `http://localhost:9000` | Endpoint used to sign GET URLs: must be reachable from the browser |
+| `S3_ACCESS_KEY` / `S3_SECRET_KEY` | — | Required for `s3` (`champ` / `champchamp` with docker compose) |
+| `S3_BUCKET` | `champ` | Photo bucket (kept private) |
+| `S3_REGION` | `us-east-1` | Signing region (any value works with MinIO) |
+
 ### Look and feel (CR-03, CR-04)
 
 - **Dashboard**: role-aware stat cards from `GET /api/tasks/summary`. SA/OM see open tasks, awaiting approval,
@@ -190,7 +232,7 @@ Hidden unless `GOOGLE_CLIENT_ID` is set. When set, only verified Google accounts
 |---|---|
 | `pnpm dev` | API (tsx watch) and web (Vite) in parallel |
 | `pnpm test` | Unit/integration tests: shared, API (against `champ_test`, recreated each run) and web components |
-| `pnpm test:e2e` | Playwright E2E (starts its own API on :4100 and web on :5174 against `champ_e2e`, with the dev simulator on; geocoding and map tiles are stubbed) |
+| `pnpm test:e2e` | Playwright E2E (starts its own API on :4100 and web on :5174 against `champ_e2e`, with the dev simulator on and photos in the MinIO bucket `champ-e2e`, so `docker compose up -d` first; geocoding and map tiles are stubbed) |
 | `pnpm lint` / `pnpm typecheck` | ESLint / TypeScript across the workspace |
 | `pnpm build` | Type-checks the API, builds the web app into `apps/web/dist` and checks that the bundle has no dev simulator |
 | `pnpm start` | Runs the API without watch mode |
@@ -232,11 +274,12 @@ apps/api/src
   server.ts           HTTP server entry
   config/env.ts       zod-validated environment
   lib/                prisma, jwt, tokens, password, cookies, google, logger, errors, geocoder/ (Nominatim),
-                      counters (transactional OM/OE/TK ids)
+                      counters (transactional OM/OE/TK ids), storage/ (S3 + in-memory photo storage)
   middleware/         authenticate, requireRole, validate, error handler
   modules/            auth, invites, users, health, masters (+ /lookups), technicians, clients, geo,
                       tasks (service, refs, status, filters, events, export, bulk + bulk-rows, summary),
-                      workflow (engine, lists, history, router, dev simulator)
+                      workflow (engine, lists, history, router, dev simulator),
+                      verification (draft save, VERIFY fields, photos, upload checks), dev (simulator sample photos)
 apps/api/prisma       schema, migrations, seed (seed-masters.ts: master values; seed-demo.ts: demo users)
 apps/web/src
   components/ui       shadcn/ui components (generated)
@@ -248,5 +291,6 @@ apps/web/src
   lib/                API client (in-memory access token, single-flight refresh), auth context, permissions
 packages/shared/src   roles.ts, masters.ts (kinds, permission helpers), clients.ts, tasks.ts (ids, statuses,
                       permissions, IST helpers, CSV columns), workflow.ts (state machine, actors, edit locks),
+                      verification.ts (required fields, verification/photo locks, photo kinds),
                       schemas.ts, dto.ts
 ```
