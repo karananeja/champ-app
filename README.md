@@ -301,6 +301,8 @@ are told to use the web console (D-128). It's online only (D-008).
   (CR-07).
 - **One at a time** (D-156): only the next open stop can be started (an In-progress one is always next); the server
   refuses another with 409 `ROUTE_ORDER`. To skip a stop, close it. *Close* and *Mark faulty* aren't order-restricted.
+  Fitments of the **same task** never block each other (D-202, F11): they're at the same site and can be in progress
+  together; fitments of other tasks still follow the order.
 - **Fitment screen** (`/fitment/[id]`): site map, customer, site, vehicle, activity, asset and installation type, time,
   the OE (tap to call) and *Directions* (Apple Maps on iOS, Google Maps navigation on Android). Actions:
   - **Start** needs a fresh GPS fix (no fix → it explains why and offers *Open settings*); the start position and
@@ -320,6 +322,33 @@ are told to use the web console (D-128). It's online only (D-008).
 - **Scan** (device ids): reads barcodes and QR codes live, or *Read text* recognises printed text on the device and
   offers the candidates; the technician confirms or edits (D-023, D-200). The iOS Simulator has no camera: use the
   gallery there, the Android emulator's virtual camera, or a phone.
+- **Bulk fill (CSV)** (F11, D-201–D-205): when you have 2 or more fitments in one task, the fitment screen shows
+  *Bulk fill (CSV)* and the route shows a *Bulk fill* link on that task's first stop. The bulk screen lists your
+  fitments of the task with their progress ("Form ✓ · Photos 2 of 4 · In progress") and what each still misses.
+  1. *Download sample CSV* shares a file (Files, Drive, email…) with one row per fitment: `tk_id` and the reg/chassis
+     already filled. Fill it in Sheets, Excel or Numbers and export it as CSV.
+  2. *Upload CSV* shows a **preview**: valid rows in green with the values that will be filled, rows with problems in
+     red with the reason per cell, and "18 ready, 2 with problems · 6 will be started". Nothing is saved yet.
+  3. *Confirm* fills only the valid rows and **starts** the fitments not started yet with one GPS fix (refused
+     without location). A **blank cell keeps the existing answer**; a filled one overwrites it. Each filled fitment's
+     history records "Filled from CSV" with what changed.
+  4. *Add photos* walks through the missing photos fitment by fitment (before → asset → cluster → placement → after),
+     with *Skip* and *Next*. A CSV carries no photos (D-203).
+  5. *Submit ready (n)* submits every In-progress fitment of the task that has nothing missing and lists the rest with
+     what they still need (D-204). Each fitment can still be opened and submitted on its own.
+
+  CSV columns (only `tk_id` is required; a missing column counts as blank and unknown columns are ignored; at most 500
+  rows and 1 MB):
+
+  | Column | Values |
+  |---|---|
+  | `tk_id` | `TK-00012`, `tk-12` or `12` |
+  | `vehicle_reg_no`, `chassis_no` | Text, max 32 |
+  | `cluster_reading_km` | Whole number 0–9,999,999 (`1,200` is fine) |
+  | `asset_condition`, `accessories`, `vehicle_battery_condition`, `cluster_meter_reading`, `can_voltage` | OK / Not OK / NA (also N/A, Not applicable; any case) |
+  | `device_replacement` | Device / SIM / No |
+  | `device_id`, `secondary_device_id` | Text, max 64 (upper-cased) |
+  | `comments` | Text, max 1000 |
 - **OEs doing fitments** (D-158): on the web an OE can assign a fitment of their own task to themselves, and an SA/OM
   can assign any fitment to an OE ("Name (OE)" in the assign dialog). The OE then works it in the app like a
   technician.
@@ -342,6 +371,7 @@ pnpm --filter @champ/mobile start   # afterwards: Metro only, then open "Champ D
   Xcode signing with your Apple ID as a personal team).
 - F10B added native modules (camera, image picker and manipulator, file system, Skia, text extractor): after pulling
   it, run `pnpm install` and rebuild with `npx expo run:ios` / `npx expo run:android`.
+- F11 added `expo-document-picker` and `expo-sharing`: rebuild the dev clients after pulling it.
 - `ios/` and `android/` are generated and not committed; delete them and run `expo run:*` again after changing
   `app.config.ts` or adding a native module. `APP_VARIANT=production` builds the `in.intellicar.champ` id instead of
   `in.intellicar.champ.dev`.
@@ -357,7 +387,12 @@ F10: `GET /api/mobile/route?date=&lat=&lng=` (stored per technician and day as `
 `POST /api/mobile/route/recalculate` (`{date, lat, lng}`), `GET /api/mobile/fitments/:fid`; the technician steps go
 through the existing `POST /api/fitments/:fid/transitions`. F10B: `PUT /api/mobile/fitments/:fid/form` (partial; `null` clears) and
 `POST /api/mobile/fitments/:fid/photos` (multipart `file`, `kind`, `lat`, `lng`, `takenAt`); SUBMIT is refused with 400
-`FORM_INCOMPLETE` (`details.missing`) until the form is complete. The dev simulator fills the form before submitting. `OSRM_URL` (default `https://router.project-osrm.org`, the
+`FORM_INCOMPLETE` (`details.missing`) until the form is complete. The dev simulator fills the form before submitting. F11 (OT/OE, 404 for a task without your fitments):
+`GET /api/mobile/tasks/:taskId/bulk-fill` (your fitments with `missing` and `missingPhotos`),
+`GET …/bulk-fill/sample.csv`, `POST …/bulk-fill/preview` (multipart `file`; writes nothing),
+`POST …/bulk-fill/confirm` (`{rows: [{rowNumber, tkId, form}], lat?, lng?}` → `{filled, started, failed}`; 400
+`GPS_REQUIRED` when a row needs starting without a fix) and `POST /api/mobile/tasks/:taskId/submit-ready`
+(→ `{submitted, incomplete, skipped}`). `MyFitmentDto.taskFitmentCount` drives the *Bulk fill* entry. `OSRM_URL` (default `https://router.project-osrm.org`, the
 public demo server: fine for development only) sets the routing service; tests and E2E point it at an unreachable
 address, so they use the straight-line fallback.
 

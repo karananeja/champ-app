@@ -301,3 +301,13 @@ Chronological log of the whole project conversation. Feature-level logs live in 
 **User:** "ok continue" (F11 intent). Taken as approval with all five open points as proposed (D-201 – D-205).
 
 **Claude:** Created branch `feature/F11-mobile-csv-bulk-fill`, wrote the F11 spec, and launched two parallel agents (Backend: shared, API, web; Mobile: bulk screen, CSV, photos walk-through, submit ready).
+
+**Implementation agents (F11):** Backend ~16 min (4 commits), Mobile ~7 min (2 commits), both inside the 20-minute target.
+
+**Claude verification:**
+- All gates pass: 1,115 tests, E2E 69 passed + 4 skipped.
+- Ran a CSV round trip through the API (sample, a spreadsheet-style edit with a typo, preview, confirm with and without GPS, photos, Submit ready, history) against the `_test` database; the throwaway test wasn't committed.
+- Made new iOS and Android development builds (expo-document-picker, expo-sharing) and installed them on the simulator and emulator.
+- Wrote the README, the test report and D-206 – D-215.
+
+**Status:** F11 ready for UAT by the user.
