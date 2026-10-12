@@ -121,7 +121,7 @@ describe('GET /api/mobile/history', () => {
 
     let h = (await w.history(w.techA)).body as DayHistoryDto;
     expect(h).toMatchObject({ approx: true, distanceM: straight });
-    h = (await w.history(w.techA)).body as DayHistoryDto;
+    await w.history(w.techA);
     expect(w.stub.routeCalls).toHaveLength(1);
 
     w.stub.fail = false;
