@@ -622,6 +622,7 @@ export const ERROR_CODES = [
   'STORAGE_UNAVAILABLE',
   'MOBILE_ROLE_NOT_ALLOWED',
   'ROUTE_ORDER',
+  'FORM_INCOMPLETE',
   'INTERNAL_ERROR',
 ] as const;
 export type ErrorCode = (typeof ERROR_CODES)[number];
