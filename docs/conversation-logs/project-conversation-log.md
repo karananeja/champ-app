@@ -347,3 +347,5 @@ Chronological log of the whole project conversation. Feature-level logs live in 
 - Wrote the README, the test report and D-233 – D-241.
 
 **Status:** F13 ready for UAT by the user.
+
+**User:** "F13 accepted". UAT sign-off recorded and `feature/F13-notifications` merged to `main`.
