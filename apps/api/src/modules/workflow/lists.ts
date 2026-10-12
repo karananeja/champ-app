@@ -16,7 +16,7 @@ export type WorkflowList = 'awaiting-approval' | 'reopened' | 'faulty';
 
 const LISTS: Record<
   WorkflowList,
-  { where: (q: WorkflowListQuery) => Prisma.FitmentWhereInput; date: 'verifiedAt' | 'lastReopenedAt' | 'faultyAt'; dir: 'asc' | 'desc' }
+  { where: (q: Partial<Pick<WorkflowListQuery, 'current'>>) => Prisma.FitmentWhereInput; date: 'verifiedAt' | 'lastReopenedAt' | 'faultyAt'; dir: 'asc' | 'desc' }
 > = {
   // Oldest verification first: the longest-waiting fitments come first.
   'awaiting-approval': { where: () => ({ status: 'OE_VERIFIED' }), date: 'verifiedAt', dir: 'asc' },
@@ -78,15 +78,15 @@ function toItem(f: ListRow): WorkflowFitmentItemDto {
 }
 
 /**
- * `GET /fitments/{awaiting-approval|reopened|faulty}`: fitments of tasks that aren't deleted; an OE sees only
- * their own tasks. Filters: customer, OE, technician and IST days on the list's date.
+ * The `where` of a workflow list for the caller (also used by the dashboard summary, so its counts match the
+ * lists): fitments of tasks that aren't deleted; an OE sees only their own tasks; optional filters.
  */
-export async function listWorkflowFitments(
+export function workflowWhere(
   actor: User,
   list: WorkflowList,
-  q: WorkflowListQuery,
-): Promise<Paginated<WorkflowFitmentItemDto>> {
-  const { where, date, dir } = LISTS[list];
+  q: Partial<Pick<WorkflowListQuery, 'current' | 'clientId' | 'oeId' | 'technicianId' | 'from' | 'to'>> = {},
+): Prisma.FitmentWhereInput {
+  const { where, date } = LISTS[list];
   const and: Prisma.FitmentWhereInput[] = [{ task: { deletedAt: null } }, where(q)];
   if (actor.role === 'OE') and.push({ task: { oeId: actor.id } });
   if (q.clientId) and.push({ task: { clientId: q.clientId } });
@@ -96,8 +96,20 @@ export async function listWorkflowFitments(
   const to = q.to ? istDayStart(q.to) : null;
   if (from) and.push({ [date]: { gte: from } });
   if (to) and.push({ [date]: { lt: new Date(to.getTime() + DAY_MS) } });
+  return { AND: and };
+}
 
-  const filter: Prisma.FitmentWhereInput = { AND: and };
+/**
+ * `GET /fitments/{awaiting-approval|reopened|faulty}`: fitments of tasks that aren't deleted; an OE sees only
+ * their own tasks. Filters: customer, OE, technician and IST days on the list's date.
+ */
+export async function listWorkflowFitments(
+  actor: User,
+  list: WorkflowList,
+  q: WorkflowListQuery,
+): Promise<Paginated<WorkflowFitmentItemDto>> {
+  const { date, dir } = LISTS[list];
+  const filter = workflowWhere(actor, list, q);
   const [total, rows] = await Promise.all([
     prisma.fitment.count({ where: filter }),
     prisma.fitment.findMany({

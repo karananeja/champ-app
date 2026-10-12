@@ -17,9 +17,11 @@ export async function login(page: Page, email: string, password: string) {
 export async function navigate(page: Page, label: string) {
   const hamburger = page.getByRole('button', { name: 'Open menu' });
   const link = page.getByRole('navigation', { name: 'Main' }).getByRole('link', { name: label });
-  // Let a closing dialog finish: it returns focus to its trigger at the end of its exit animation, which
-  // would dismiss a menu sheet opened in the meantime.
-  await expect(page.locator('[data-slot="dialog-content"], [data-slot="alert-dialog-content"]')).toHaveCount(0);
+  // Let a closing dialog or dropdown menu finish: it returns focus to its trigger at the end of its exit
+  // animation, which would dismiss a menu sheet opened in the meantime.
+  await expect(
+    page.locator('[data-slot="dialog-content"], [data-slot="alert-dialog-content"], [data-slot="dropdown-menu-content"]'),
+  ).toHaveCount(0);
   if (await hamburger.isVisible()) {
     await expect(async () => {
       if (!(await link.isVisible())) await hamburger.click();
@@ -112,6 +114,11 @@ export interface E2eOrg {
    * one fitment, `bulk` with two fitments already OE verified.
    */
   workflow: Record<string, Record<'flow' | 'reopen' | 'faulty' | 'bulk', WorkflowTask>>;
+  /**
+   * CR-03/CR-04: own OM/OE/RO accounts and, per Playwright project, the OM ids of a Completed task and of an
+   * Open task with its fitment on 15 Mar 2027 (IST).
+   */
+  cr: { om: Account; oe: Account; ro: Account; tasks: Record<string, { completed: string; march: string }> };
 }
 
 export interface WorkflowTask {
@@ -239,4 +246,49 @@ export async function simulate(page: Page, step: 'Start work' | 'Submit') {
 export async function switchUser(page: Page, email: string, password: string) {
   await page.context().clearCookies();
   await login(page, email, password);
+}
+
+// --- CR-04: date pickers (Calendar + Popover) ---
+
+const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+
+/** In the open calendar popover, goes to the month of `day` (`YYYY-MM-DD`) and clicks that day. */
+export async function chooseCalendarDay(page: Page, day: string) {
+  const [y, m, d] = day.split('-').map(Number) as [number, number, number];
+  const target = y * 12 + (m - 1);
+  const dialog = page.getByRole('dialog');
+  for (let i = 0; i < 600; i++) {
+    const [name, year] = ((await dialog.getByRole('grid').getAttribute('aria-label')) ?? '').split(' ');
+    const current = Number(year) * 12 + MONTHS.indexOf(name ?? '');
+    if (current === target) break;
+    await dialog.getByRole('button', { name: current < target ? 'Go to the Next Month' : 'Go to the Previous Month' }).click();
+  }
+  await dialog
+    .getByRole('grid')
+    .getByRole('button', { name: new RegExp(`${MONTHS[m - 1]} ${d}(st|nd|rd|th), ${y}`) })
+    .click();
+}
+
+/** Opens a DateTimePicker (its trigger) and picks `value` (`YYYY-MM-DDTHH:mm`, IST): day, hour, minute, Done. */
+export async function pickDateTime(page: Page, trigger: Locator, value: string) {
+  const [day, time] = value.split('T') as [string, string];
+  const [hour, minute] = time.split(':') as [string, string];
+  await trigger.click();
+  await chooseCalendarDay(page, day);
+  const dialog = page.getByRole('dialog');
+  await dialog.getByRole('combobox', { name: 'Hour (IST)' }).click();
+  await page.getByRole('option', { name: hour, exact: true }).click();
+  await dialog.getByRole('combobox', { name: 'Minute' }).click();
+  await page.getByRole('option', { name: minute, exact: true }).click();
+  await dialog.getByRole('button', { name: 'Done' }).click();
+  await expect(dialog).toBeHidden();
+}
+
+/** Opens a DateRangePicker (its trigger) and picks `from` then `to` (`YYYY-MM-DD`), then Done. */
+export async function pickDateRange(page: Page, trigger: Locator, from: string, to: string) {
+  await trigger.click();
+  await chooseCalendarDay(page, from);
+  await chooseCalendarDay(page, to);
+  await page.getByRole('dialog').getByRole('button', { name: 'Done' }).click();
+  await expect(page.getByRole('dialog')).toBeHidden();
 }

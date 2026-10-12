@@ -34,8 +34,14 @@
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-ring: var(--sidebar-ring);
+  --color-brand-soft: var(--brand-soft);
+  --color-brand-soft-foreground: var(--brand-soft-foreground);
 }
 
+/*
+ * Brand (CR-03 / D-086): indigo primary, defined here once. Light: indigo-600 with white text (7:1). Dark: indigo-400
+ * with indigo-950 text (5.3:1) and as link/focus colour on the dark background (6.6:1). Both pass WCAG AA.
+ */
 :root {
   --radius: 0.625rem;
   --background: oklch(1 0 0);
@@ -44,7 +50,7 @@
   --card-foreground: oklch(0.145 0 0);
   --popover: oklch(1 0 0);
   --popover-foreground: oklch(0.145 0 0);
-  --primary: oklch(0.205 0 0);
+  --primary: oklch(0.511 0.262 276.966);
   --primary-foreground: oklch(0.985 0 0);
   --secondary: oklch(0.97 0 0);
   --secondary-foreground: oklch(0.205 0 0);
@@ -55,15 +61,26 @@
   --destructive: oklch(0.577 0.245 27.325);
   --border: oklch(0.922 0 0);
   --input: oklch(0.922 0 0);
-  --ring: oklch(0.708 0 0);
-  --sidebar: oklch(0.985 0 0);
+  --ring: oklch(0.585 0.233 277.117);
+  --sidebar: oklch(0.985 0.002 274);
   --sidebar-foreground: oklch(0.145 0 0);
-  --sidebar-primary: oklch(0.205 0 0);
+  --sidebar-primary: oklch(0.511 0.262 276.966);
   --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.97 0 0);
-  --sidebar-accent-foreground: oklch(0.205 0 0);
+  --sidebar-accent: oklch(0.962 0.018 272.314);
+  --sidebar-accent-foreground: oklch(0.398 0.195 277.366);
   --sidebar-border: oklch(0.922 0 0);
-  --sidebar-ring: oklch(0.708 0 0);
+  --sidebar-ring: oklch(0.585 0.233 277.117);
+  /* Soft brand surface for icon chips and highlights. */
+  --brand-soft: oklch(0.962 0.018 272.314);
+  --brand-soft-foreground: oklch(0.457 0.24 277.023);
+  /* Illustration palette (unDraw colours remapped below). */
+  --il-accent: var(--primary);
+  --il-ink: oklch(0.21 0.034 264.665);
+  --il-ink-soft: oklch(0.373 0.034 259.733);
+  --il-paper: oklch(1 0 0);
+  --il-surface: oklch(0.967 0.003 264.542);
+  --il-surface-2: oklch(0.928 0.006 264.531);
+  --il-line: oklch(0.872 0.01 258.338);
 }
 
 .dark {
@@ -73,8 +90,8 @@
   --card-foreground: oklch(0.985 0 0);
   --popover: oklch(0.205 0 0);
   --popover-foreground: oklch(0.985 0 0);
-  --primary: oklch(0.922 0 0);
-  --primary-foreground: oklch(0.205 0 0);
+  --primary: oklch(0.673 0.182 276.935);
+  --primary-foreground: oklch(0.257 0.09 281.288);
   --secondary: oklch(0.269 0 0);
   --secondary-foreground: oklch(0.985 0 0);
   --muted: oklch(0.269 0 0);
@@ -84,16 +101,41 @@
   --destructive: oklch(0.704 0.191 22.216);
   --border: oklch(1 0 0 / 10%);
   --input: oklch(1 0 0 / 15%);
-  --ring: oklch(0.556 0 0);
-  --sidebar: oklch(0.205 0 0);
+  --ring: oklch(0.673 0.182 276.935);
+  --sidebar: oklch(0.18 0.005 274);
   --sidebar-foreground: oklch(0.985 0 0);
-  --sidebar-primary: oklch(0.488 0.243 264.376);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.269 0 0);
-  --sidebar-accent-foreground: oklch(0.985 0 0);
+  --sidebar-primary: oklch(0.673 0.182 276.935);
+  --sidebar-primary-foreground: oklch(0.257 0.09 281.288);
+  --sidebar-accent: oklch(0.257 0.09 281.288);
+  --sidebar-accent-foreground: oklch(0.87 0.065 274.039);
   --sidebar-border: oklch(1 0 0 / 10%);
-  --sidebar-ring: oklch(0.556 0 0);
+  --sidebar-ring: oklch(0.673 0.182 276.935);
+  --brand-soft: oklch(0.257 0.09 281.288);
+  --brand-soft-foreground: oklch(0.87 0.065 274.039);
+  --il-ink: oklch(0.32 0.03 265);
+  --il-ink-soft: oklch(0.42 0.03 265);
+  --il-paper: oklch(0.92 0 0);
+  --il-surface: oklch(0.27 0.01 265);
+  --il-surface-2: oklch(0.31 0.01 265);
+  --il-line: oklch(0.45 0.01 265);
 }
+
+/*
+ * unDraw illustrations (D-085) are bundled as plain SVG and recoloured here by their original colours, so they follow
+ * the theme: #6c63ff (unDraw's accent) becomes the brand primary; inks and greys get light/dark values.
+ */
+.illustration svg {
+  width: 100%;
+  height: 100%;
+}
+.illustration [fill="#6c63ff"] { fill: var(--il-accent); }
+.illustration [fill="#090814"], .illustration [fill="#2f2e41"] { fill: var(--il-ink); }
+.illustration [fill="#3f3d56"] { fill: var(--il-ink-soft); }
+.illustration [fill="#fff"], .illustration [fill="#ffffff"] { fill: var(--il-paper); }
+.illustration [fill="#f2f2f2"] { fill: var(--il-surface); }
+.illustration [fill="#e6e6e6"], .illustration [fill="#e5e5e5"], .illustration [fill="#e4e4e4"] { fill: var(--il-surface-2); }
+.illustration [fill="#ccc"], .illustration [fill="#d6d6e3"], .illustration [fill="#b6b3c5"], .illustration [fill="#6f6f6f"] { fill: var(--il-line); }
+.illustration [stroke="#707070"] { stroke: var(--il-line); }
 
 @layer base {
   * {

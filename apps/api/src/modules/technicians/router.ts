@@ -10,7 +10,7 @@ import {
   type UpdateTechnicianInput,
 } from '@champ/shared';
 import { authenticate, currentUser } from '../../middleware/auth';
-import { requireRole } from '../../middleware/requireRole';
+import { requireRole } from '../../middleware/require-role';
 import { validate } from '../../middleware/validate';
 import * as technicians from './service';
 

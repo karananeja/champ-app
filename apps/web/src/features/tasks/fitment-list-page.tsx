@@ -1,10 +1,14 @@
 import { useState, type ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 import { toast } from 'sonner';
-import { CheckCheck, ChevronLeft, ChevronRight, Loader2, X } from 'lucide-react';
+import { BadgeCheck, CheckCheck, ChevronLeft, ChevronRight, Loader2, RotateCcw, TriangleAlert, X, type LucideIcon } from 'lucide-react';
 import type { WorkflowFitmentItemDto } from '@champ/shared';
+import { DateRangePicker } from '@/components/date-picker';
+import type { IllustrationName } from '@/components/illustration';
+import { ListStates } from '@/components/list-states';
+import { PageHeader } from '@/components/page-header';
 import { FitmentStatusBadge } from '@/components/fitment-status-badge';
-import { SearchableSelect } from '@/components/SearchableSelect';
+import { SearchableSelect } from '@/components/searchable-select';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -18,15 +22,13 @@ import {
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Skeleton } from '@/components/ui/skeleton';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { ApiError } from '@/lib/api';
 import { useCurrentUser } from '@/lib/auth';
 import { formatIst } from '@/lib/format';
 import { useLookups } from '../masters/queries';
 import { useApproveFitments, useTaskOptions, useWorkflowList, type TaskListParams, type WorkflowListName } from './queries';
+import { TONES } from '@/lib/tones';
 
 const PAGE_SIZE = 20;
 
@@ -38,8 +40,11 @@ interface Column {
 interface ListConfig {
   title: string;
   description: string;
-  /** Label of the date the from/to filter applies to. */
-  dateLabel: string;
+  icon: LucideIcon;
+  /** Illustration of the empty list. */
+  illustration: IllustrationName;
+  /** The date the from/to filter applies to, as it reads in "Filter by <dateFilter>". */
+  dateFilter: string;
   empty: string;
   columns: Column[];
   /** Re-opened only: a "currently reopened" toggle. */
@@ -82,7 +87,9 @@ const LISTS: Record<WorkflowListName, ListConfig> = {
   'awaiting-approval': {
     title: 'Awaiting approval',
     description: 'Fitments the OE has verified, waiting for final approval.',
-    dateLabel: 'Verified',
+    icon: BadgeCheck,
+    illustration: 'all-done',
+    dateFilter: 'verification date',
     empty: 'Nothing is waiting for final approval.',
     bulkApprove: true,
     columns: [...COMMON, { header: 'Verified (IST)', cell: (i) => when(i.verifiedAt, i.verifiedBy) }],
@@ -90,7 +97,9 @@ const LISTS: Record<WorkflowListName, ListConfig> = {
   reopened: {
     title: 'Re-opened',
     description: 'Fitments sent back for rework, with how often and why.',
-    dateLabel: 'Reopened',
+    icon: RotateCcw,
+    illustration: 'all-done',
+    dateFilter: 'reopen date',
     empty: 'No fitment has been reopened.',
     currentFilter: true,
     columns: [
@@ -98,7 +107,7 @@ const LISTS: Record<WorkflowListName, ListConfig> = {
       {
         header: 'Reopens',
         cell: (i) => (
-          <Badge variant="outline" className="border-orange-200 bg-orange-50 text-orange-800" data-testid="reopen-count">
+          <Badge variant="outline" className={TONES.orange} data-testid="reopen-count">
             {i.reopenCount}
           </Badge>
         ),
@@ -111,7 +120,9 @@ const LISTS: Record<WorkflowListName, ListConfig> = {
   faulty: {
     title: 'Faulty tasks',
     description: 'Fitments moved to FT because of a faulty device, and their replacements.',
-    dateLabel: 'Moved to FT',
+    icon: TriangleAlert,
+    illustration: 'all-done',
+    dateFilter: 'Moved to FT date',
     empty: 'No fitment has been moved to FT.',
     columns: [
       ...COMMON.filter((c) => c.header !== 'OE'),
@@ -176,7 +187,7 @@ export function FitmentListPage({ list }: { list: WorkflowListName }) {
   const lookups = useLookups();
   const options = useTaskOptions();
   const approve = useApproveFitments();
-  const { data, isPending, isError } = useWorkflowList(list, buildWorkflowQuery(filters, page));
+  const { data, isPending, isError, error, refetch } = useWorkflowList(list, buildWorkflowQuery(filters, page));
   const items = data?.items ?? [];
   const totalPages = data ? Math.max(1, Math.ceil(data.total / data.pageSize)) : 1;
   const hasFilters = !!(filters.clientId || filters.oeId || filters.technicianId || filters.from || filters.to || filters.current);
@@ -217,10 +228,7 @@ export function FitmentListPage({ list }: { list: WorkflowListName }) {
 
   return (
     <div className="grid grid-cols-1 gap-6">
-      <div>
-        <h1 className="text-2xl font-semibold tracking-tight">{config.title}</h1>
-        <p className="text-sm text-muted-foreground">{config.description}</p>
-      </div>
+      <PageHeader icon={config.icon} title={config.title} description={config.description} />
 
       <div className="grid grid-cols-2 gap-2 lg:grid-cols-4">
         <SearchableSelect
@@ -258,18 +266,16 @@ export function FitmentListPage({ list }: { list: WorkflowListName }) {
             Only currently reopened
           </label>
         )}
-        <div className="grid min-w-0 grid-cols-1 gap-1">
-          <Label htmlFor={`${list}-from`} className="text-xs text-muted-foreground">
-            {config.dateLabel} from
-          </Label>
-          <Input id={`${list}-from`} type="date" value={filters.from} max={filters.to || undefined} onChange={(e) => update('from', e.target.value)} />
-        </div>
-        <div className="grid min-w-0 grid-cols-1 gap-1">
-          <Label htmlFor={`${list}-to`} className="text-xs text-muted-foreground">
-            {config.dateLabel} to
-          </Label>
-          <Input id={`${list}-to`} type="date" value={filters.to} min={filters.from || undefined} onChange={(e) => update('to', e.target.value)} />
-        </div>
+        <DateRangePicker
+          aria-label={`Filter by ${config.dateFilter}`}
+          className="col-span-2 lg:col-span-1"
+          placeholder={`Any ${config.dateFilter}`}
+          value={{ from: filters.from, to: filters.to }}
+          onChange={({ from, to }) => {
+            setFilters((prev) => ({ ...prev, from, to }));
+            setPage(1);
+          }}
+        />
         {hasFilters && (
           <Button
             variant="ghost"
@@ -301,17 +307,19 @@ export function FitmentListPage({ list }: { list: WorkflowListName }) {
         </div>
       )}
 
-      {isPending ? (
-        <div className="grid grid-cols-1 gap-2">
-          {[0, 1, 2].map((i) => (
-            <Skeleton key={i} className="h-12 w-full" />
-          ))}
-        </div>
-      ) : isError ? (
-        <p className="py-8 text-center text-sm text-destructive">Could not load the fitments.</p>
-      ) : items.length === 0 ? (
-        <p className="py-8 text-center text-sm text-muted-foreground">{config.empty}</p>
-      ) : (
+      <ListStates
+        isPending={isPending}
+        isError={isError}
+        error={error}
+        onRetry={() => void refetch()}
+        isEmpty={items.length === 0}
+        filtered={hasFilters}
+        onClearFilters={() => {
+          setFilters(EMPTY);
+          setPage(1);
+        }}
+        empty={{ illustration: config.illustration, title: config.empty, description: 'Nothing needs attention here right now.' }}
+      >
         <>
           <div className="hidden rounded-md border md:block">
             <Table>
@@ -367,7 +375,7 @@ export function FitmentListPage({ list }: { list: WorkflowListName }) {
             ))}
           </ul>
         </>
-      )}
+      </ListStates>
 
       {data && data.total > data.pageSize && (
         <div className="flex items-center justify-between gap-2 text-sm text-muted-foreground">

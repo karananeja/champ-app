@@ -18,8 +18,8 @@ import {
   type MakeModelDto,
   type UserDto,
 } from '@champ/shared';
-import type { SelectOption } from '@/components/SearchableSelect';
-import { SystemBadge } from '@/components/SystemBadge';
+import type { SelectOption } from '@/components/searchable-select';
+import { SystemBadge } from '@/components/system-badge';
 import { Badge } from '@/components/ui/badge';
 
 /** The common shape of every master row. */

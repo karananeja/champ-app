@@ -1,11 +1,13 @@
 import {
   BadgeCheck,
   Building2,
+  CircleCheckBig,
   ClipboardList,
   Database,
   FilePlus2,
   HardHat,
   LayoutDashboard,
+  ListTodo,
   RotateCcw,
   Route,
   TriangleAlert,
@@ -28,7 +30,7 @@ export interface NavItem {
 
 /**
  * The Tasks group (F04/F05): creators get Create/Bulk upload, OEs get Assigned, SA/OM get Awaiting approval;
- * Faulty and Re-opened for every task viewer; Travel is a placeholder (F08).
+ * Completed tasks, All tasks (CR-04), Faulty and Re-opened for every task viewer; Travel is a placeholder (F08).
  */
 function taskItems(user: UserDto): NavItem[] {
   const creator = canCreateTask(user);
@@ -38,6 +40,8 @@ function taskItems(user: UserDto): NavItem[] {
     { to: '/tasks', label: 'Open tasks', icon: ClipboardList, end: true },
     ...(user.role === 'OE' ? [{ to: '/tasks/assigned', label: 'Assigned', icon: UserCheck }] : []),
     ...(canApproveFitments(user) ? [{ to: '/tasks/awaiting-approval', label: 'Awaiting approval', icon: BadgeCheck }] : []),
+    { to: '/tasks/completed', label: 'Completed tasks', icon: CircleCheckBig },
+    { to: '/tasks/all', label: 'All tasks', icon: ListTodo },
     { to: '/tasks/travel', label: 'Travel tasks', icon: Route },
     { to: '/tasks/faulty', label: 'Faulty tasks', icon: TriangleAlert },
     { to: '/tasks/reopened', label: 'Re-opened', icon: RotateCcw },

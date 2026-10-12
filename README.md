@@ -101,13 +101,15 @@ Logistics* in New Delhi), with hard-coded coordinates.
 ### Tasks (F04)
 
 The **Tasks** menu (SA, OM, OE and RO; not OT) holds *Create task*, *Bulk upload* (creators only), *Open tasks*,
-*Assigned* (OEs: tasks where they are the operation executive), *Awaiting approval* (SA/OM), *Faulty tasks* and
-*Re-opened* (F05, below) and a placeholder for *Travel tasks* (F08).
+*Assigned* (OEs: tasks where they are the operation executive), *Awaiting approval* (SA/OM), *Completed tasks*
+(latest completion first) and *All tasks* (every status; CR-04), *Faulty tasks* and *Re-opened* (F05, below) and a
+placeholder for *Travel tasks* (F08).
 
 - **Create task** is a full page: customer → site (the fitment city comes from the site), POC prefilled from the
   customer's primary contact, operation executive (locked to yourself as an OE), optional technician type and
   technician, asset type → activity, device type (LAF5 by default), make/model (vehicles only), installation type,
-  requested and fitment date-time **in IST**, shift, issue reported, GPS address and comments. Vehicles are either a
+  requested and fitment date-time **in IST** (calendar date-time picker: day, hour, minute in 5-minute steps; CR-04),
+  shift, issue reported, GPS address and comments. Vehicles are either a
   count or a CSV (`registration_number, chassis_number, asset_number, old_device_id`, all optional, up to 500 rows;
   sample on the page).
 - Saving creates the task with an **OM id** (`OM-00001`), an **OE id** (`OE-00001`) and **one fitment per vehicle**
@@ -119,7 +121,7 @@ The **Tasks** menu (SA, OM, OE and RO; not OT) holds *Create task*, *Bulk upload
 - **Bulk upload**: download the sample, upload a CSV (one row per task, `vehicle_count` vehicles; customer code or
   name, site name, emails and master names; dates `YYYY-MM-DD HH:mm` IST; ≤ 2 MB, ≤ 1,000 rows), check the preview
   (bad cells in red with the reason), import the valid rows and download the error rows to fix.
-- Lists filter by customer, OE, technician, status, activity and fitment date, search ids (`OM-00001`, `tk-1`, `12`),
+- Lists filter by customer, OE, technician, status, activity and a fitment date range (one calendar control), search ids (`OM-00001`, `tk-1`, `12`),
   customer or POC, and **Download** CSV or Excel with the current filters (up to 10,000 rows).
 
 Every change writes a `TaskEvent` row (audit trail for F05's history). Sample CSVs for UAT are in
@@ -161,6 +163,21 @@ bundle has no trace of it.
 |---|---|---|
 | `ENABLE_DEV_SIMULATOR` | unset → on in development, off otherwise (`true` in `.env.example`) | Mounts the technician simulator API; ignored (always off) when `NODE_ENV=production` |
 
+### Look and feel (CR-03, CR-04)
+
+- **Dashboard**: role-aware stat cards from `GET /api/tasks/summary`. SA/OM see open tasks, awaiting approval,
+  re-opened, faulty and completed. OEs see their own tasks, fitments waiting for their verification, open tasks,
+  re-opened and faulty. RO sees open and completed tasks. Each card opens the list it counts.
+- **Illustrations**: unDraw SVGs (free, no attribution) are bundled in `apps/web/src/assets/illustrations` and
+  recoloured by the theme in `index.css`. Empty lists, "no matches", errors and offline states, 403/404 pages,
+  invite errors, sign-in and the dashboard use them through `EmptyState` / `ErrorState` / `ListStates`.
+- **Theme**: the brand primary is indigo and is defined once in `apps/web/src/index.css` (light and dark tokens). Dark
+  mode follows the OS setting.
+- **Pages you can't open**: Users, Technicians and Clients show a 403 page. Masters and task pages still redirect to
+  the dashboard with a toast (CR-01). Unknown URLs show a 404 page.
+- **Dates**: every date and time is picked with the shadcn calendar pickers (`components/date-picker.tsx`; date-times
+  in IST, 5-minute steps). List filters use one date-range control.
+
 ### Google sign-in
 
 Hidden unless `GOOGLE_CLIENT_ID` is set. When set, only verified Google accounts in `GOOGLE_ALLOWED_DOMAIN`
@@ -195,6 +212,18 @@ First E2E run on a machine: `pnpm --filter @champ/web exec playwright install ch
 | MinIO API / console | 9000 / 9001 | `MINIO_PORT` / `MINIO_CONSOLE_PORT` (compose) |
 | E2E API / web | 4100 / 5174 | — |
 
+## Conventions
+
+- **File and folder names are kebab-case** (CR-03 / D-084): `app-shell.tsx`, `task-table.test.tsx`,
+  `require-role.ts`, `org.setup.ts`. What a file *exports* keeps its usual casing (`export function AppShell`,
+  `type TaskDto`). Middle extensions such as `.test`, `.spec`, `.setup`, `.config` and `.d` are fine.
+- Exempt: generated code (`apps/api/src/generated/**`), Prisma migration folders, tool config files whose names
+  tools expect (`vite.config.ts`, `prisma.config.ts`, `eslint.config.js`, …) and `README.md`. shadcn/ui components
+  in `components/ui` are kebab-case already.
+- `pnpm lint` enforces it with `eslint-plugin-check-file` (`check-file/filename-naming-convention` and
+  `check-file/folder-naming-convention` in `eslint.config.js`), so a new `MyThing.tsx` fails lint.
+  Rename with `git mv` (on macOS, which is case-insensitive, go through a temporary name when only the case changes).
+
 ## Project layout
 
 ```
@@ -206,13 +235,16 @@ apps/api/src
                       counters (transactional OM/OE/TK ids)
   middleware/         authenticate, requireRole, validate, error handler
   modules/            auth, invites, users, health, masters (+ /lookups), technicians, clients, geo,
-                      tasks (service, refs, status, filters, events, export, bulk + bulk-rows),
+                      tasks (service, refs, status, filters, events, export, bulk + bulk-rows, summary),
                       workflow (engine, lists, history, router, dev simulator)
 apps/api/prisma       schema, migrations, seed (seed-masters.ts: master values; seed-demo.ts: demo users)
 apps/web/src
   components/ui       shadcn/ui components (generated)
-  components/         app shell, auth provider, shared widgets, SitePicker, map/ (react-leaflet)
-  features/           auth, invites, users, dashboard, profile, masters (config-driven), technicians, clients, tasks
+  components/         app shell, auth provider, shared widgets, site-picker, map/ (react-leaflet), date pickers,
+                      empty/error states (illustration, empty-state, list-states), page-header
+  assets/illustrations  unDraw SVGs (CR-03)
+  features/           auth, invites, users, dashboard, profile, masters (config-driven), technicians, clients, tasks,
+                      errors (404/403/error boundary)
   lib/                API client (in-memory access token, single-flight refresh), auth context, permissions
 packages/shared/src   roles.ts, masters.ts (kinds, permission helpers), clients.ts, tasks.ts (ids, statuses,
                       permissions, IST helpers, CSV columns), workflow.ts (state machine, actors, edit locks),

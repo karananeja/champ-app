@@ -1,4 +1,4 @@
-import { istDayStart, parseTaskId, type TaskFilters } from '@champ/shared';
+import { defaultTaskSort, istDayStart, parseTaskId, type TaskFilters } from '@champ/shared';
 import type { Prisma } from '../../generated/prisma/client';
 import type { User } from '../../lib/prisma';
 
@@ -19,13 +19,14 @@ function searchWhere(q: string): Prisma.TaskWhereInput {
 
 /**
  * The `where` of `GET /tasks` and `GET /tasks/export`. Deleted tasks are always left out. Views: open =
- * not completed; assigned = the caller is the task's OE; all = everything. `from`/`to` are IST days on
- * the fitment date, both inclusive.
+ * not completed; assigned = the caller is the task's OE; completed = status COMPLETED (CR-04); all =
+ * everything. `from`/`to` are IST days on the fitment date, both inclusive.
  */
 export function taskWhere(actor: User, filters: TaskFilters): Prisma.TaskWhereInput {
   const and: Prisma.TaskWhereInput[] = [{ deletedAt: null }];
   if (filters.view === 'open') and.push({ status: { not: 'COMPLETED' } });
   if (filters.view === 'assigned') and.push({ oeId: actor.id });
+  if (filters.view === 'completed') and.push({ status: 'COMPLETED' });
   if (filters.q) and.push(searchWhere(filters.q));
   if (filters.clientId) and.push({ clientId: filters.clientId });
   if (filters.oeId) and.push({ oeId: filters.oeId });
@@ -39,7 +40,11 @@ export function taskWhere(actor: User, filters: TaskFilters): Prisma.TaskWhereIn
   return { AND: and };
 }
 
-export function taskOrderBy(sort: TaskFilters['sort']): Prisma.TaskOrderByWithRelationInput[] {
-  const [field, dir] = sort.split(':') as ['fitmentAt' | 'createdAt', 'asc' | 'desc'];
+/** The list order: the given sort, else the view's default (`defaultTaskSort`); ties by OM id. */
+export function taskOrderBy(filters: Pick<TaskFilters, 'sort' | 'view'>): Prisma.TaskOrderByWithRelationInput[] {
+  const sort = filters.sort ?? defaultTaskSort(filters.view);
+  const [field, dir] = sort.split(':') as ['fitmentAt' | 'createdAt' | 'completedAt', 'asc' | 'desc'];
+  // completedAt is null on tasks that aren't completed (All tasks view): keep those last either way.
+  if (field === 'completedAt') return [{ completedAt: { sort: dir, nulls: 'last' } }, { omNo: dir }];
   return [{ [field]: dir }, { omNo: dir }];
 }

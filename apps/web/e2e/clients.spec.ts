@@ -137,7 +137,8 @@ test('an OE sees clients and the map with no edit actions', async ({ page }) => 
   await expect(page.getByRole('button', { name: /activate client/i })).toHaveCount(0);
   await expectNoHorizontalScroll(page);
 
-  // The edit page isn't reachable either.
+  // The edit page isn't reachable either: a direct URL shows the 403 page (CR-03; it used to redirect home).
   await page.goto(page.url() + '/edit');
-  await expect(page.getByRole('heading', { name: /Welcome/ })).toBeVisible();
+  await expect(page.getByRole('heading', { name: "You don't have access" })).toBeVisible();
+  await expect(page.getByRole('heading', { name: /^Edit / })).toHaveCount(0);
 });

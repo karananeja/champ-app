@@ -17,7 +17,7 @@ const TEST_DATABASE_URL = testDatabaseUrl();
 export default defineConfig({
   test: {
     include: ['test/**/*.test.ts'],
-    globalSetup: ['./test/globalSetup.ts'],
+    globalSetup: ['./test/global-setup.ts'],
     setupFiles: ['./test/setup.ts'],
     fileParallelism: false,
     testTimeout: 20_000,

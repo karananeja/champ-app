@@ -1,6 +1,6 @@
 import { expect, test, type Page } from '@playwright/test';
 import { BULK_TASK_COLUMNS, toCsv } from '@champ/shared';
-import { expectNoHorizontalScroll, fitmentItems, login, navigate, pickSearchable, readOrg, taskItem } from './helpers';
+import { expectNoHorizontalScroll, fitmentItems, login, navigate, pickDateTime, pickSearchable, readOrg, taskItem } from './helpers';
 
 const combo = (page: Page, name: string) => page.getByRole('combobox', { name, exact: true });
 
@@ -21,8 +21,9 @@ async function fillTask(page: Page, client: string, options: { oe?: string; batt
   await pickSearchable(page, combo(page, 'Activity'), 'New', 'New installation');
   await expect(combo(page, 'Device type')).toHaveText(/LAF5/);
   await pickSearchable(page, combo(page, 'Installation type'), 'GPS', /^GPS$/);
-  await page.getByLabel('Requested fitment date and time (IST)').fill('2026-11-10T09:00');
-  await page.getByLabel('Fitment date and time (IST)', { exact: true }).fill('2026-11-11T10:30');
+  await pickDateTime(page, page.locator('#task-requested-at'), '2026-11-10T09:00');
+  await pickDateTime(page, page.locator('#task-fitment-at'), '2026-11-11T10:30');
+  await expect(page.locator('#task-fitment-at')).toHaveText('11 Nov 2026, 10:30');
   await page.getByRole('radio', { name: 'Day' }).click();
   await pickSearchable(page, combo(page, 'Issue reported by client'), 'not reporting', 'Device not reporting');
 }
@@ -47,6 +48,8 @@ test('an OM creates a task for 3 vehicles without a technician, then assigns fit
   await expect(page.getByTestId('task-status')).toHaveText('Open');
   await expect(page.getByTestId('fitment-counts')).toHaveText('3 total · 0 assigned · 3 open');
   await expect(fitmentItems(page)).toHaveCount(3);
+  // CR-04: the IST time picked in the calendar is what the task shows.
+  await expect(page.getByText('11 Nov 2026, 10:30').first()).toBeVisible();
   await expect(page.getByText('Bengaluru, Karnataka')).toBeVisible(); // fitment location from the site
 
   // Assign the first fitment to technician A, the other two to technician B.
@@ -211,7 +214,8 @@ test('an RO sees tasks with no actions; the OM deletes an untouched task', async
   await omPage.getByRole('alertdialog').getByRole('button', { name: 'Delete task' }).click();
   await expect(omPage.getByRole('heading', { name: 'Open tasks' })).toBeVisible();
   await omPage.getByLabel('Search tasks').fill(task.omId);
-  await expect(omPage.getByText('No tasks found.')).toBeVisible();
+  // CR-03: an illustrated "no matches" state.
+  await expect(omPage.getByRole('heading', { name: 'No tasks match' })).toBeVisible();
   await omContext.close();
 
   // The RO's view of the deleted task is gone too.

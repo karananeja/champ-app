@@ -25,9 +25,10 @@ import {
 } from '@champ/shared';
 import { badRequest } from '../../lib/errors';
 import { authenticate, currentUser } from '../../middleware/auth';
-import { requireRole } from '../../middleware/requireRole';
+import { requireRole } from '../../middleware/require-role';
 import { validate } from '../../middleware/validate';
 import { bulkSampleCsv, importBulk, previewBulk } from './bulk';
+import { getTaskSummary } from './summary';
 import { exportTaskEvents, getTaskHistory, listTaskEvents } from '../workflow/history';
 import { exportTasks } from './export';
 import * as tasks from './service';
@@ -65,6 +66,11 @@ export function tasksRouter() {
 
   router.get('/options', async (req, res) => {
     res.json(await tasks.getTaskOptions(currentUser(req)));
+  });
+
+  // CR-03: role-aware dashboard counts (every task viewer; OT gets 403 like every /tasks route).
+  router.get('/summary', async (req, res) => {
+    res.json(await getTaskSummary(currentUser(req)));
   });
 
   router.get('/export', validate({ query: exportTasksQuerySchema }), async (req, res) => {

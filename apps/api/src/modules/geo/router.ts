@@ -10,7 +10,7 @@ import {
 } from '@champ/shared';
 import type { Geocoder } from '../../lib/geocoder';
 import { authenticate } from '../../middleware/auth';
-import { requireRole } from '../../middleware/requireRole';
+import { requireRole } from '../../middleware/require-role';
 import { validate } from '../../middleware/validate';
 import { reverseGeocode, searchAddress } from './service';
 

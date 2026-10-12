@@ -5,6 +5,7 @@ import type {
   BulkImportInput,
   BulkImportResponse,
   BulkPreviewResponse,
+  DashboardSummaryDto,
   Paginated,
   TaskDto,
   TaskEventDto,
@@ -27,6 +28,7 @@ export const tasksKeys = {
   workflow: (list: WorkflowListName, query: TaskListParams) => ['tasks', 'workflow', list, query] as const,
   history: (id: string) => ['tasks', 'history', id] as const,
   events: (id: string) => ['tasks', 'events', id] as const,
+  summary: ['tasks', 'summary'] as const,
 };
 
 /** The F05 fitment lists (`GET /fitments/<name>`). */
@@ -171,3 +173,8 @@ export function useTaskEvents(id: string) {
 
 export const downloadTaskEvents = (id: string, omId: string) =>
   downloadFile(`/tasks/${id}/events?format=csv`, `champ-${omId}-events.csv`);
+
+/** `GET /tasks/summary`: the role-aware dashboard counts (CR-03). Only for task viewers. */
+export function useTaskSummary(enabled: boolean) {
+  return useQuery({ queryKey: tasksKeys.summary, queryFn: () => api<DashboardSummaryDto>('/tasks/summary'), enabled });
+}

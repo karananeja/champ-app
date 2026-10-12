@@ -3,7 +3,7 @@ import { canManageTask, formatTkId, simulateSchema, type SimulateInput, type Tra
 import { conflict, forbidden, notFound } from '../../lib/errors';
 import { prisma } from '../../lib/prisma';
 import { authenticate, currentUser } from '../../middleware/auth';
-import { requireRole } from '../../middleware/requireRole';
+import { requireRole } from '../../middleware/require-role';
 import { validate } from '../../middleware/validate';
 import { transitionFitment } from './engine';
 
