@@ -414,3 +414,5 @@ Chronological log of the whole project conversation. Feature-level logs live in 
 - Wrote the README, the test report and D-269 – D-273.
 
 **Status:** F15 ready for UAT by the user.
+
+**User:** "F15 accepted". UAT sign-off recorded and `feature/F15-reports-analytics` merged to `main`. All fifteen planned features are complete.

@@ -20,4 +20,4 @@ A feature is **Complete** only after it has been implemented, tested and signed 
 | F12 | Mobile history timeline, distance, Approve visit | F10 | ✅ Complete (UAT 2026-10-12) |
 | F13 | In-app notifications (web and mobile) | F05 | ✅ Complete (UAT 2026-10-12) |
 | F14 | Global search | F04 | ✅ Complete (UAT 2026-10-12) |
-| F15 | Reports (billing) and analytics | F06 | 🚧 In progress (intent approved 2026-10-12) |
+| F15 | Reports (billing) and analytics | F06 | ✅ Complete (UAT 2026-10-12) |
