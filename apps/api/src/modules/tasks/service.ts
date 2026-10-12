@@ -27,7 +27,7 @@ import { prisma, type User } from '../../lib/prisma';
 import { taskDetailInclude, taskListInclude, toTaskDto, toTaskListItem } from './dto';
 import { diffOf, writeEvents } from './events';
 import { taskOrderBy, taskWhere } from './filters';
-import { operationTaskType, requireTechnician, validateTaskRefs, type TaskRefValues } from './refs';
+import { operationTaskType, requireAssignee, requireTechnician, validateTaskRefs, type TaskRefValues } from './refs';
 import {
   assertUntouched,
   assignmentStatus,
@@ -76,7 +76,10 @@ export async function listTasks(actor: User, query: ListTasksQuery): Promise<Pag
   return { items: tasks.map(toTaskListItem), total, page: query.page, pageSize: query.pageSize };
 }
 
-/** People the task form and the task filters offer: active OEs (an OE gets only themselves) and OTs. */
+/**
+ * People the task form and the task filters offer: active OEs (an OE gets only themselves) and OTs; plus the
+ * OEs the caller may assign fitments to (F10, D-158): any active OE for SA/OM, themselves for an OE.
+ */
 export async function getTaskOptions(actor: User): Promise<TaskOptionsResponse> {
   const [oes, technicians] = await Promise.all([
     actor.role === 'OE'
@@ -92,8 +95,10 @@ export async function getTaskOptions(actor: User): Promise<TaskOptionsResponse> 
       orderBy: [{ name: 'asc' }, { id: 'asc' }],
     }),
   ]);
+  const assignableOes = actor.role === 'SUPER_ADMIN' || actor.role === 'OM' || actor.role === 'OE' ? oes : [];
   return {
     oes,
+    assignableOes,
     technicians: technicians.map((t) => ({
       id: t.id,
       name: t.name,
@@ -277,12 +282,12 @@ export async function updateFitment(actor: User, taskId: string, fitmentId: stri
 /**
  * Assigns (or, with `technicianId: null`, unassigns) fitments of one task, all or nothing: any fitment
  * that isn't Open, Assigned or Reopened makes the whole request fail with 409 FITMENT_LOCKED. Any active OT
- * can be chosen (D-063). A Reopened fitment stays Reopened when (re)assigned and becomes Open when
+ * can be chosen (D-063), or an OE doing fitments (F10, D-158, see `requireAssignee`). A Reopened fitment stays Reopened when (re)assigned and becomes Open when
  * unassigned (F05, D-075). One event per changed fitment, then the task status is recomputed.
  */
 export async function assignFitments(actor: User, taskId: string, input: AssignFitmentsInput): Promise<TaskDto> {
-  await loadManagedTask(actor, taskId);
-  const technician = input.technicianId ? await requireTechnician(input.technicianId) : null;
+  const task = await loadManagedTask(actor, taskId);
+  const technician = input.technicianId ? await requireAssignee(actor, task, input.technicianId) : null;
   const technicianId = technician?.id ?? null;
   const ids = [...new Set(input.fitmentIds)];
 

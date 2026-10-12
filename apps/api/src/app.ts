@@ -7,6 +7,7 @@ import { devSimulatorEnabled, env } from './config/env';
 import { createGeocoder, type Geocoder } from './lib/geocoder';
 import { createGoogleAuth, type GoogleAuth } from './lib/google';
 import { logger } from './lib/logger';
+import { createRouteOptimizer, type RouteOptimizer } from './lib/router';
 import { defaultStorage, type Storage } from './lib/storage';
 import { errorHandler, notFoundHandler } from './middleware/error';
 import { authRouter, createLoginLimiter } from './modules/auth/router';
@@ -29,6 +30,8 @@ export interface AppDeps {
   google?: GoogleAuth;
   /** Injected in tests: a fake geocoder (tests must never call the real Nominatim). */
   geocoder?: Geocoder;
+  /** Injected in tests: the in-memory route optimiser (tests must never call the real OSRM). */
+  router?: RouteOptimizer;
   /** Mount the dev technician simulator (D-073); defaults to `ENABLE_DEV_SIMULATOR`, never in production. */
   devSimulator?: boolean;
   /** Photo and receipt storage (F06, F08); defaults to the process-wide driver chosen by `STORAGE_DRIVER`. */
@@ -39,6 +42,7 @@ export function createApp(deps: AppDeps = {}) {
   const google = deps.google ?? createGoogleAuth();
   const geocoder = deps.geocoder ?? createGeocoder();
   const storage = deps.storage ?? defaultStorage();
+  const optimizer = deps.router ?? createRouteOptimizer();
   const devSimulator = env.NODE_ENV !== 'production' && (deps.devSimulator ?? devSimulatorEnabled());
   const app = express();
 
@@ -68,7 +72,7 @@ export function createApp(deps: AppDeps = {}) {
   // One login limiter for web and mobile, so the 10 per 15 min limit counts across both (F09).
   const loginLimiter = createLoginLimiter();
   api.use('/auth', authRouter(google, loginLimiter));
-  api.use('/mobile', mobileRouter(loginLimiter));
+  api.use('/mobile', mobileRouter(loginLimiter, optimizer));
   api.use('/invites', invitesRouter(google));
   api.use(usersRouter());
   api.use('/lookups', lookupsRouter());

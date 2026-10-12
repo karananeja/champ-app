@@ -16,7 +16,8 @@ import { transitionFitment } from './engine';
 
 /**
  * Dev-only technician simulator (D-073): `POST /dev/fitments/:fid/simulate` performs a technician step as the
- * fitment's assigned technician, so the OT steps can be tested before the mobile app (F10). Mounted only when
+ * fitment's assigned technician (an OT, or an OE doing fitments, D-158), so the technician steps can be tested
+ * without the mobile app. START follows the stored day-route order when one exists (D-156). Mounted only when
  * enabled (never in production); the caller must be SA, OM or the task's OE. START defaults to the site's
  * coordinates. Events are flagged `simulated: true`. F06: SUBMIT also stores OT remarks and the five sample
  * photos (Before, After, Asset, Cluster, Placement) as the technician, with the site's coordinates.

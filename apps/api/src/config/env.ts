@@ -28,6 +28,8 @@ const envSchema = z.object({
   // Geocoding (F03, D-054)
   NOMINATIM_URL: z.preprocess(emptyToUndefined, z.url().default('https://nominatim.openstreetmap.org')),
   GEOCODER_CONTACT_EMAIL: z.preprocess(emptyToUndefined, z.email().default('admin@intellicar.in')),
+  // Route optimisation (F10, D-015): OSRM trip service. Tests and E2E point it at an unreachable port (fallback).
+  OSRM_URL: z.preprocess(emptyToUndefined, z.url().default('https://router.project-osrm.org')),
   // Dev-only technician simulator (F05, D-073). Unset: on in development, off otherwise. Always off in production.
   ENABLE_DEV_SIMULATOR: z.preprocess(emptyToUndefined, z.enum(['true', 'false']).optional()),
 });

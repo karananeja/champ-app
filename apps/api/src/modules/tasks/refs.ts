@@ -98,6 +98,25 @@ export async function requireTechnician(id: string, technicianType?: TechnicianT
   return tech;
 }
 
+/**
+ * The assignee of `POST /tasks/:id/assign` (F10, D-158): an active OT, or an active OE when the caller is
+ * SA/OM (any OE) or the task's OE assigning to themselves. Anything else is 400.
+ */
+export async function requireAssignee(actor: User, task: { oeId: string }, id: string, field = 'technicianId') {
+  const user = await prisma.user.findUnique({ where: { id } });
+  if (!user || (user.role !== 'OT' && user.role !== 'OE')) throw invalidReference(field, 'technician', 'Choose a technician or an operation executive');
+  if (user.role === 'OE') {
+    const manager = actor.role === 'SUPER_ADMIN' || actor.role === 'OM';
+    const selfOnOwnTask = actor.role === 'OE' && actor.id === user.id && task.oeId === actor.id;
+    if (!manager && !selfOnOwnTask) {
+      const message = 'An operation executive can assign fitments only to an OT or to themselves';
+      throw badRequest('VALIDATION_ERROR', message, { fieldErrors: { [field]: [message] } });
+    }
+  }
+  if (user.status !== 'ACTIVE') throw inactiveReference(field, user.name);
+  return user;
+}
+
 /** The built-in "OT" (operation task) task type, which every F04 task gets. */
 export async function operationTaskType() {
   const taskType = await prisma.lookupItem.findUnique({ where: { kind_code: { kind: 'TASK_TYPE', code: 'OT' } } });

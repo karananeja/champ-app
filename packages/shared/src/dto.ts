@@ -414,6 +414,8 @@ export interface TaskOptionsResponse {
   oes: UserRef[];
   /** Active technicians (OT). */
   technicians: (TaskTechnicianRef & { baseLocation: string | null })[];
+  /** F10 (D-158): active OEs the caller may assign fitments to (SA/OM: all; OE: themselves; RO: none). */
+  assignableOes: UserRef[];
 }
 
 export interface BulkCellError {
