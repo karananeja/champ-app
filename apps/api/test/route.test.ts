@@ -148,8 +148,7 @@ describe('GET /api/mobile/route', () => {
     expect(r.stops[1]!.legFromPrevious?.distanceM).toBeGreaterThan(0);
 
     await prisma.user.update({ where: { id: w.techA.id }, data: { homeLat: 12.0, homeLng: 77.6, homeAddress: 'Home', homeUpdatedAt: new Date() } });
-    r = (await w.recalc(w.techA, { date: TODAY, ...GPS })).body as DayRouteDto; // force a recompute below
-    await prisma.dayRoute.deleteMany();
+    await prisma.dayRoute.deleteMany(); // force a recompute without GPS
     r = (await w.route(w.techA, { date: TODAY })).body as DayRouteDto;
     expect(r.origin).toEqual({ lat: 12.0, lng: 77.6, source: 'HOME' });
     expect(tks(r)).toEqual([tk(a), tk(b), tk(c)]);
