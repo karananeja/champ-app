@@ -385,3 +385,7 @@ Chronological log of the whole project conversation. Feature-level logs live in 
 **User:** "let the board tab be the first tab"
 
 **Claude:** Relayed to the CR-10 agent: tab order Board, Open, Assigned, Awaiting approval, Re-opened, Faulty, Completed, All, Travel; URLs unchanged.
+
+**User:** "yes, let it open board for OM and SA"
+
+**Claude:** Relayed to the CR-10 agent: the sidebar *Tasks* item opens the Board for OM and SA and the Open tab for others; `/tasks` itself stays the Open tab so existing links keep working.
