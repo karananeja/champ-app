@@ -389,3 +389,11 @@ Chronological log of the whole project conversation. Feature-level logs live in 
 **User:** "yes, let it open board for OM and SA"
 
 **Claude:** Relayed to the CR-10 agent: the sidebar *Tasks* item opens the Board for OM and SA and the Open tab for others; `/tasks` itself stays the Open tab so existing links keep working.
+
+**Agents:** CR-10 (~21 min, E2E 75/75), CR-11 backend (~9 min) and web (~13 min, E2E 75/75).
+
+**Claude verification:** fixed a live unread-count race in the web and app bells (D-263), deflaked the app notification test, full unit suite green three runs in a row (1,248 tests). F14 and CR-08 – CR-11 ready for UAT.
+
+**User:** "when is analytics dashboard planned?"
+
+**Claude:** It is F15 (Reports – billing – and analytics), the last feature in the build order, next once F14 and the CRs are accepted.

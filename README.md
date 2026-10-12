@@ -102,6 +102,11 @@ Logistics* in New Delhi), with hard-coded coordinates.
 
 ### Tasks (F04)
 
+**Faulty fitments (CR-11):** in *Faulty*, a row whose replacement hasn't started offers **Assign replacement**; the
+task's OE, an OM or SA can also **Undo faulty** (with a reason) there or on the task page: the fitment goes back to
+Assigned with the same technician (form and photos kept), and the unstarted replacement is closed as "Faulty marked by
+mistake". Refused once the replacement has started (`POST /api/fitments/:fid/transitions {action: 'UNDO_FAULTY', payload: {reason}}`).
+
 **Navigation (CR-10):** the sidebar has a single **Tasks** item: it opens the Board for SA and OM and the Open list
 for everyone else. The task views are tabs at the top of the Tasks page: Board (SA/OM), Open, Assigned (OE),
 Awaiting approval (SA/OM), Re-opened, Faulty, Completed, All, Travel. Each keeps its own URL (e.g. `/tasks/faulty`,

@@ -12,3 +12,5 @@
 - User: "both options seem to be good for FT and show the action buttons such as bulk upload and create task in open task tab only". The header buttons change went to the CR-10 agent; logged CR-11 (assign replacement, undo faulty; D-256, D-257): backend agent now, web after CR-10.
 - User: "let the board tab be the first tab". Relayed to the CR-10 agent: Board first (for those who can use it), URLs unchanged.
 - User: "yes, let it open board for OM and SA". Relayed to the CR-10 agent: the Tasks item opens /tasks/board for OM and SA, /tasks for others; /tasks stays the Open tab.
+- CR-10 done (agent ~21 min; E2E 75/75). CR-11 done (backend ~9 min, web ~13 min). Claude fixed the live-count race in both bells (D-263) and deflaked the app notification test; full unit suite green 3× (1,248 tests).
+- User asked when the analytics dashboard is planned: F15 (Reports and analytics), next after F14 is accepted.
