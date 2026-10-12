@@ -147,6 +147,8 @@ export const TASK_EVENT_TYPES = [
   'PHOTO_REMOVED',
   // F10B: technician form edits after submit
   'FITMENT_FORM_UPDATED',
+  // F11: mobile CSV bulk fill
+  'FITMENT_FORM_CSV_FILLED',
 ] as const;
 export type TaskEventType = (typeof TASK_EVENT_TYPES)[number];
 
@@ -170,6 +172,7 @@ export const TASK_EVENT_LABELS: Record<TaskEventType, string> = {
   PHOTO_REPLACED: 'Photo replaced',
   PHOTO_REMOVED: 'Photo removed',
   FITMENT_FORM_UPDATED: 'Form edited',
+  FITMENT_FORM_CSV_FILLED: 'Filled from CSV',
 };
 
 /** Roles that see the History tab and the raw event log (D-033; RO excluded, D-025). */

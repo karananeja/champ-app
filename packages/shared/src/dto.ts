@@ -422,9 +422,9 @@ export interface TaskOptionsResponse {
   assignableOes: UserRef[];
 }
 
-export interface BulkCellError {
+export interface BulkCellError<C extends string = BulkTaskColumn> {
   /** A bulk CSV column, or '' for a row-level error. */
-  column: BulkTaskColumn | '';
+  column: C | '';
   message: string;
 }
 

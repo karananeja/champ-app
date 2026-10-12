@@ -107,6 +107,9 @@ export interface MyFitmentDto {
   startedAt: string | null;
   /** UTC ISO. */
   submittedAt: string | null;
+  // --- F11 ---
+  /** The caller's fitments in the same task (any status); the app offers Bulk fill (CSV) when >= 2. */
+  taskFitmentCount: number;
 }
 
 export interface MyFitmentsResponse {
