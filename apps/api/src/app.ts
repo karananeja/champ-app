@@ -19,6 +19,7 @@ import { invitesRouter } from './modules/invites/router';
 import { lookupsRouter, mastersRouter } from './modules/masters/router';
 import { mobileRouter } from './modules/mobile/router';
 import { notificationsRouter } from './modules/notifications/router';
+import { reportsRouter } from './modules/reports/router';
 import { searchRouter } from './modules/search/router';
 import { tasksRouter } from './modules/tasks/router';
 import { techniciansRouter } from './modules/technicians/router';
@@ -88,6 +89,7 @@ export function createApp(deps: AppDeps = {}) {
   api.use('/travel-tasks', travelRouter(storage));
   api.use('/notifications', notificationsRouter());
   api.use('/search', searchRouter());
+  api.use('/reports', reportsRouter());
   if (devSimulator) api.use('/dev', devSimulatorRouter(storage));
   api.use(notFoundHandler);
 

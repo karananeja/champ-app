@@ -50,7 +50,7 @@ const historySelect = {
 type HistoryRow = Prisma.FitmentGetPayload<{ select: typeof historySelect }>;
 
 /** A fitment started on the day, in start order (only what the distance needs). */
-interface StartRow {
+export interface StartRow {
   id: string;
   startedAt: Date | null;
   startLat: number | null;
@@ -121,6 +121,20 @@ function straightLineDistance(started: readonly StartRow[]): DayDistance {
   const { points, pointOf } = distancePoints(started);
   const legs = fitmentLegs(pointOf, straightLineRoute(points).legs);
   return { distanceM: sumLegs(legs), approx: points.length > 1, legs };
+}
+
+/**
+ * A day distance without calling the router (D-223): the cached value when it is routed and its signature
+ * matches the day's start points, else straight lines (approx). Used by the reportees list and the F15 KPIs.
+ */
+export function cachedOrStraightDistance(
+  started: readonly StartRow[],
+  cached: { signature: string; distanceM: number; approx: boolean } | undefined,
+): { distanceM: number; approx: boolean } {
+  const { points, signature } = distancePoints(started);
+  if (points.length > 1 && cached && cached.signature === signature && !cached.approx) return { distanceM: cached.distanceM, approx: false };
+  const { distanceM, approx } = straightLineDistance(started);
+  return { distanceM, approx };
 }
 
 /**
@@ -232,12 +246,7 @@ export async function getReporteesHistory(actor: User, date: string): Promise<Re
 
   const items: ReporteeDayDto[] = users.map((user) => {
     const mine = started.filter((f) => f.technicianId === user.id);
-    const { points, signature } = distancePoints(mine);
-    const hit = cacheOf.get(user.id);
-    const distance =
-      points.length > 1 && hit && hit.signature === signature && !hit.approx
-        ? { distanceM: hit.distanceM, approx: false }
-        : straightLineDistance(mine);
+    const distance = cachedOrStraightDistance(mine, cacheOf.get(user.id));
     return { user, startedCount: mine.length, distanceM: distance.distanceM, approx: distance.approx };
   });
   return { date, items };
