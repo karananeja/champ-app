@@ -276,3 +276,5 @@ Chronological log of the whole project conversation. Feature-level logs live in 
 - Found the emulator was running the user's own Metro and signed-in session, so stopped device testing there; the user's Metro already serves the changes.
 
 **User:** "F10 and CR-07 accepted". Both recorded and `feature/F10-route-and-start` merged to `main`.
+
+**Claude:** Wrote the F10B intent (fitment form, photos, device scan, submit and summary) and sent it for sign-off.
