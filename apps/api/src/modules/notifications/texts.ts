@@ -27,11 +27,17 @@ const SUFFIX: Record<FitmentNotificationType, (actor: string) => string> = {
   FITMENT_APPROVED: () => 'approved',
   FITMENT_REOPENED: (a) => `reopened by ${a}`,
   FITMENT_MOVED_TO_FT: (a) => `moved to FT by ${a}`,
+  FITMENT_FAULT_UNDONE: (a) => `fault marking undone by ${a}`,
 };
 
 const SINGLE_TAIL: Partial<Record<FitmentNotificationType, string>> = {
   FITMENT_SUBMITTED: ' · ready to verify',
   FITMENT_VERIFIED: ' · ready for final approval',
+};
+
+/** Said before the suffix of a single fitment ("TK-00012 is back with you · fault marking undone by Ravi"). */
+const SINGLE_HEAD: Partial<Record<FitmentNotificationType, string>> = {
+  FITMENT_FAULT_UNDONE: 'is back with you · ',
 };
 
 /**
@@ -42,10 +48,11 @@ export function fitmentTitle(type: FitmentNotificationType, opts: { count: numbe
   const suffix = SUFFIX[type](opts.actorName);
   if (opts.count > 1) {
     const verb = type === 'FITMENT_UNASSIGNED' ? 'were ' : '';
-    return `${opts.count} fitments of ${opts.omId} ${verb}${suffix}`;
+    const head = type === 'FITMENT_FAULT_UNDONE' ? 'are back with you · ' : '';
+    return `${opts.count} fitments of ${opts.omId} ${head}${verb}${suffix}`;
   }
   const verb = type === 'FITMENT_UNASSIGNED' ? 'was ' : '';
-  return `${opts.tkId} ${verb}${suffix}${SINGLE_TAIL[type] ?? ''}`;
+  return `${opts.tkId} ${SINGLE_HEAD[type] ?? ''}${verb}${suffix}${SINGLE_TAIL[type] ?? ''}`;
 }
 
 /** Customer · site, plus the fitment time for an assignment. */

@@ -1,4 +1,6 @@
 import {
+  availableActions,
+  canManageTask,
   formatOmId,
   formatTkId,
   istDayStart,
@@ -35,6 +37,7 @@ const listInclude = {
     select: {
       id: true,
       omNo: true,
+      oeId: true,
       oe: userRef,
       client: { select: { id: true, name: true } },
       site: { select: { id: true, name: true } },
@@ -49,7 +52,11 @@ type ListRow = Prisma.FitmentGetPayload<{ include: typeof listInclude }>;
 
 const iso = (d: Date | null) => (d ? d.toISOString() : null);
 
-function toItem(f: ListRow): WorkflowFitmentItemDto {
+/** CR-11 (D-256): the replacement can be assigned from the Faulty view while it is Open or Assigned. */
+const REPLACEMENT_ASSIGNABLE = ['OPEN', 'ASSIGNED'];
+
+function toItem(f: ListRow, viewer: User): WorkflowFitmentItemDto {
+  const ctx = { task: { oeId: f.task.oeId }, fitment: { technicianId: f.technicianId, status: f.status } };
   return {
     id: f.id,
     tkId: formatTkId(f.tkNo),
@@ -74,6 +81,11 @@ function toItem(f: ListRow): WorkflowFitmentItemDto {
       status: f.replacement.status,
       technician: f.replacement.technician,
     },
+    // UNDO_FAULTY is also refused by the engine once the replacement has started (D-257).
+    availableActions: availableActions(viewer, ctx).filter(
+      (a) => a !== 'UNDO_FAULTY' || (!!f.replacement && REPLACEMENT_ASSIGNABLE.includes(f.replacement.status)),
+    ),
+    canAssignReplacement: !!f.replacement && REPLACEMENT_ASSIGNABLE.includes(f.replacement.status) && canManageTask(viewer, f.task),
   };
 }
 
@@ -120,5 +132,5 @@ export async function listWorkflowFitments(
       take: q.pageSize,
     }),
   ]);
-  return { items: rows.map(toItem), total, page: q.page, pageSize: q.pageSize };
+  return { items: rows.map((row) => toItem(row, actor)), total, page: q.page, pageSize: q.pageSize };
 }
