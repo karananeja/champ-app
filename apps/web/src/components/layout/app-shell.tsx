@@ -19,6 +19,7 @@ import { initials } from '@/lib/format';
 import { cn } from '@/lib/utils';
 import { ErrorBoundary } from '@/features/errors/error-pages';
 import { NotificationBell } from '@/features/notifications/notification-bell';
+import { GlobalSearch } from '@/features/search/global-search';
 import { navGroupsFor } from './nav';
 
 function Brand() {
@@ -150,6 +151,7 @@ export function AppShell() {
             <Brand />
           </div>
           <div className="ml-auto flex items-center gap-1">
+            <GlobalSearch />
             <NotificationBell />
             <UserMenu />
           </div>

@@ -13,6 +13,8 @@ import { AcceptInvitePage } from '@/features/invites/accept-invite-page';
 import { MasterPage } from '@/features/masters/master-page';
 import { MastersPage } from '@/features/masters/masters-page';
 import { ProfilePage } from '@/features/profile/profile-page';
+import { SearchPage } from '@/features/search/search-page';
+import { SearchSettingsPage } from '@/features/search/search-settings-page';
 import { BoardPage } from '@/features/tasks/board/board-page';
 import { BulkUploadPage } from '@/features/tasks/bulk-upload-page';
 import { FitmentListPage } from '@/features/tasks/fitment-list-page';
@@ -28,6 +30,7 @@ import {
   canCreateTask,
   canUseBoard,
   canEditClients,
+  canManageSearchSettings,
   canViewClients,
   canViewMasters,
   canViewTasks,
@@ -84,6 +87,12 @@ function TasksRoute({
   return allowed ? children : <NoAccessRedirect />;
 }
 
+/** Search identifier settings (F14): SA only; others get the 403 page. */
+function SearchSettingsRoute() {
+  const { user } = useAuth();
+  return user && canManageSearchSettings(user) ? <SearchSettingsPage /> : <ForbiddenPage />;
+}
+
 /** The board (F07): SA and OM only; others get the 403 page (CR-03). */
 function BoardRoute() {
   const { user } = useAuth();
@@ -119,6 +128,8 @@ export function App() {
           <Route path="/tasks/reopened" element={<TasksRoute><FitmentListPage key="reopened" list="reopened" /></TasksRoute>} />
           <Route path="/tasks/:id" element={<TasksRoute><TaskDetailPage /></TasksRoute>} />
           <Route path="/tasks/:id/edit" element={<TasksRoute create><TaskFormPage /></TasksRoute>} />
+          <Route path="/search" element={<TasksRoute><SearchPage /></TasksRoute>} />
+          <Route path="/settings/search" element={<SearchSettingsRoute />} />
           <Route path="/profile" element={<ProfilePage />} />
           <Route path="*" element={<NotFoundPage />} />
         </Route>

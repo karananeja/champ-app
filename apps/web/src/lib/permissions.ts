@@ -41,5 +41,8 @@ export function assignableRoles(actor: UserDto): readonly Role[] {
   return actor.role === 'SUPER_ADMIN' ? ['SUPER_ADMIN', 'OM', 'OE', 'OT', 'RO'] : ['OE', 'OT', 'RO'];
 }
 
+/** Search identifier settings (F14): SA only. */
+export const canManageSearchSettings = (user: UserDto) => user.role === 'SUPER_ADMIN';
+
 export const canEditDelegation = (actor: UserDto, target: UserDto) =>
   actor.role === 'SUPER_ADMIN' && target.role === 'OM';

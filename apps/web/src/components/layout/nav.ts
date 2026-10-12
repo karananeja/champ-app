@@ -9,6 +9,7 @@ import {
   LayoutDashboard,
   ListTodo,
   RotateCcw,
+  Search,
   Route,
   SquareKanban,
   TriangleAlert,
@@ -19,7 +20,7 @@ import {
   type LucideIcon,
 } from 'lucide-react';
 import type { UserDto } from '@champ/shared';
-import { canApproveFitments, canCreateTask, canUseBoard, canViewClients, canViewMasters, canViewTasks, canViewTechnicians, canViewUsers } from '@/lib/permissions';
+import { canApproveFitments, canCreateTask, canManageSearchSettings, canUseBoard, canViewClients, canViewMasters, canViewTasks, canViewTechnicians, canViewUsers } from '@/lib/permissions';
 
 export interface NavItem {
   to: string;
@@ -71,6 +72,8 @@ export function navGroupsFor(user: UserDto): NavGroup[] {
     ...(canViewTasks(user) ? [{ label: 'Tasks', items: taskItems(user) }] : []),
     // Masters admin: SA and OM only (D-059).
     ...(canViewMasters(user) ? [{ label: 'Masters', items: [{ to: '/masters', label: 'All masters', icon: Database }] }] : []),
+    // F14: SA only.
+    ...(canManageSearchSettings(user) ? [{ label: 'Settings', items: [{ to: '/settings/search', label: 'Search identifiers', icon: Search }] }] : []),
     { items: [{ to: '/profile', label: 'Profile', icon: UserRound }] },
   ];
 }
