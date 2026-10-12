@@ -107,7 +107,7 @@ export async function bulkFillSampleCsv(actor: User, taskId: string): Promise<{ 
   const data = rows
     .filter((f) => BULK_FILL_STATUSES.includes(f.status))
     .map((f) => BULK_FILL_COLUMNS.map((c) => (c === 'tk_id' ? formatTkId(f.tkNo) : c === 'vehicle_reg_no' ? f.vehicleRegNo : c === 'chassis_no' ? f.chassisNo : '')));
-  return { filename: `bulk-fill-${formatOmId(task.omNo)}.csv`, body: `﻿${toCsv(BULK_FILL_COLUMNS, data)}` };
+  return { filename: `bulk-fill-${formatOmId(task.omNo)}.csv`, body: `\uFEFF${toCsv(BULK_FILL_COLUMNS, data)}` };
 }
 
 // --- Upload ---
@@ -141,7 +141,7 @@ type CsvRow = Partial<Record<BulkFillColumn, string>>;
 /** Parses the CSV like the F04 bulk upload (BOM, trimmed cells, row numbers count the header as row 1). */
 export function parseBulkFillCsv(buffer: Buffer): { rowNumber: number; cells: CsvRow }[] {
   if (buffer.includes(0)) throw fileError('VALIDATION_ERROR', 'Upload a CSV file (this looks like a binary file)');
-  const text = buffer.toString('utf8').replace(/^﻿/, '');
+  const text = buffer.toString('utf8').replace(/^\uFEFF/, '');
   const parsed = Papa.parse<Record<string, string>>(text, {
     header: true,
     skipEmptyLines: 'greedy',
