@@ -9,7 +9,7 @@ import {
   type TaskDto,
   type TaskOptionsResponse,
 } from '@champ/shared';
-import { StubRouter, parseTrip, straightLineTrip } from '../src/lib/router';
+import { OsrmRouter, RouterUnavailableError, StubRouter, parseRoute, parseTrip, straightLineRoute, straightLineTrip } from '../src/lib/router';
 import { prisma, type User } from '../src/lib/prisma';
 import { bearer, createLookup, createTaskWorld, createUser, fakeGoogle, testApi } from './helpers';
 
@@ -92,6 +92,36 @@ describe('router lib', () => {
     );
     expect(trip).toEqual({ order: [1, 0], legs: [{ distanceM: 100, durationS: 11 }, { distanceM: 200, durationS: 20 }], geometry: { type: 'LineString', coordinates: [[1, 2]] } });
     expect(() => parseTrip({ code: 'NoTrips' }, 2)).toThrow();
+  });
+
+  it('OSRM route (F12): fixed-order URL without overview, legs parsed; errors become RouterUnavailableError', async () => {
+    const urls: string[] = [];
+    const fetchImpl = (async (url: string) => {
+      urls.push(url);
+      return new Response(JSON.stringify({ code: 'Ok', routes: [{ legs: [{ distance: 1000.6, duration: 60.4 }, { distance: 50, duration: 5 }] }] }), { status: 200 });
+    }) as unknown as typeof fetch;
+    const osrm = new OsrmRouter({ baseUrl: 'http://osrm.test/', fetch: fetchImpl, minIntervalMs: 0 });
+    const points = [GPS, { lat: 12.9, lng: 77.6 }, { lat: 12.95, lng: 77.65 }];
+    expect(await osrm.route(points)).toEqual({ legs: [{ distanceM: 1001, durationS: 60 }, { distanceM: 50, durationS: 5 }] });
+    expect(urls).toEqual(['http://osrm.test/route/v1/driving/77.600000,12.800000;77.600000,12.900000;77.650000,12.950000?overview=false']);
+    expect(await osrm.route([GPS])).toEqual({ legs: [] });
+    expect(urls).toHaveLength(1);
+    expect(() => parseRoute({ code: 'NoRoute' }, 2)).toThrow(RouterUnavailableError);
+    expect(() => parseRoute({ code: 'Ok', routes: [{ legs: [] }] }, 2)).toThrow(RouterUnavailableError);
+    await expect(osrm.route(Array.from({ length: 101 }, () => GPS))).rejects.toThrow(RouterUnavailableError);
+  });
+
+  it('straight-line and stub route keep the given order', async () => {
+    const points = [GPS, { lat: 13.1, lng: 77.6 }, { lat: 12.9, lng: 77.6 }];
+    const straight = straightLineRoute(points);
+    expect(straight.legs.map((l) => l.durationS)).toEqual([null, null]);
+    expect(straight.legs[0]!.distanceM).toBeGreaterThan(33_000); // 12.8 → 13.1, not the nearest first
+    const stub = new StubRouter();
+    const routed = await stub.route(points);
+    expect(routed.legs.map((l) => l.distanceM)).toEqual(straight.legs.map((l) => Math.round(l.distanceM * 1.5)));
+    expect(stub.routeCalls).toEqual([points]);
+    stub.fail = true;
+    await expect(stub.route(points)).rejects.toThrow(RouterUnavailableError);
   });
 });
 
