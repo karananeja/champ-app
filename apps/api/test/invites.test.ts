@@ -35,7 +35,7 @@ describe('POST /api/invites — invite matrix (every actor × target role)', () 
         expect(res.status).toBe(allowed ? 201 : 403);
         if (allowed) {
           expect(res.body.invite).toMatchObject({ role: target, status: 'PENDING' });
-          expect(res.body.link).toMatch(/^http:\/\/localhost:5173\/accept-invite\?token=/);
+          expect(res.body.link).toMatch(/^http:\/\/localhost:3000\/accept-invite\?token=/);
         } else if (actor === 'OT' || actor === 'RO') {
           expect(res.body.error.code).toBe('FORBIDDEN');
         } else {

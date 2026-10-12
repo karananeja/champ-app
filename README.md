@@ -26,10 +26,10 @@ pnpm install
 pnpm db:migrate             # apply migrations (and generate the Prisma client)
 pnpm db:seed                # create the first Super Admin and the master data (dummy values)
 pnpm db:seed:demo           # optional: a demo OM, OE and three sample technicians
-pnpm dev                    # API on :4000, web on :5173
+pnpm dev                    # API on :4000, web on :3000
 ```
 
-Open http://localhost:5173 and sign in with the seeded Super Admin:
+Open http://localhost:3000 and sign in with the seeded Super Admin:
 
 - Email: `admin@intellicar.in`
 - Password: `Admin@1234`
@@ -37,7 +37,7 @@ Open http://localhost:5173 and sign in with the seeded Super Admin:
 (Change them with `SEED_SUPERADMIN_EMAIL` / `SEED_SUPERADMIN_PASSWORD` in `.env` before seeding.)
 
 The web dev server proxies `/api` to the API, so the refresh cookie is same-origin. Check the API with
-`curl http://localhost:5173/api/health`.
+`curl http://localhost:3000/api/health`.
 
 ### Inviting users
 
@@ -259,7 +259,8 @@ cards.
 
 Hidden unless `GOOGLE_CLIENT_ID` is set. When set, only verified Google accounts in `GOOGLE_ALLOWED_DOMAIN`
 (default `intellicar.in`) that already have an active Champ account (or a matching invite) can sign in. Add
-`http://localhost:5173` as an authorised JavaScript origin of the OAuth client.
+`http://localhost:3000` as an authorised JavaScript origin of the OAuth client (the dev server is pinned to port 3000
+with `strictPort`, CR-05, so it fails instead of moving to another port when 3000 is taken).
 
 ## Scripts
 
@@ -283,7 +284,7 @@ First E2E run on a machine: `pnpm --filter @champ/web exec playwright install ch
 
 | Service | Port | Override |
 |---|---|---|
-| Web (Vite) | 5173 | — |
+| Web (Vite) | 3000 | — (fixed; `strictPort`, CR-05) |
 | API | 4000 | `API_PORT` |
 | PostgreSQL | 5432 | `POSTGRES_PORT` (compose) + `DATABASE_URL` |
 | MinIO API / console | 9000 / 9001 | `MINIO_PORT` / `MINIO_CONSOLE_PORT` (compose) |

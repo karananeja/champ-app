@@ -26,7 +26,7 @@ export default defineConfig({
       NODE_ENV: 'test',
       DATABASE_URL: TEST_DATABASE_URL,
       JWT_ACCESS_SECRET: 'test-secret-not-for-production',
-      WEB_URL: 'http://localhost:5173',
+      WEB_URL: 'http://localhost:3000',
       GOOGLE_CLIENT_ID: '',
       GOOGLE_ALLOWED_DOMAIN: 'intellicar.in',
       // Safety net: nothing listens here, so a test that forgot to inject a fake geocoder gets a 503 and never

@@ -17,7 +17,9 @@ export default defineConfig(({ mode }) => {
       alias: { '@': path.resolve(import.meta.dirname, 'src') },
     },
     server: {
-      port: 5173,
+      // CR-05: port 3000 (the Google OAuth client's authorised origin); fail rather than drift to another port.
+      port: 3000,
+      strictPort: true,
       // Proxy the API so the refresh cookie is same-origin.
       proxy: { '/api': { target: `http://localhost:${apiPort}`, changeOrigin: false } },
     },
