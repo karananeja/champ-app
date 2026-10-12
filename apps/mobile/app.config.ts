@@ -10,6 +10,9 @@ const BUNDLE_ID = IS_PROD ? 'in.intellicar.champ' : 'in.intellicar.champ.dev';
 
 const LOCATION_PERMISSION =
   'Champ uses your location to plan your daily route, record where you start each fitment and set your home location.';
+// F10B: fitment photos and device-id scanning.
+const CAMERA_PERMISSION = 'Champ uses the camera to take fitment photos and scan device ids.';
+const PHOTOS_PERMISSION = 'Champ lets you choose fitment photos from your gallery.';
 
 export default ({ config }: ConfigContext): ExpoConfig => ({
   ...config,
@@ -43,6 +46,14 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
       },
     ],
     '@maplibre/maplibre-react-native',
+    [
+      'expo-camera',
+      { cameraPermission: CAMERA_PERMISSION, microphonePermission: false, recordAudioAndroid: false, barcodeScannerEnabled: true },
+    ],
+    [
+      'expo-image-picker',
+      { photosPermission: PHOTOS_PERMISSION, cameraPermission: CAMERA_PERMISSION, microphonePermission: false },
+    ],
   ],
   experiments: { typedRoutes: true },
 });
