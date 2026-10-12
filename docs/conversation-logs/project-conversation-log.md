@@ -295,3 +295,5 @@ Chronological log of the whole project conversation. Feature-level logs live in 
 **Status:** F10B ready for UAT by the user.
 
 **User:** "F10B accepted". UAT sign-off recorded and `feature/F10B-fitment-form` merged to `main`.
+
+**Claude:** Wrote the F11 intent (mobile CSV bulk fill) and sent it for sign-off.
