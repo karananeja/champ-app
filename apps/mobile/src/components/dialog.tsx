@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import { KeyboardAvoidingView, Modal, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { KeyboardAvoidingView, Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useTheme } from '../theme/use-theme';
 
 /** A modal card: the close dialogs, the location-required notice and the Continue-or-Close sheet. */
@@ -22,7 +22,9 @@ export function Dialog({
   const { colors } = useTheme();
   return (
     <Modal visible={visible} transparent animationType={sheet ? 'slide' : 'fade'} onRequestClose={onClose}>
-      <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+      {/* Padding on Android too: with edge-to-edge the window no longer resizes for the keyboard, which hid the
+          dialog's buttons (F10 verification). */}
+      <KeyboardAvoidingView style={{ flex: 1 }} behavior="padding">
         <View style={[styles.backdrop, sheet && styles.sheetBackdrop]}>
           <Pressable style={StyleSheet.absoluteFill} onPress={onClose} accessibilityLabel="Close" />
           <View testID={testID} style={[styles.card, sheet && styles.sheet, { backgroundColor: colors.card }]}>
