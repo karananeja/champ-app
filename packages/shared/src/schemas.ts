@@ -2,8 +2,10 @@ import { z } from 'zod';
 import { CLIENT_CODE_PATTERN } from './clients';
 import { TECHNICIAN_TYPES } from './masters';
 import { ROLES, USER_STATUSES } from './roles';
+import { BOARD_MAX_PAGE_SIZE, BOARD_PAGE_SIZE } from './board';
 import {
   BULK_MAX_ROWS,
+  FITMENT_STATUSES,
   MAX_VEHICLES_PER_TASK,
   TASK_STATUSES,
   VEHICLE_CSV_COLUMNS,
@@ -806,3 +808,28 @@ export type WorkflowListQuery = z.infer<typeof workflowListQuerySchema>;
 
 export const taskEventsQuerySchema = z.object({ format: z.enum(['json', 'csv']).default('json') });
 export type TaskEventsQuery = z.infer<typeof taskEventsQuerySchema>;
+
+// --- Board (F07) ---
+
+/**
+ * `GET /board` filters: customer, OE, technician, activity, fitment date (`from`/`to`, IST days, both
+ * inclusive; when set, the finished columns drop their 7-day window, D-111) and `q`, a TK, OM or OE id (a bare
+ * number matches any of the three). `pageSize` cards per column.
+ */
+export const boardQuerySchema = z.object({
+  clientId: idSchema.optional(),
+  oeId: idSchema.optional(),
+  technicianId: idSchema.optional(),
+  activityId: idSchema.optional(),
+  from: istDay.optional(),
+  to: istDay.optional(),
+  q: searchQuery,
+  pageSize: z.coerce.number().int().min(1).max(BOARD_MAX_PAGE_SIZE).default(BOARD_PAGE_SIZE),
+});
+export type BoardQuery = z.infer<typeof boardQuerySchema>;
+
+/** `GET /board/:status`: the same filters plus `page` ("Load more"). */
+export const boardColumnQuerySchema = boardQuerySchema.extend({ page: z.coerce.number().int().min(1).default(1) });
+export type BoardColumnQuery = z.infer<typeof boardColumnQuerySchema>;
+
+export const boardColumnParamsSchema = z.object({ status: z.enum(FITMENT_STATUSES, { error: 'Unknown board column' }) });

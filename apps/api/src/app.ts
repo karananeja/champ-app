@@ -10,6 +10,7 @@ import { logger } from './lib/logger';
 import { defaultStorage, type Storage } from './lib/storage';
 import { errorHandler, notFoundHandler } from './middleware/error';
 import { authRouter } from './modules/auth/router';
+import { boardRouter } from './modules/board/router';
 import { clientsRouter } from './modules/clients/router';
 import { geoRouter } from './modules/geo/router';
 import { healthRouter } from './modules/health/router';
@@ -72,6 +73,7 @@ export function createApp(deps: AppDeps = {}) {
   api.use('/geo', geoRouter(geocoder));
   api.use('/tasks', tasksRouter());
   api.use('/fitments', fitmentsRouter(storage));
+  api.use('/board', boardRouter());
   if (devSimulator) api.use('/dev', devSimulatorRouter(storage));
   api.use(notFoundHandler);
 

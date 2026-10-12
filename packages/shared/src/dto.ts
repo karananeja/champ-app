@@ -645,3 +645,39 @@ export interface DashboardSummaryDto {
   /** OE: fitments of the caller's tasks that are submitted and wait for the OE's verification. */
   awaitingMyVerification?: number;
 }
+
+// --- Board (F07) ---
+
+/** A card of the OM board: one fitment (D-109). */
+export interface BoardCard {
+  id: string;
+  /** `TK-00001` */
+  tkId: string;
+  status: FitmentStatus;
+  task: { id: string; omId: string; oeTaskId: string };
+  client: { id: string; name: string };
+  /** The site's city (the task's location, D-061). */
+  city: string;
+  activity: { id: string; name: string };
+  technician: UserRef | null;
+  /** The task's fitment date (UTC ISO; shown in IST). */
+  fitmentAt: string;
+  reopenCount: number;
+  /** Snapshot taken at verification (D-101); null until verified. */
+  billable: boolean | null;
+  replacementOf: { id: string; tkId: string } | null;
+  updatedAt: string;
+}
+
+/** One column of the board (`GET /board/:status`, and each entry of `GET /board`). */
+export interface BoardColumnDto {
+  /** Every card of the column under the filters (not just this page). */
+  count: number;
+  items: BoardCard[];
+  hasMore: boolean;
+}
+
+/** `GET /board`: the first page of every column (all 9 statuses). */
+export interface BoardResponse {
+  columns: Record<FitmentStatus, BoardColumnDto>;
+}
