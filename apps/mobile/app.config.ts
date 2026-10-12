@@ -54,6 +54,7 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
       'expo-image-picker',
       { photosPermission: PHOTOS_PERMISSION, cameraPermission: CAMERA_PERMISSION, microphonePermission: false },
     ],
+    'expo-sharing',
   ],
   experiments: { typedRoutes: true },
 });

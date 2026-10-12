@@ -124,4 +124,20 @@ describe('RouteScreen', () => {
     expect(call?.[1]?.method).toBe('POST');
     expect(jsonBody(call?.[1] as RequestInit)).toEqual({ date: '2026-10-12', lat: 13.1, lng: 77.7 });
   });
+
+  it('shows Bulk fill on the first stop of each task with two or more of my fitments', async () => {
+    const route = makeRoute({
+      stops: [
+        makeStop({ order: 1, isNext: true, fitment: { id: 'a1', tkId: 'TK-00020', taskId: 'tA', taskFitmentCount: 2 } }),
+        makeStop({ order: 2, fitment: { id: 'b1', tkId: 'TK-00030', taskId: 'tB', taskFitmentCount: 1 } }),
+        makeStop({ order: 3, fitment: { id: 'a2', tkId: 'TK-00021', taskId: 'tA', taskFitmentCount: 2 } }),
+      ],
+    });
+    mockFetch(() => ({ status: 200, body: route }));
+    await renderWithProviders(<RouteScreen />, { date: '2026-10-12' });
+    await fireEvent.press(await screen.findByTestId('bulk-fill-a1'));
+    expect(router.push).toHaveBeenCalledWith({ pathname: '/task/[taskId]/bulk-fill', params: { taskId: 'tA' } });
+    expect(screen.queryByTestId('bulk-fill-a2')).toBeNull();
+    expect(screen.queryByTestId('bulk-fill-b1')).toBeNull();
+  });
 });
