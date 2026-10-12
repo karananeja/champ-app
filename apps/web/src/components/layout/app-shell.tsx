@@ -137,7 +137,7 @@ export function AppShell() {
                 <Menu />
               </Button>
             </SheetTrigger>
-            <SheetContent side="left" className="w-64 bg-sidebar p-4">
+            <SheetContent side="left" className="w-64 overflow-y-auto bg-sidebar p-4">
               <SheetHeader className="p-0 px-3">
                 <SheetTitle>
                   <Brand />
