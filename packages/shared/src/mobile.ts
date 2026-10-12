@@ -2,6 +2,7 @@ import { z } from 'zod';
 import type { AuthResponse } from './dto';
 import type { Role } from './roles';
 import type { FitmentStatus } from './tasks';
+import type { FitmentAction } from './workflow';
 
 // --- Field app (F09) ---
 
@@ -50,7 +51,7 @@ export function mobileDateOptions(now: Date): string[] {
   );
 }
 
-const isoDay = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Use YYYY-MM-DD');
+export const isoDay = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Use YYYY-MM-DD');
 
 export const mobileDateQuerySchema = z.object({
   date: isoDay.refine((d) => mobileDateOptions(new Date()).includes(d), {
@@ -80,6 +81,19 @@ export interface MyFitmentDto {
   site: { name: string; address: string | null; lat: number | null; lng: number | null };
   vehicleRegNo: string | null;
   activity: string;
+  // --- F10 ---
+  /** The task's id (cuid). */
+  taskId: string;
+  /** The task's OE (tap to call). */
+  oe: { name: string; phone: string | null } | null;
+  chassisNo: string | null;
+  assetNumber: string | null;
+  /** Asset type name. */
+  assetType: string;
+  /** Installation type name. */
+  installationType: string;
+  /** What the caller may do now (from `availableActions`). */
+  availableActions: FitmentAction[];
 }
 
 export interface MyFitmentsResponse {
