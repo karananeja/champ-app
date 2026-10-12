@@ -150,13 +150,15 @@ describe('POST /mobile/fitments/:fid/photos', () => {
 
   it('refuses before reading the file: wrong role, other technician, locked status', async () => {
     const w = await setup();
-    const big = Buffer.alloc(11 * 1024 * 1024, 1); // would be FILE_TOO_LARGE if it were read
-    let res = await w.upload(w.tech, 'BEFORE', {}, big);
+    // A small non-image body: read, it would be 400 UNSUPPORTED_FILE. (An 11 MB body made the refusal race the
+    // upload, and the client sometimes saw `write EPIPE` instead of the status.)
+    const junk = Buffer.from('not an image');
+    let res = await w.upload(w.tech, 'BEFORE', {}, junk);
     expect(res.status).toBe(409); // Assigned: not started yet
     await w.start();
-    res = await w.upload(w.techB, 'BEFORE', {}, big);
+    res = await w.upload(w.techB, 'BEFORE', {}, junk);
     expect(res.status).toBe(403);
-    res = await w.upload(w.om, 'BEFORE', {}, big);
+    res = await w.upload(w.om, 'BEFORE', {}, junk);
     expect(res.status).toBe(403);
     expect(await prisma.fitmentPhoto.count({ where: { fitmentId: w.fid } })).toBe(0);
   });
