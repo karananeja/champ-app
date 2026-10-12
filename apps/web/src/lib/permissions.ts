@@ -17,6 +17,8 @@ export {
   canViewClients,
   canViewMasters,
   canViewTechnicians,
+  canViewBilling,
+  canViewAnalytics,
 } from '@champ/shared';
 
 export const invitableRoles = (user: UserDto): readonly Role[] => INVITABLE_ROLES[user.role];

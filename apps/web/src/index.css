@@ -36,6 +36,8 @@
   --color-sidebar-ring: var(--sidebar-ring);
   --color-brand-soft: var(--brand-soft);
   --color-brand-soft-foreground: var(--brand-soft-foreground);
+  --color-viz-series: var(--viz-series);
+  --color-viz-grid: var(--viz-grid);
 }
 
 /*
@@ -43,6 +45,9 @@
  * with indigo-950 text (5.3:1) and as link/focus colour on the dark background (6.6:1). Both pass WCAG AA.
  */
 :root {
+  /* F15 charts (dataviz reference palette, validated on the card surfaces): one series hue, hairline grid. */
+  --viz-series: #2a78d6;
+  --viz-grid: #e1e0d9;
   --radius: 0.625rem;
   --background: oklch(1 0 0);
   --foreground: oklch(0.145 0 0);
@@ -84,6 +89,8 @@
 }
 
 .dark {
+  --viz-series: #3987e5;
+  --viz-grid: #2c2c2a;
   --background: oklch(0.145 0 0);
   --foreground: oklch(0.985 0 0);
   --card: oklch(0.205 0 0);

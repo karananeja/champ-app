@@ -1,16 +1,28 @@
 import {
   Building2,
+  ChartColumn,
   ClipboardList,
   Database,
   HardHat,
   LayoutDashboard,
+  ReceiptIndianRupee,
   Search,
   UserRound,
   Users,
   type LucideIcon,
 } from 'lucide-react';
 import type { UserDto } from '@champ/shared';
-import { canManageSearchSettings, canUseBoard, canViewClients, canViewMasters, canViewTasks, canViewTechnicians, canViewUsers } from '@/lib/permissions';
+import {
+  canManageSearchSettings,
+  canUseBoard,
+  canViewAnalytics,
+  canViewBilling,
+  canViewClients,
+  canViewMasters,
+  canViewTasks,
+  canViewTechnicians,
+  canViewUsers,
+} from '@/lib/permissions';
 
 export interface NavItem {
   to: string;
@@ -43,6 +55,18 @@ export function navGroupsFor(user: UserDto): NavGroup[] {
     // and the Open tab for others, and is active on every /tasks route (lists, new, bulk, detail) and on Search.
     ...(canViewTasks(user)
       ? [{ items: [{ to: canUseBoard(user) ? '/tasks/board' : '/tasks', label: 'Tasks', icon: ClipboardList, alsoActiveOn: ['/tasks', '/search'] }] }]
+      : []),
+    // F15 (D-267): Reports after Tasks; Billing for SA/OM/RO, Analytics also for OE.
+    ...(canViewBilling(user) || canViewAnalytics(user)
+      ? [
+          {
+            label: 'Reports',
+            items: [
+              ...(canViewBilling(user) ? [{ to: '/reports/billing', label: 'Billing', icon: ReceiptIndianRupee }] : []),
+              ...(canViewAnalytics(user) ? [{ to: '/reports/analytics', label: 'Analytics', icon: ChartColumn }] : []),
+            ],
+          },
+        ]
       : []),
     // Masters admin: SA and OM only (D-059).
     ...(canViewMasters(user) ? [{ label: 'Masters', items: [{ to: '/masters', label: 'All masters', icon: Database }] }] : []),
