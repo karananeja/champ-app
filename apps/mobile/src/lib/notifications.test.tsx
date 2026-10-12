@@ -125,6 +125,7 @@ describe('notificationHref', () => {
     expect(notificationHref(makeNotification({ type: 'FITMENT_ASSIGNED' }))).toEqual({ pathname: '/fitment/[id]', params: { id: 'f1' } });
     expect(notificationHref(makeNotification({ type: 'FITMENT_APPROVED' }))).toEqual({ pathname: '/fitment/[id]', params: { id: 'f1' } });
     expect(notificationHref(makeNotification({ type: 'FITMENT_REOPENED' }))).toEqual({ pathname: '/fitment/[id]', params: { id: 'f1' } });
+    expect(notificationHref(makeNotification({ type: 'FITMENT_FAULT_UNDONE' }))).toEqual({ pathname: '/fitment/[id]', params: { id: 'f1' } });
     expect(notificationHref(makeNotification({ type: 'FITMENT_SUBMITTED' }))).toEqual({ pathname: '/approve-visit/[id]', params: { id: 'f1' } });
     // The task's OE (approved, reopened by an OM) opens the fitment in Approve visit.
     expect(notificationHref(makeNotification({ type: 'FITMENT_APPROVED', forTechnician: false }))).toEqual({ pathname: '/approve-visit/[id]', params: { id: 'f1' } });
