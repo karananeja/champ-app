@@ -10,3 +10,4 @@
 - User asked for a theme selector and reported that checked checkboxes and the bell badge were hard to see in dark mode. Logged as CR-09 on this branch (D-253 to D-255).
 - User asked to drop the separate *Create task* entry from the sidebar and put all task views on one page with tabs, and asked why faulty tasks are read-only. Logged as CR-10 (an agent is implementing it); answered the faulty question (D-011/D-012: Moved to FT is final, the replacement carries the work).
 - User: "both options seem to be good for FT and show the action buttons such as bulk upload and create task in open task tab only". The header buttons change went to the CR-10 agent; logged CR-11 (assign replacement, undo faulty; D-256, D-257): backend agent now, web after CR-10.
+- User: "let the board tab be the first tab". Relayed to the CR-10 agent: Board first (for those who can use it), URLs unchanged.

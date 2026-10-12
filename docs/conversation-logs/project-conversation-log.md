@@ -381,3 +381,7 @@ Chronological log of the whole project conversation. Feature-level logs live in 
 **User:** "both options seem to be good for FT and show the action buttons such as bulk upload and create task in open task tab only"
 
 **Claude:** Passed the header-buttons change to the CR-10 agent (Create task and Bulk upload on the Open tab only). Logged CR-11: *Assign replacement* in the Faulty view and a new *Undo faulty* action (back to Assigned; the unstarted replacement is closed as "Faulty marked by mistake"), D-256 – D-257. Backend agent launched; the web part follows CR-10, which is changing the same pages.
+
+**User:** "let the board tab be the first tab"
+
+**Claude:** Relayed to the CR-10 agent: tab order Board, Open, Assigned, Awaiting approval, Re-opened, Faulty, Completed, All, Travel; URLs unchanged.
