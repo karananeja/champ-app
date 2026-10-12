@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import {
+  EMPTY_FITMENT_FORM,
   istDayStart,
   mobileDateOptions,
   type FitmentStatus,
@@ -246,6 +247,12 @@ describe('GET /api/mobile/home and /api/mobile/fitments', () => {
       assetType: 'Vehicle',
       installationType: 'GPS',
       availableActions: [],
+      // F10B additions (lists carry no photos)
+      isVehicle: true,
+      form: EMPTY_FITMENT_FORM,
+      photos: [],
+      startedAt: null,
+      submittedAt: null,
     });
 
     // The day before has only the 23:59 fitment.

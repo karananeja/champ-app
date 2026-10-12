@@ -3,6 +3,8 @@ import type { AuthResponse } from './dto';
 import type { Role } from './roles';
 import type { FitmentStatus } from './tasks';
 import type { FitmentAction } from './workflow';
+import type { FitmentPhotoDto } from './dto';
+import type { FitmentFormDto } from './fitment-form';
 
 // --- Field app (F09) ---
 
@@ -94,6 +96,17 @@ export interface MyFitmentDto {
   installationType: string;
   /** What the caller may do now (from `availableActions`). */
   availableActions: FitmentAction[];
+  // --- F10B ---
+  /** The asset type is the built-in VEHICLE (cluster photo, reg no. and cluster reading required). */
+  isVehicle: boolean;
+  /** The technician's form. */
+  form: FitmentFormDto;
+  /** Active technician photos (BEFORE, ASSET, CLUSTER, PLACEMENT, AFTER), with presigned URLs. */
+  photos: FitmentPhotoDto[];
+  /** UTC ISO. */
+  startedAt: string | null;
+  /** UTC ISO. */
+  submittedAt: string | null;
 }
 
 export interface MyFitmentsResponse {

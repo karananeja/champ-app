@@ -20,6 +20,7 @@ import {
 import type { Prisma } from '../../generated/prisma/client';
 import type { User } from '../../lib/prisma';
 import { photoCounts, toVerificationDto, verificationInclude } from '../verification/dto';
+import { toFormDto } from '../mobile/form';
 
 const iso = (d: Date) => d.toISOString();
 const isoOrNull = (d: Date | null) => (d ? d.toISOString() : null);
@@ -157,6 +158,7 @@ export function toFitmentDto(f: FitmentRow, task: { oeId: string }, actor: User)
     lastReopenReason: f.lastReopenReason,
     lastReopenedAt: isoOrNull(f.lastReopenedAt),
     verification: toVerificationDto(f),
+    technicianForm: toFormDto(f),
     photoCounts: photoCounts(f.photos),
     canEditVerification: canEditVerification(actor, ctx),
     canManagePhotos: canManagePhotos(actor, ctx),

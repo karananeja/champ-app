@@ -4,7 +4,7 @@ import { describe, expect, it } from 'vitest';
 import type { FitmentAction, FitmentVerificationDto, Paginated, TaskDto, TaskListItemDto } from '@champ/shared';
 import { MemoryStorage } from '../src/lib/storage';
 import { prisma, type User } from '../src/lib/prisma';
-import { bearer, createLookup, createTaskWorld, createUser, fakeGoogle, testApi } from './helpers';
+import { bearer, createLookup, createTaskWorld, createUser, fakeGoogle, testApi, fillSubmitReady } from './helpers';
 
 const storage = new MemoryStorage();
 const api = () => testApi(fakeGoogle(null), { storage, devSimulator: true });
@@ -19,8 +19,10 @@ async function setup(count = 1) {
     .send(w.taskBody({ technicianId: w.techA.id, vehicles: { entry: 'COUNT', count } }));
   expect(res.status, JSON.stringify(res.body)).toBe(201);
   const task = res.body as TaskDto;
-  const transition = (actor: User, fid: string, action: FitmentAction, payload?: unknown) =>
-    api().post(`/api/fitments/${fid}/transitions`).set(bearer(actor)).send(payload === undefined ? { action } : { action, payload });
+  const transition = async (actor: User, fid: string, action: FitmentAction, payload?: unknown) => {
+    if (action === 'SUBMIT') await fillSubmitReady(fid);
+    return api().post(`/api/fitments/${fid}/transitions`).set(bearer(actor)).send(payload === undefined ? { action } : { action, payload });
+  };
   const step = async (actor: User, fid: string, action: FitmentAction, payload?: unknown) => {
     const r = await transition(actor, fid, action, payload);
     expect(r.status, `${action}: ${JSON.stringify(r.body)}`).toBe(200);
@@ -228,7 +230,8 @@ describe('verification edit locks (spec §3)', () => {
       billable: true,
       otRemarks: null,
     });
-    expect(ro.photoCounts).toEqual({ active: 0, byKind: {} });
+    // F10B: the photos added by fillSubmitReady before SUBMIT.
+    expect(ro.photoCounts).toEqual({ active: 4, byKind: { BEFORE: 1, ASSET: 1, CLUSTER: 1, AFTER: 1 } });
     await w.step(w.om, fid, 'APPROVE');
     expect(await flags(w.oe)).toEqual([false, false]);
     expect(await flags(w.om)).toEqual([true, true]);

@@ -15,7 +15,7 @@ A feature is **Complete** only after it has been implemented, tested and signed 
 | F08 | Travel tasks | F05 | ✅ Complete (UAT 2026-10-12) |
 | F09 | Mobile app foundation: login, home, header, profile, home location | F01 | ✅ Complete (UAT 2026-10-12) |
 | F10 | Mobile route planning and starting a fitment (route, GPS start, close, FT) | F05, F09 | ✅ Complete (UAT 2026-10-12) |
-| F10B | Mobile fitment form and submit (photos, checks, scan, summary) | F10 | Intent awaiting sign-off |
+| F10B | Mobile fitment form and submit (photos, checks, scan, summary) | F10 | ✅ Complete (UAT 2026-10-12) |
 | F11 | Mobile CSV bulk fill | F10 | Not started |
 | F12 | Mobile history timeline, distance, Approve visit | F10 | Not started |
 | F13 | In-app notifications (web and mobile) | F05 | Not started |

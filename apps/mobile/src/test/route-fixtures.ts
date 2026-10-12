@@ -1,4 +1,4 @@
-import type { DayRouteDto, MyFitmentDto, RouteStopDto } from '@champ/shared';
+import { EMPTY_FITMENT_FORM, type DayRouteDto, type MyFitmentDto, type RouteStopDto } from '@champ/shared';
 
 export function makeFitment(over: Partial<MyFitmentDto> = {}): MyFitmentDto {
   return {
@@ -17,6 +17,12 @@ export function makeFitment(over: Partial<MyFitmentDto> = {}): MyFitmentDto {
     assetType: 'Truck',
     installationType: 'Hidden',
     availableActions: ['START', 'CLOSE_NOT_DONE', 'MARK_FAULTY'],
+    // F10B
+    isVehicle: true,
+    form: EMPTY_FITMENT_FORM,
+    photos: [],
+    startedAt: null,
+    submittedAt: null,
     ...over,
   };
 }

@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import { Router } from 'express';
-import { TECHNICIAN_PHOTO_KINDS, canManageTask, formatTkId, simulateSchema, type SimulateInput, type TransitionPayload } from '@champ/shared';
+import { FITMENT_CHECKS, TECHNICIAN_PHOTO_KINDS, canManageTask, type PhotoKind, formatTkId, simulateSchema, type SimulateInput, type TransitionPayload } from '@champ/shared';
 import type { Prisma } from '../../generated/prisma/client';
 import { conflict, forbidden, notFound } from '../../lib/errors';
 import { logger } from '../../lib/logger';
@@ -13,6 +13,7 @@ import { authenticate, currentUser } from '../../middleware/auth';
 import { requireRole } from '../../middleware/require-role';
 import { validate } from '../../middleware/validate';
 import { transitionFitment } from './engine';
+import { toFormDto } from '../mobile/form';
 
 /**
  * Dev-only technician simulator (D-073): `POST /dev/fitments/:fid/simulate` performs a technician step as the
@@ -44,17 +45,20 @@ export function devSimulatorRouter(storage: Storage) {
       res.json(await transitionFitment(fitment.technician, fitment.id, action, body, { simulated: true, viewer: caller }));
       return;
     }
-    // A resubmit after a reopen keeps the photos already there (the technician would only retake what's asked).
-    const existing = await prisma.fitmentPhoto.count({
+    // A resubmit after a reopen keeps the photos already there; only missing kinds get a sample (F10B: and the
+    // empty required form fields get sample values, so the SUBMIT form check passes).
+    const existing = await prisma.fitmentPhoto.findMany({
       where: { fitmentId: fitment.id, status: 'ACTIVE', kind: { in: [...TECHNICIAN_PHOTO_KINDS] } },
+      select: { kind: true },
     });
-    const photos = existing ? [] : await storeSamplePhotos(storage, fitment.id);
+    const have = new Set(existing.map((p) => p.kind));
+    const photos = await storeSamplePhotos(storage, fitment.id, (kind) => !have.has(kind));
     try {
       res.json(
         await transitionFitment(fitment.technician, fitment.id, action, body, {
           simulated: true,
           viewer: caller,
-          afterApply: (tx, f) => attachSamples(tx, fitment.technician!, f, photos, fitment.task.site),
+          beforeApply: (tx, f) => attachSamples(tx, fitment.technician!, f, photos, fitment.task.site),
         }),
       );
     } catch (err) {
@@ -69,8 +73,8 @@ export function devSimulatorRouter(storage: Storage) {
 type StoredSample = Awaited<ReturnType<typeof loadSamplePhotos>>[number] & { id: string; key: string };
 
 /** Uploads the sample photos before the transaction (objects are cleaned up if it fails). */
-async function storeSamplePhotos(storage: Storage, fitmentId: string): Promise<StoredSample[]> {
-  const samples = await loadSamplePhotos();
+async function storeSamplePhotos(storage: Storage, fitmentId: string, wanted: (kind: PhotoKind) => boolean): Promise<StoredSample[]> {
+  const samples = (await loadSamplePhotos()).filter((s) => wanted(s.kind));
   const stored: StoredSample[] = [];
   try {
     for (const sample of samples) {
@@ -87,7 +91,27 @@ async function storeSamplePhotos(storage: Storage, fitmentId: string): Promise<S
   return stored;
 }
 
-/** Inside the SUBMIT transaction: the OT remarks and, when new, the photo rows and one PHOTO_ADDED event. */
+/** Sample values for the empty required form fields (F10B), like the sample photos. */
+async function fillSampleForm(tx: Prisma.TransactionClient, fitmentId: string, tkNo: number) {
+  const f = await tx.fitment.findUniqueOrThrow({ where: { id: fitmentId } });
+  const form = toFormDto(f);
+  const checks = { ...Object.fromEntries(FITMENT_CHECKS.map((c) => [c, 'OK'])), ...form.checks };
+  const pad = String(tkNo).padStart(5, '0');
+  await tx.fitment.update({
+    where: { id: fitmentId },
+    data: {
+      checks,
+      otRemarks: form.comments ?? SAMPLE_OT_REMARKS,
+      deviceReplacement: form.deviceReplacement ?? 'DEVICE',
+      deviceId: form.deviceId ?? `SIM${pad}`,
+      vehicleRegNo: form.vehicleRegNo ?? `KA01SM${pad.slice(-4)}`,
+      clusterReadingKm: form.clusterReadingKm ?? 12_345,
+      formUpdatedAt: new Date(),
+    },
+  });
+}
+
+/** Inside the SUBMIT transaction, before the form check: the sample form and, when missing, the photo rows and one PHOTO_ADDED event. */
 async function attachSamples(
   tx: Prisma.TransactionClient,
   technician: User,
@@ -95,7 +119,7 @@ async function attachSamples(
   photos: StoredSample[],
   site: { lat: number; lng: number },
 ) {
-  await tx.fitment.update({ where: { id: fitment.id }, data: { otRemarks: SAMPLE_OT_REMARKS } });
+  await fillSampleForm(tx, fitment.id, Number(fitment.tkId.slice(3)));
   if (!photos.length) return;
   const now = new Date();
   await tx.fitmentPhoto.createMany({

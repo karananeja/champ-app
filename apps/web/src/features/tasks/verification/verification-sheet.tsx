@@ -25,6 +25,7 @@ import { BillableBadge } from './billable-badge';
 import { PhotoGallery } from './photo-gallery';
 import { keepOpenForLightbox } from './photo-meta';
 import { DebugPhotoUpload } from './photo-upload';
+import { TechnicianForm } from './technician-form';
 import { useSaveVerification, useVerifyFitment } from './queries';
 
 interface FormState {
@@ -62,7 +63,7 @@ const refText = (ref: TaskRef | null) => (ref ? (ref.active ? ref.name : `${ref.
 
 /**
  * The OE verification of one fitment (F06), replacing F05's Verify confirmation: a right-side sheet (full
- * screen on phones) with the technician's work on the left (info, OT remarks, photos) and the form on the
+ * screen on phones) with the technician's work on the left (the technician's form from the app (F10B), photos) and the form on the
  * right (issue observed, action taken, accessories, OE remarks, debug image, final issue with a live billable
  * badge). Save draft keeps partial entries; Verify shows the missing required fields inline (D-098). Read-only
  * when the caller can't edit (OM viewing an approved lock, RO, SA, after the OE's lock).
@@ -184,16 +185,7 @@ export function VerificationSheet({ fitment, onClose }: { fitment: FitmentDto; o
             <h3 id="verify-work" className="font-semibold">
               Technician&apos;s work
             </h3>
-            <dl className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
-              <Item label="Technician">{fitment.technician?.name ?? '—'}</Item>
-              <Item label="Submitted (IST)">{fitment.submittedAt ? formatIst(fitment.submittedAt) : '—'}</Item>
-            </dl>
-            <div className="grid gap-1 text-sm">
-              <div className="text-xs text-muted-foreground">Remarks from OT</div>
-              <p className="rounded-md bg-muted/50 p-2 whitespace-pre-wrap" data-testid="ot-remarks">
-                {v.otRemarks ?? 'No remarks from the technician.'}
-              </p>
-            </div>
+            <TechnicianForm fitment={fitment} />
             <PhotoGallery fitmentId={fitment.id} manage={false} allowHistory={false} compact />
           </section>
 

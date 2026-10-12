@@ -308,6 +308,18 @@ are told to use the web console (D-128). It's online only (D-008).
     placeholder until F10B; *No, close* asks for a reason (Close reasons master) and comments.
   - **Close (not done)** also works before starting; **Mark faulty** (reason) moves the fitment to FT and the OE gets
     the replacement (D-012).
+- **Fitment form** (F10B; *Yes, continue* or *Open form*): before, asset, cluster (vehicles), device/SIM placement
+  (when replaced) and after photos; five checks (OK / Not OK / Not applicable); reg no., chassis no., cluster reading
+  (km); device replacement (Device / SIM / No); device id and secondary device id; comments. It saves as you go (fields
+  on blur, photos straight away; "Not saved — retrying" if the connection drops). *Submit* lists anything missing
+  (D-180–D-183); then the **summary** opens, and *Edit* works until the OE verifies (D-184). The OE sees the answers in
+  the "Technician's form" section of the web verification sheet, and edits after submit show in the history.
+- **Photos**: *Take photo* or *Choose from gallery*; each is resized to 1600 px, JPEG-compressed and stamped with the TK
+  id, IST date/time and GPS position burned into the image (D-181, D-198). *Retake* replaces it (the old one stays in
+  the history).
+- **Scan** (device ids): reads barcodes and QR codes live, or *Read text* recognises printed text on the device and
+  offers the candidates; the technician confirms or edits (D-023, D-200). The iOS Simulator has no camera: use the
+  gallery there, the Android emulator's virtual camera, or a phone.
 - **OEs doing fitments** (D-158): on the web an OE can assign a fitment of their own task to themselves, and an SA/OM
   can assign any fitment to an OE ("Name (OE)" in the assign dialog). The OE then works it in the app like a
   technician.
@@ -328,6 +340,8 @@ pnpm --filter @champ/mobile start   # afterwards: Metro only, then open "Champ D
   override it, then restart Metro.
 - **On a phone** (same Wi-Fi as the Mac): `npx expo run:android --device`, or `npx expo run:ios --device` (needs
   Xcode signing with your Apple ID as a personal team).
+- F10B added native modules (camera, image picker and manipulator, file system, Skia, text extractor): after pulling
+  it, run `pnpm install` and rebuild with `npx expo run:ios` / `npx expo run:android`.
 - `ios/` and `android/` are generated and not committed; delete them and run `expo run:*` again after changing
   `app.config.ts` or adding a native module. `APP_VARIANT=production` builds the `in.intellicar.champ` id instead of
   `in.intellicar.champ.dev`.
@@ -341,7 +355,9 @@ cookie; same rate limit as the web login), `POST /api/mobile/auth/refresh` and `
 technician rows include `homeLocation`.
 F10: `GET /api/mobile/route?date=&lat=&lng=` (stored per technician and day as `DayRoute`, D-155),
 `POST /api/mobile/route/recalculate` (`{date, lat, lng}`), `GET /api/mobile/fitments/:fid`; the technician steps go
-through the existing `POST /api/fitments/:fid/transitions`. `OSRM_URL` (default `https://router.project-osrm.org`, the
+through the existing `POST /api/fitments/:fid/transitions`. F10B: `PUT /api/mobile/fitments/:fid/form` (partial; `null` clears) and
+`POST /api/mobile/fitments/:fid/photos` (multipart `file`, `kind`, `lat`, `lng`, `takenAt`); SUBMIT is refused with 400
+`FORM_INCOMPLETE` (`details.missing`) until the form is complete. The dev simulator fills the form before submitting. `OSRM_URL` (default `https://router.project-osrm.org`, the
 public demo server: fine for development only) sets the routing service; tests and E2E point it at an unreachable
 address, so they use the straight-line fallback.
 

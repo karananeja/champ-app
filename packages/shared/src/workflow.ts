@@ -145,6 +145,8 @@ export const TASK_EVENT_TYPES = [
   'PHOTO_ADDED',
   'PHOTO_REPLACED',
   'PHOTO_REMOVED',
+  // F10B: technician form edits after submit
+  'FITMENT_FORM_UPDATED',
 ] as const;
 export type TaskEventType = (typeof TASK_EVENT_TYPES)[number];
 
@@ -167,6 +169,7 @@ export const TASK_EVENT_LABELS: Record<TaskEventType, string> = {
   PHOTO_ADDED: 'Photo added',
   PHOTO_REPLACED: 'Photo replaced',
   PHOTO_REMOVED: 'Photo removed',
+  FITMENT_FORM_UPDATED: 'Form edited',
 };
 
 /** Roles that see the History tab and the raw event log (D-033; RO excluded, D-025). */

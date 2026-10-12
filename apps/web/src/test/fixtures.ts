@@ -1,5 +1,5 @@
 import { vi } from 'vitest';
-import type { FitmentDto, FitmentPhotoDto, LookupsResponse, TaskDto, TravelTaskDto, UserDto } from '@champ/shared';
+import { EMPTY_FITMENT_FORM, type FitmentDto, type FitmentPhotoDto, type LookupsResponse, type TaskDto, type TravelTaskDto, type UserDto } from '@champ/shared';
 
 export function makeUser(overrides: Partial<UserDto> = {}): UserDto {
   return {
@@ -135,6 +135,7 @@ export function makeFitment(overrides: Partial<FitmentDto> = {}): FitmentDto {
     photoCounts: { active: 0, byKind: {} },
     canEditVerification: false,
     canManagePhotos: false,
+    technicianForm: { ...EMPTY_FITMENT_FORM },
     ...overrides,
   };
 }

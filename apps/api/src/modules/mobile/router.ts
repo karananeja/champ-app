@@ -12,12 +12,19 @@ import {
   type MobileRefreshInput,
   type RecalculateRouteInput,
   type RouteQuery,
+  fitmentFormSchema,
+  uploadTechnicianPhotoSchema,
+  type FitmentFormInput,
+  type UploadTechnicianPhotoInput,
 } from '@champ/shared';
 import type { RouteOptimizer } from '../../lib/router';
+import type { Storage } from '../../lib/storage';
 import { authenticate, currentUser } from '../../middleware/auth';
 import { requireRole } from '../../middleware/require-role';
 import { validate } from '../../middleware/validate';
 import * as auth from '../auth/service';
+import { uploadPhoto } from '../verification/upload';
+import { saveForm, technicianUploadGuard, uploadTechnicianPhoto } from './form';
 import { getDayRoute } from './route';
 import * as mobile from './service';
 
@@ -30,7 +37,7 @@ function sendMobileSession(res: Response, session: auth.Session) {
 }
 
 /** `/mobile/*`: the field app's sign-in (OT and OE only, D-128), its home and task list (F09) and day route (F10). */
-export function mobileRouter(loginLimiter: RequestHandler, optimizer: RouteOptimizer) {
+export function mobileRouter(loginLimiter: RequestHandler, optimizer: RouteOptimizer, storage: Storage) {
   const router = Router();
 
   router.post('/auth/login', loginLimiter, validate({ body: loginSchema }), async (req, res) => {
@@ -62,7 +69,20 @@ export function mobileRouter(loginLimiter: RequestHandler, optimizer: RouteOptim
   });
 
   app.get('/fitments/:fid', async (req, res) => {
-    res.json(await mobile.getMyFitment(currentUser(req), req.params.fid as string));
+    res.json(await mobile.getMyFitment(storage, currentUser(req), req.params.fid as string));
+  });
+
+  // F10B: the technician's form (partial autosave) and photos.
+  app.put('/fitments/:fid/form', validate({ body: fitmentFormSchema }), async (req, res) => {
+    const fid = req.params.fid as string;
+    await saveForm(currentUser(req), fid, req.body as FitmentFormInput);
+    res.json(await mobile.getMyFitment(storage, currentUser(req), fid));
+  });
+
+  // The role (above) and the fitment rule are checked before multer reads the file (D-108).
+  app.post('/fitments/:fid/photos', technicianUploadGuard, uploadPhoto, validate({ body: uploadTechnicianPhotoSchema }), async (req, res) => {
+    const photo = await uploadTechnicianPhoto(storage, currentUser(req), req.params.fid as string, req.file!, req.body as UploadTechnicianPhotoInput);
+    res.status(201).json(photo);
   });
 
   app.get('/route', validate({ query: routeQuerySchema }), async (req, res) => {

@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { FitmentAction, TaskDto, TransitionResponse } from '@champ/shared';
 import { prisma, type User } from '../src/lib/prisma';
-import { bearer, createLookup, createTaskWorld, createUser, testApi } from './helpers';
+import { bearer, createLookup, createTaskWorld, createUser, testApi, fillSubmitReady } from './helpers';
 
 const api = () => testApi();
 
@@ -20,8 +20,10 @@ async function setup(count = 2, overrides: Record<string, unknown> = {}) {
 
 const GPS = { lat: 12.97, lng: 77.59 };
 
-const transition = (actor: User, fid: string, action: FitmentAction, payload?: unknown) =>
-  api().post(`/api/fitments/${fid}/transitions`).set(bearer(actor)).send(payload === undefined ? { action } : { action, payload });
+const transition = async (actor: User, fid: string, action: FitmentAction, payload?: unknown) => {
+  if (action === 'SUBMIT') await fillSubmitReady(fid);
+  return api().post(`/api/fitments/${fid}/transitions`).set(bearer(actor)).send(payload === undefined ? { action } : { action, payload });
+};
 
 /** Runs transitions that must succeed. */
 async function run(...steps: [User, string, FitmentAction, unknown?][]) {
@@ -93,7 +95,7 @@ describe('workflow — happy path', () => {
       ['FITMENT_APPROVED', 'OE_VERIFIED', 'OM_APPROVED', w.om.id],
     ]);
     expect(events[0]!.data).toEqual({ tkId: 'TK-00001', ...GPS });
-    expect(events[1]!.data).toEqual({ tkId: 'TK-00001', note: 'All good' });
+    expect(events[1]!.data).toMatchObject({ tkId: 'TK-00001', note: 'All good', form: { 'Device id': 'DEV-TEST', 'CAN voltage': 'OK' } });
   });
 
   it('an OT acts on their own fitment through /fitments, though /tasks stays closed to them', async () => {

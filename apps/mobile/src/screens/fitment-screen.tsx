@@ -15,6 +15,7 @@ import { formatIstTime } from '../lib/format';
 import { requireFreshFix } from '../lib/location';
 import { directionsUrls, fitmentQueryKey } from '../lib/route';
 import { useTheme } from '../theme/use-theme';
+import { hasSummary } from './fitment-summary-screen';
 
 export const LOCATION_DENIED_MESSAGE =
   'Starting a fitment records where you are, so Champ needs your location. Allow location access for Champ in Settings, then try again.';
@@ -204,7 +205,12 @@ export function FitmentScreen() {
             Up next after {stop.blockedBy}. Finish or close it first.
           </Muted>
         ) : null}
-        {f.status === 'IN_PROGRESS' ? <Button title="Continue" testID="continue" onPress={() => setDialog('continue')} /> : null}
+        {f.status === 'IN_PROGRESS' ? (
+          <Button title="Open form" testID="open-form" onPress={() => router.push({ pathname: '/fitment/[id]/continue', params: { id } })} />
+        ) : null}
+        {hasSummary(f.status) ? (
+          <Button title="View summary" testID="view-summary" onPress={() => router.push({ pathname: '/fitment/[id]/summary', params: { id } })} />
+        ) : null}
         {can('CLOSE_NOT_DONE') ? <Button title="Close (not done)" variant="ghost" testID="close" onPress={() => setDialog('close')} /> : null}
         {can('MARK_FAULTY') ? <Button title="Mark faulty" variant="ghost" testID="mark-faulty" onPress={() => setDialog('faulty')} /> : null}
       </ScrollView>

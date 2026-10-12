@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import type { FitmentAction, Paginated, TaskDto, TaskEventDto, TaskHistoryResponse, WorkflowFitmentItemDto } from '@champ/shared';
 import { devSimulatorEnabled } from '../src/config/env';
 import { prisma, type User } from '../src/lib/prisma';
-import { bearer, createLookup, createTaskWorld, createUser, fakeGoogle, testApi } from './helpers';
+import { bearer, createLookup, createTaskWorld, createUser, fakeGoogle, testApi, fillSubmitReady } from './helpers';
 
 const api = () => testApi();
 const simApi = () => testApi(fakeGoogle(null), { devSimulator: true });
@@ -24,7 +24,8 @@ async function world() {
 }
 
 async function step(actor: User, fid: string, action: FitmentAction, payload?: unknown) {
-  const res = await api().post(`/api/fitments/${fid}/transitions`).set(bearer(actor)).send({ action, payload });
+  if (action === 'SUBMIT') await fillSubmitReady(fid);
+    const res = await api().post(`/api/fitments/${fid}/transitions`).set(bearer(actor)).send({ action, payload });
   expect(res.status, `${action}: ${JSON.stringify(res.body)}`).toBe(200);
 }
 
