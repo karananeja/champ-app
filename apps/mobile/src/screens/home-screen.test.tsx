@@ -77,12 +77,12 @@ describe('HomeScreen', () => {
     await waitFor(() => expect(screen.getByLabelText('Show tasks, 4')).toBeOnTheScreen());
   });
 
-  it('the bell is disabled and says Coming soon', async () => {
+  it('the bell opens the notifications screen (F13)', async () => {
     mockedUseSession.mockReturnValue(fakeSession());
     homeApi(null);
     await renderWithProviders(<HomeScreen />, { date: TODAY });
-    expect(screen.getByTestId('bell')).toBeDisabled();
+    expect(screen.getByLabelText('Notifications')).toBeOnTheScreen();
     await fireEvent.press(screen.getByTestId('bell'));
-    expect(screen.getByText('Coming soon')).toBeOnTheScreen();
+    expect(router.push).toHaveBeenCalledWith('/notifications');
   });
 });
