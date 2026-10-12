@@ -13,3 +13,4 @@ export * from './route';
 export * from './fitment-form';
 export * from './bulk-fill';
 export * from './mobile-history';
+export * from './notifications';
