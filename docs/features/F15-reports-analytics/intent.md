@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| Status | **Awaiting user sign-off** |
+| Status | **Approved** 2026-10-12 ("ok continue"; open points as proposed, D-264 – D-268) |
 | Requirements | SRS §6.9 ("Monthly billing report per client, listing billable fitments. Analytics: the KPIs in D-030.") · W17 (analytics dashboard, basic KPIs), W18 (monthly billing report per client; invoices later) · Decisions D-018 (billing = monthly per-client report of billable activities; no money, no TT reimbursement), D-030 (KPIs: tasks by status, turnaround time, reopen rate, fitments per OT per day, faulty rate, km travelled), D-074 (reopen attribution), D-101 (billable snapshot), D-216 (day distance) |
 | Depends on | F06 (billable), F12 (distance), F14 (complete) |
 
