@@ -424,6 +424,13 @@ model Fitment {
   verificationUpdatedAt   DateTime?
   verificationUpdatedById String?
   verificationUpdatedBy   User?               @relation("FitmentVerificationUpdatedBy", fields: [verificationUpdatedById], references: [id])
+  // --- Technician form (F10B); vehicleRegNo, chassisNo and otRemarks (comments) are reused ---
+  deviceId                String?
+  secondaryDeviceId       String?
+  clusterReadingKm        Int?
+  deviceReplacement       DeviceReplacement?
+  checks                  Json? // { assetCondition, accessories, batteryCondition, clusterMeter, canVoltage }: 'OK' | 'NOT_OK' | 'NA'
+  formUpdatedAt           DateTime?
   accessories             FitmentAccessory[]
   photos                  FitmentPhoto[]
   createdAt               DateTime            @default(now())
@@ -436,6 +443,12 @@ model Fitment {
   @@index([technicianId, status])
   @@index([status])
   @@index([reopenCount])
+}
+
+enum DeviceReplacement {
+  DEVICE
+  SIM
+  NONE
 }
 
 // --- OE verification and photos (F06) ---
@@ -664,10 +677,10 @@ enum RouteEngine {
  * of open fitments is unchanged; recomputed on *Recalculate route* or when that set changes.
  */
 model DayRoute {
-  id           String      @id @default(cuid())
+  id           String       @id @default(cuid())
   technicianId String
-  technician   User        @relation("DayRouteTechnician", fields: [technicianId], references: [id])
-  date         DateTime    @db.Date // IST day
+  technician   User         @relation("DayRouteTechnician", fields: [technicianId], references: [id])
+  date         DateTime     @db.Date // IST day
   originLat    Float? // null: no GPS and no home location (order from the earliest stop)
   originLng    Float?
   originSource RouteOrigin?
@@ -675,7 +688,7 @@ model DayRoute {
   legs         Json // [{ fitmentId, distanceM, durationS | null }]
   geometry     Json? // GeoJSON LineString (OSRM) or null (fallback)
   engine       RouteEngine
-  computedAt   DateTime    @default(now())
+  computedAt   DateTime     @default(now())
 
   @@unique([technicianId, date])
 }

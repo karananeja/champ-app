@@ -2,6 +2,7 @@ import {
   availableActions,
   formatTkId,
   istDayStart,
+  type FitmentPhotoDto,
   type MobileHomeResponse,
   type MyFitmentDto,
   type MyFitmentsResponse,
@@ -9,7 +10,9 @@ import {
 import type { Prisma } from '../../generated/prisma/client';
 import { notFound } from '../../lib/errors';
 import { prisma, type User } from '../../lib/prisma';
+import type { Storage } from '../../lib/storage';
 import { oeVerificationQueueWhere } from '../verification/service';
+import { isVehicleAssetType, technicianPhotos, toFormDto } from './form';
 
 const DAY_MS = 24 * 3600 * 1000;
 
@@ -46,7 +49,7 @@ export const myFitmentInclude = {
       site: { select: { name: true, address: true, lat: true, lng: true } },
       activity: { select: { name: true } },
       oe: { select: { name: true, phone: true } },
-      assetType: { select: { name: true } },
+      assetType: { select: { name: true, code: true } },
       installationType: { select: { name: true } },
     },
   },
@@ -54,8 +57,11 @@ export const myFitmentInclude = {
 
 export type MyFitmentRow = Prisma.FitmentGetPayload<{ include: typeof myFitmentInclude }>;
 
-/** The field app's view of one of my fitments (F09, F10 additions), with what I may do now. */
-export function toMyFitmentDto(f: MyFitmentRow, actor: User): MyFitmentDto {
+/**
+ * The field app's view of one of my fitments (F09, F10, F10B additions), with what I may do now. `photos` are
+ * loaded only for the single-fitment endpoints (lists and the route send an empty array).
+ */
+export function toMyFitmentDto(f: MyFitmentRow, actor: User, photos: FitmentPhotoDto[] = []): MyFitmentDto {
   const { site } = f.task;
   return {
     id: f.id,
@@ -73,6 +79,11 @@ export function toMyFitmentDto(f: MyFitmentRow, actor: User): MyFitmentDto {
     assetType: f.task.assetType.name,
     installationType: f.task.installationType.name,
     availableActions: availableActions(actor, { task: { oeId: f.task.oeId }, fitment: { technicianId: f.technicianId, status: f.status } }),
+    isVehicle: isVehicleAssetType(f.task.assetType),
+    form: toFormDto(f),
+    photos,
+    startedAt: f.startedAt ? f.startedAt.toISOString() : null,
+    submittedAt: f.submittedAt ? f.submittedAt.toISOString() : null,
   };
 }
 
@@ -86,12 +97,12 @@ export async function listMyFitments(actor: User, date: string): Promise<MyFitme
   return { date, items: rows.map((f) => toMyFitmentDto(f, actor)) };
 }
 
-/** `GET /mobile/fitments/:fid`: one of my fitments (of a task that isn't deleted), else 404. */
-export async function getMyFitment(actor: User, fitmentId: string): Promise<MyFitmentDto> {
+/** `GET /mobile/fitments/:fid`: one of my fitments (of a task that isn't deleted), with its photos, else 404. */
+export async function getMyFitment(storage: Storage, actor: User, fitmentId: string): Promise<MyFitmentDto> {
   const row = await prisma.fitment.findFirst({
     where: { id: fitmentId, technicianId: actor.id, task: { deletedAt: null } },
     include: myFitmentInclude,
   });
   if (!row) throw notFound('Fitment not found');
-  return toMyFitmentDto(row, actor);
+  return toMyFitmentDto(row, actor, await technicianPhotos(storage, row.id));
 }

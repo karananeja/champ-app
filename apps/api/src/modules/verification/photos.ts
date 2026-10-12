@@ -23,11 +23,11 @@ import { inspectImage } from './upload';
 
 type Tx = Prisma.TransactionClient;
 
-const photoInclude = {
+export const photoInclude = {
   uploadedBy: { select: { id: true, name: true } },
   changedBy: { select: { id: true, name: true } },
 } satisfies Prisma.FitmentPhotoInclude;
-type PhotoRow = Prisma.FitmentPhotoGetPayload<{ include: typeof photoInclude }>;
+export type PhotoRow = Prisma.FitmentPhotoGetPayload<{ include: typeof photoInclude }>;
 
 const isoOrNull = (d: Date | null) => (d ? d.toISOString() : null);
 
@@ -61,7 +61,7 @@ export async function toPhotoDto(storage: Storage, p: PhotoRow): Promise<Fitment
 export const photoObjectKey = (fitmentId: string, photoId: string, ext: string) => `fitments/${fitmentId}/${photoId}.${ext}`;
 
 /** A fitment of a task that isn't deleted, with what the permission checks need, or 404. */
-async function loadFitment(fitmentId: string, db: Tx = prisma) {
+export async function loadFitment(fitmentId: string, db: Tx = prisma) {
   const fitment = await db.fitment.findUnique({
     where: { id: fitmentId },
     select: { id: true, tkNo: true, status: true, taskId: true, technicianId: true, task: { select: { oeId: true, deletedAt: true } } },
@@ -96,18 +96,22 @@ const sourceOf = (actor: User): PhotoSource => (actor.role === 'OM' ? 'OM' : act
  * re-checks the edit locks. If the database part fails, the object is deleted (best effort) and the error
  * is rethrown.
  */
-async function storeThenWrite<T>(
+type LoadedFitment = Awaited<ReturnType<typeof loadFitment>>;
+
+export async function storeThenWrite<T>(
   storage: Storage,
   actor: User,
   fitmentId: string,
   file: { buffer: Buffer },
   write: (tx: Tx, fitment: Awaited<ReturnType<typeof loadFitment>>, upload: { id: string; key: string; image: Awaited<ReturnType<typeof inspectImage>> }) => Promise<T>,
   precheck?: () => Promise<unknown>,
+  /** The edit rule, checked before the upload and again under the locks (default: the F06 verification lock). */
+  assertEditable: (actor: User, fitment: LoadedFitment) => void = (a, f) => assertVerificationEditable(a, f, 'photos'),
 ): Promise<T> {
   // The file is part of the body, so it is validated before the permission checks (400 before 403, D-081).
   const image = await inspectImage(file.buffer);
   const before = await loadFitment(fitmentId);
-  assertVerificationEditable(actor, before, 'photos');
+  assertEditable(actor, before);
   await precheck?.();
   const id = randomUUID();
   const key = photoObjectKey(fitmentId, id, image.ext);
@@ -122,7 +126,7 @@ async function storeThenWrite<T>(
       await lockTask(tx, before.taskId);
       await tx.$queryRaw`SELECT "id" FROM "Fitment" WHERE "id" = ${fitmentId} FOR UPDATE`;
       const fitment = await loadFitment(fitmentId, tx);
-      assertVerificationEditable(actor, fitment, 'photos');
+      assertEditable(actor, fitment);
       return write(tx, fitment, { id, key, image });
     });
   } catch (err) {
@@ -131,7 +135,7 @@ async function storeThenWrite<T>(
   }
 }
 
-const photoData = (
+export const photoData = (
   actor: User,
   fitmentId: string,
   kind: PhotoKind,
@@ -151,7 +155,7 @@ const photoData = (
   source: sourceOf(actor),
 });
 
-type UploadedFile = { buffer: Buffer; size: number; originalname: string };
+export type UploadedFile = { buffer: Buffer; size: number; originalname: string };
 
 /** `POST /fitments/:fid/photos`: an OE/OM debug image (D-032). Technician kinds come from the mobile API (F10). */
 export async function uploadDebugPhoto(storage: Storage, actor: User, fitmentId: string, file: UploadedFile): Promise<FitmentPhotoDto> {

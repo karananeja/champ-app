@@ -72,7 +72,7 @@ export function createApp(deps: AppDeps = {}) {
   // One login limiter for web and mobile, so the 10 per 15 min limit counts across both (F09).
   const loginLimiter = createLoginLimiter();
   api.use('/auth', authRouter(google, loginLimiter));
-  api.use('/mobile', mobileRouter(loginLimiter, optimizer));
+  api.use('/mobile', mobileRouter(loginLimiter, optimizer, storage));
   api.use('/invites', invitesRouter(google));
   api.use(usersRouter());
   api.use('/lookups', lookupsRouter());

@@ -24,6 +24,7 @@ import { writeEvent } from '../tasks/events';
 import { lockTask, recomputeTaskStatus } from '../tasks/status';
 import { verifyFitmentFields } from '../verification/service';
 import { assertRouteOrder } from '../mobile/route';
+import { assertReadyToSubmit } from '../mobile/form';
 
 type Tx = Prisma.TransactionClient;
 
@@ -37,6 +38,11 @@ export interface TransitionOptions {
    * sample photos and OT remarks to a SUBMIT here, F06).
    */
   afterApply?: (tx: Tx, fitment: { id: string; taskId: string; tkId: string }) => Promise<void>;
+  /**
+   * Runs inside the transaction after the permission and status checks, before the action's own checks (the
+   * simulator fills the technician form and sample photos here so its SUBMIT passes the F10B form check).
+   */
+  beforeApply?: (tx: Tx, fitment: { id: string; taskId: string; tkId: string }) => Promise<void>;
 }
 
 /** Why `canPerform` refused, in words. */
@@ -94,6 +100,7 @@ export async function transitionFitment(
     }
     // F10 (D-156): the technician starts fitments in the stored day-route order; closing and faulty aren't restricted.
     if (action === 'START' && fitment.technicianId) await assertRouteOrder(tx, fitment.technicianId, fitment);
+    if (opts.beforeApply) await opts.beforeApply(tx, { id: fitmentId, taskId: fitment.taskId, tkId: formatTkId(fitment.tkNo) });
     if (action === 'CLOSE_NOT_DONE') await requireActiveLookup(payload.closeReasonId ?? '', 'CLOSE_REASON', 'closeReasonId');
 
     const now = new Date();
@@ -106,6 +113,8 @@ export async function transitionFitment(
         Object.assign(data, { startedAt: now, startLat: payload.lat, startLng: payload.lng });
         break;
       case 'SUBMIT':
+        // F10B: the form and the required photos must be complete; the event keeps a snapshot of the form.
+        extraEventData.form = await assertReadyToSubmit(tx, fitmentId);
         data.submittedAt = now;
         break;
       case 'CLOSE_NOT_DONE':
