@@ -6,6 +6,7 @@ export {
   canApproveFitments,
   canViewHistory,
   canCreateTask,
+  canUseBoard,
   canDeleteTask,
   canManageTask,
   canViewTasks,

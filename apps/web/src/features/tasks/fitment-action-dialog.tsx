@@ -24,34 +24,46 @@ const COPY: Record<ReviewAction, { title: string; confirm: string; done: string 
   REOPEN: { title: 'Reopen', confirm: 'Reopen', done: 'reopened' },
 };
 
-function description(action: ReviewAction, fitment: FitmentDto, actor: UserDto) {
-  const technician = fitment.technician?.name ?? 'the technician';
+/** What the dialog needs of a fitment (a task-page fitment or an F07 board card). */
+export type ActionFitment = Pick<FitmentDto, 'id' | 'tkId' | 'status'> & { technician: { name: string } | null };
+
+function description(action: ReviewAction, fitments: ActionFitment[], actor: UserDto) {
+  const many = fitments.length > 1;
+  const technician = many ? 'their technicians' : (fitments[0]!.technician?.name ?? 'the technician');
   switch (action) {
     case 'APPROVE':
-      return 'Marks the fitment OM approved. After this only an OM can change it, and every change is flagged in the history.';
+      return `Marks ${many ? 'the fitments' : 'the fitment'} OM approved. After this only an OM can change ${many ? 'them' : 'it'}, and every change is flagged in the history.`;
     case 'REOPEN': {
       // D-074: an OM reopening an OE-verified fitment counts against the OE too.
-      const againstOe = actor.role !== 'OE' && fitment.status === 'OE_VERIFIED';
-      return `Sends the fitment back to ${technician} as Reopened. The reopen counts against the technician${againstOe ? ' and the operation executive' : ''}.`;
+      const againstOe = actor.role !== 'OE' && fitments.some((f) => f.status === 'OE_VERIFIED');
+      return `Sends ${many ? `${fitments.map((f) => f.tkId).join(', ')}` : 'the fitment'} back to ${technician} as Reopened. The reopen counts against the technician${againstOe ? ' and the operation executive' : ''}.`;
     }
   }
 }
 
 /**
- * Confirms a review action on one fitment (Final approve, Reopen). Reopen needs a reason (3–500 characters, the shared schema).
- * Server refusals (e.g. 409 INVALID_TRANSITION) are shown verbatim.
+ * Confirms a review action (Final approve, Reopen). Reopen needs a reason (3–500 characters, the shared schema).
+ * By default it runs the transition on `fitment` and shows server refusals (e.g. 409 INVALID_TRANSITION)
+ * verbatim. With `onConfirm` (F07 board: optimistic moves, several `fitments` sharing one reason) it only
+ * collects the input, hands it over and closes.
  */
 export function FitmentActionDialog({
   fitment,
+  fitments: many,
   action,
   actor,
+  onConfirm,
   onClose,
 }: {
-  fitment: FitmentDto;
+  fitment?: ActionFitment;
+  fitments?: ActionFitment[];
   action: ReviewAction;
   actor: UserDto;
+  onConfirm?: (input: { reason?: string }) => void;
   onClose: () => void;
 }) {
+  const fitments = many ?? (fitment ? [fitment] : []);
+  const first = fitments[0]!;
   const [reason, setReason] = useState('');
   const [error, setError] = useState<string | null>(null);
   const transition = useFitmentTransition();
@@ -70,15 +82,20 @@ export function FitmentActionDialog({
     } else {
       body = { action };
     }
+    if (onConfirm) {
+      onConfirm(body.action === 'REOPEN' ? { reason: body.payload.reason } : {});
+      onClose();
+      return;
+    }
     transition.mutate(
-      { fitmentId: fitment.id, body },
+      { fitmentId: first.id, body },
       {
         onSuccess: () => {
-          toast.success(`${fitment.tkId} ${copy.done}`);
+          toast.success(`${first.tkId} ${copy.done}`);
           onClose();
         },
         onError: (err) => {
-          const message = err instanceof ApiError ? err.message : `Could not ${copy.title.toLowerCase()} ${fitment.tkId}`;
+          const message = err instanceof ApiError ? err.message : `Could not ${copy.title.toLowerCase()} ${first.tkId}`;
           setError(message);
           toast.error(message);
         },
@@ -91,9 +108,9 @@ export function FitmentActionDialog({
       <DialogContent>
         <DialogHeader>
           <DialogTitle>
-            {copy.title} {fitment.tkId}?
+            {copy.title} {fitments.length > 1 ? `${fitments.length} fitments` : first.tkId}?
           </DialogTitle>
-          <DialogDescription>{description(action, fitment, actor)}</DialogDescription>
+          <DialogDescription>{description(action, fitments, actor)}</DialogDescription>
         </DialogHeader>
         <form
           className="grid grid-cols-1 gap-3"

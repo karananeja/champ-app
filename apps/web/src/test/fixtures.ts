@@ -62,7 +62,7 @@ type Route = (url: string, init: RequestInit) => unknown;
 
 /**
  * Stubs `fetch` with routes keyed by "METHOD /path" (query string ignored). A route is a JSON body, a
- * function returning one, or a `Response`. `/api/lookups` defaults to `lookupsFixture`. Returns the mock
+ * function returning one (or a promise of one), or a `Response`. `/api/lookups` defaults to `lookupsFixture`. Returns the mock
  * so tests can inspect calls.
  */
 export function mockApi(routes: Record<string, Route | unknown>) {
@@ -71,7 +71,8 @@ export function mockApi(routes: Record<string, Route | unknown>) {
     const key = `${init.method ?? 'GET'} ${path}`;
     const route = key in routes ? routes[key] : key === 'GET /api/lookups' ? lookupsFixture : undefined;
     if (route === undefined) return json({ error: { code: 'NOT_FOUND', message: `No mock for ${key}` } }, 404);
-    const body = typeof route === 'function' ? (route as Route)(url, init) : route;
+    // A route may return a promise (e.g. to hold a response back while a test checks optimistic updates).
+    const body = await (typeof route === 'function' ? (route as Route)(url, init) : route);
     if (body instanceof Response) return body;
     return json(body, init.method === 'POST' ? 201 : 200);
   });
