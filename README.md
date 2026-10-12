@@ -102,8 +102,8 @@ Logistics* in New Delhi), with hard-coded coordinates.
 
 The **Tasks** menu (SA, OM, OE and RO; not OT) holds *Create task*, *Bulk upload* (creators only), *Open tasks*,
 *Assigned* (OEs: tasks where they are the operation executive), *Awaiting approval* (SA/OM), *Completed tasks*
-(latest completion first) and *All tasks* (every status; CR-04), *Faulty tasks* and *Re-opened* (F05, below) and a
-placeholder for *Travel tasks* (F08).
+(latest completion first) and *All tasks* (every status; CR-04), *Faulty tasks* and *Re-opened* (F05, below) and
+*Travel tasks* (F08, below).
 
 - **Create task** is a full page: customer → site (the fitment city comes from the site), POC prefilled from the
   customer's primary contact, operation executive (locked to yourself as an OE), optional technician type and
@@ -193,7 +193,7 @@ bundle has no trace of it.
 **Storage (D-102).** Photos live in a **private** S3 bucket (MinIO locally). Uploads go through the API; browsers read
 photos through presigned GET URLs valid for 10 minutes (the photo list refreshes every ~8 minutes and on window focus).
 The API creates the bucket at start if it is missing (a storage outage is logged; photo calls then fail with 503
-`STORAGE_UNAVAILABLE`). Object keys are `fitments/{fitmentId}/{photoId}.{ext}`. Tests use an in-memory driver; E2E uses
+`STORAGE_UNAVAILABLE`). Object keys are `fitments/{fitmentId}/{photoId}.{ext}` (F08 travel receipts: `travel/{travelTaskId}/{attachmentId}.{ext}`). Tests use an in-memory driver; E2E uses
 the real MinIO with its own bucket `champ-e2e`.
 
 | Variable | Default | What |
@@ -240,11 +240,49 @@ API: `GET /api/board` (all nine columns: `{ columns: { STATUS: { count, items, h
 pageSize` (default 50, max 100). One `groupBy` for the counts and one query per column, whatever the number of
 cards.
 
+### Travel tasks (F08)
+
+A **travel task** (`TT-00001`) records a technician's trip outside a planned fitment (picking up a faulty device,
+replacing a device, fixing an issue, an ad-hoc visit) so it can be verified for reimbursement. The money itself is
+calculated outside Champ (D-018). Rules live in `packages/shared/src/travel.ts` and are used by the API and the web.
+
+- **Fields** (D-119): technician, location (Locations master), customer (optional), purpose (3–1,000 characters),
+  travel date (IST day, not in the future), related task (optional TK id, any technician's fitment), distance in km
+  (optional, 0 < km ≤ 5,000, one decimal) and receipts (optional; JPEG/PNG/WebP images or PDF, up to 10 MB each, at
+  most 10 per TT).
+- **Who raises:** SA and OM for any technician, an OE for their own technicians (on the web, *Raise travel task*;
+  the technician is preset and hidden when there is only one), an OT for themselves (the API is ready for the field
+  app, F09/F10; source `MOBILE`).
+- **Flow** (D-120, D-121): **Raised → Verified** (by the technician's OE or any OM; SA only views) or **Raised →
+  Rejected** (reason required). The person who raised it (or an OM) can edit and **Resubmit** a rejected TT, with the
+  edits in the same step; the rejection stays in the history. A verified TT is **locked**; an OM can **Reopen** it
+  with a reason. Every change (fields with before/after values, reasons, receipts added or removed) is in the TT's
+  history.
+- **Who sees what:** SA, OM and RO all TTs; an OE the TTs of technicians who report to them; an OT their own. RO is
+  read-only.
+- **Tasks → Travel tasks** (`/tasks/travel`): table (cards on phones) with filters for technician, OE (not shown to an
+  OE), customer, location, status, travel date range and TT id search, all kept in the URL; **Download** CSV or Excel
+  (current filters, up to 10,000 rows, every field and the status). Clicking a TT opens its **detail sheet**
+  (`?tt=<id>`): every field, receipts (images in the F06 photo viewer, PDFs as chips that open in a new tab), the
+  history and the buttons you may use (*Verify*, *Reject*, *Resubmit*, *Reopen*, *Edit*). Receipts are added in the
+  raise dialog (uploaded right after the TT is saved, with progress) or later in the sheet, and removed there (the
+  file is kept, as D-100).
+- **Dashboard:** OMs and OEs get a **Travel to verify** card (Raised TTs; an OE only their technicians') that opens
+  `/tasks/travel?status=RAISED`.
+
+API: `GET /api/travel-tasks/options`, `GET/POST /api/travel-tasks`, `GET/PATCH /api/travel-tasks/:id`,
+`POST /api/travel-tasks/:id/transitions` (`{ action: VERIFY | REJECT | RESUBMIT | REOPEN, reason?, changes? }`),
+`POST /api/travel-tasks/:id/attachments` (multipart `file`; the role and the TT rule are checked before the file is
+read) and `…/attachments/:aid/remove`, `GET /api/travel-tasks/export?format=csv|xlsx`, and `GET /api/fitments/lookup?q=`
+(up to 10 fitments by TK id or number, for the related-task picker). Receipts are stored in the same private bucket
+as photos under `travel/{travelTaskId}/{attachmentId}.{ext}`.
+
 ### Look and feel (CR-03, CR-04)
 
 - **Dashboard**: role-aware stat cards from `GET /api/tasks/summary`. SA/OM see open tasks, awaiting approval,
   re-opened, faulty and completed. OEs see their own tasks, fitments waiting for their verification, open tasks,
-  re-opened and faulty. RO sees open and completed tasks. Each card opens the list it counts.
+  re-opened and faulty. RO sees open and completed tasks. OM and OE also get *Travel to verify* (F08). Each card opens
+  the list it counts.
 - **Illustrations**: unDraw SVGs (free, no attribution) are bundled in `apps/web/src/assets/illustrations` and
   recoloured by the theme in `index.css`. Empty lists, "no matches", errors and offline states, 403/404 pages,
   invite errors, sign-in and the dashboard use them through `EmptyState` / `ErrorState` / `ListStates`.
@@ -310,12 +348,13 @@ apps/api/src
   server.ts           HTTP server entry
   config/env.ts       zod-validated environment
   lib/                prisma, jwt, tokens, password, cookies, google, logger, errors, geocoder/ (Nominatim),
-                      counters (transactional OM/OE/TK ids), storage/ (S3 + in-memory photo storage)
+                      counters (transactional OM/OE/TK/TT ids), storage/ (S3 + in-memory photo storage)
   middleware/         authenticate, requireRole, validate, error handler
   modules/            auth, invites, users, health, masters (+ /lookups), technicians, clients, geo,
                       tasks (service, refs, status, filters, events, export, bulk + bulk-rows, summary),
                       workflow (engine, lists, history, router, dev simulator), board (F07 kanban reads),
-                      verification (draft save, VERIFY fields, photos, upload checks), dev (simulator sample photos)
+                      verification (draft save, VERIFY fields, photos, upload checks), dev (simulator sample photos),
+                      travel (F08 travel tasks: service, filters, refs, receipts, export, fitment lookup)
 apps/api/prisma       schema, migrations, seed (seed-masters.ts: master values; seed-demo.ts: demo users)
 apps/web/src
   components/ui       shadcn/ui components (generated)
@@ -323,11 +362,12 @@ apps/web/src
                       empty/error states (illustration, empty-state, list-states), page-header
   assets/illustrations  unDraw SVGs (CR-03)
   features/           auth, invites, users, dashboard, profile, masters (config-driven), technicians, clients, tasks
-                      (board/: the F07 kanban), errors (404/403/error boundary)
+                      (board/: the F07 kanban), travel (F08), errors (404/403/error boundary)
   lib/                API client (in-memory access token, single-flight refresh), auth context, permissions
 packages/shared/src   roles.ts, masters.ts (kinds, permission helpers), clients.ts, tasks.ts (ids, statuses,
                       permissions, IST helpers, CSV columns), workflow.ts (state machine, actors, edit locks),
                       verification.ts (required fields, verification/photo locks, photo kinds),
                       board.ts (board columns, allowed moves and refusals, board roles),
+                      travel.ts (F08 travel rules: raise, verify, edit, transitions, scope),
                       schemas.ts, dto.ts
 ```
