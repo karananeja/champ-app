@@ -100,8 +100,8 @@ New code in `apps/api/src/modules/mobile/history.ts` and `mobile/approve-visit.t
 **Approve visit** (Home's *Approve visit* tile, OE only, becomes tappable → `/approve-visit`):
 - List for the selected date: TK id, technician, customer, site, "Submitted 4:12 pm". Empty: "Nothing waiting for you on this day". Pull to refresh.
 - **Detail** (`/approve-visit/[id]`): the technician's form read-only (reuse the summary's sections) and photos (thumbnails → full screen); then the verification fields: **Issue observed**, **Action taken**, **Final issue** (pickers from `/api/lookups`; the final issue shows "Billable"/"Not billable"), **Accessories** (multi-select), **OE remarks** (text, ≤ 1000). Keyboard padding (D-177/D-178).
-- **Verify** (sticky footer): checks the three required fields locally (list what's missing), then `POST /api/fitments/:fid/transitions {action: 'VERIFY', ...fields}`; a server `VERIFICATION_INCOMPLETE` (or whatever the existing code is) shows the same message. Success → toast "TK-00012 verified", then open the next waiting fitment (replace), or go back to the list when none is left. Invalidate home, approve-visit and history queries.
-- **Reopen**: a dialog with a reason (min length from the shared `REOPEN_REASON_MIN`) → `POST …/transitions {action: 'REOPEN', reason}` → same "next" behaviour.
+- **Verify** (sticky footer): checks the three required fields locally (list what's missing), then `POST /api/fitments/:fid/transitions {action: 'VERIFY', payload: {...fields}}`; a server `VERIFICATION_INCOMPLETE` (or whatever the existing code is) shows the same message. Success → toast "TK-00012 verified", then open the next waiting fitment (replace), or go back to the list when none is left. Invalidate home, approve-visit and history queries.
+- **Reopen**: a dialog with a reason (min length from the shared `REOPEN_REASON_MIN`) → `POST …/transitions {action: 'REOPEN', payload: {reason}}` → same "next" behaviour.
 - A 409 (someone else verified it meanwhile) → toast and back to the list.
 
 ## 6. Mobile tests (Jest)

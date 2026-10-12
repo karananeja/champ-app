@@ -319,3 +319,13 @@ Chronological log of the whole project conversation. Feature-level logs live in 
 **User:** "ok continue" (F12 intent). Taken as approval with all five open points as proposed (D-216 – D-220).
 
 **Claude:** Created branch `feature/F12-mobile-history-approve-visit`, wrote the F12 spec, and launched two parallel agents (Backend: shared, API; Mobile: History tab and Approve visit).
+
+**Implementation agents (F12):** Backend ~13 min (4 commits), Mobile ~6 min (1 commit).
+
+**Claude verification:**
+- All gates pass: 1,139 tests, E2E 69 passed + 4 skipped.
+- A live OSRM route check, and an API round trip (history with cached distance, reportees, access rules, Approve visit list matching the home count, Verify and Reopen) against the `_test` database; the throwaway test wasn't committed.
+- No new native modules, so no rebuild. The new `DayDistance` migration is applied to the dev DB (the agent renamed it to keep the migration order and updated its row in `_prisma_migrations`).
+- Wrote the README, the test report and D-221 – D-227.
+
+**Status:** F12 ready for UAT by the user.
