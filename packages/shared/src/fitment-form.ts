@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { FITMENT_STATUS_LABELS, type FitmentStatus } from './tasks';
 import { TECHNICIAN_PHOTO_KINDS, type PhotoKind } from './verification';
 
 /**
@@ -169,11 +170,40 @@ export function missingForSubmit(
 /** The 400 FORM_INCOMPLETE message; `details.missing` holds the labels. */
 export const formIncompleteMessage = (missing: readonly string[]): string => `Still needed: ${missing.join(', ')}`;
 
-/** The 409 FITMENT_LOCKED message when the technician may no longer change the form or photos. */
-export const FORM_LOCKED_MESSAGE = 'This fitment can no longer be changed: the form is editable only while In progress or Submitted.';
-
 /** Statuses in which the assigned technician may save the form and upload photos (D-184). */
-export const FORM_EDITABLE_STATUSES = ['IN_PROGRESS', 'SUBMITTED'] as const;
+export const FORM_EDITABLE_STATUSES: readonly FitmentStatus[] = ['IN_PROGRESS', 'SUBMITTED'];
+
+/** Whether the technician may still change the form and photos in this status (D-184). */
+export const isFormEditable = (status: FitmentStatus): boolean => FORM_EDITABLE_STATUSES.includes(status);
+
+/** The 409 FITMENT_LOCKED message when the technician may no longer change the form or photos. */
+export const formLockedMessage = (tkId: string, status: FitmentStatus): string =>
+  `${tkId} is ${FITMENT_STATUS_LABELS[status]}, so its form and photos can no longer be changed.`;
+
+/** A readable value of a form field (for the summary, history diffs and the submit snapshot). */
+export function formValueText(field: FitmentFormField, form: FitmentFormDto): string | null {
+  const v = form[field];
+  if (v === null || v === undefined) return null;
+  if (field === 'deviceReplacement') return DEVICE_REPLACEMENT_LABELS[v as DeviceReplacement];
+  return String(v);
+}
+
+/**
+ * The form as readable `{ label: value }` pairs, filled entries only, in form order (the FITMENT_SUBMITTED
+ * snapshot and the FITMENT_FORM_UPDATED diffs use these labels).
+ */
+export function readableForm(form: FitmentFormDto): Record<string, string> {
+  const out: Record<string, string> = {};
+  for (const c of FITMENT_CHECKS) {
+    const v = form.checks[c];
+    if (v) out[CHECK_LABELS[c]] = CHECK_VALUE_LABELS[v];
+  }
+  for (const f of Object.keys(FITMENT_FORM_FIELD_LABELS) as FitmentFormField[]) {
+    const v = formValueText(f, form);
+    if (v !== null) out[FITMENT_FORM_FIELD_LABELS[f]] = v;
+  }
+  return out;
+}
 
 const TAKEN_AT_SKEW_MS = 5 * 60_000;
 

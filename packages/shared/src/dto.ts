@@ -2,6 +2,7 @@ import type { LookupKind, TechnicianType } from './masters';
 import type { AuthProvider, InviteStatus, Role, UserStatus } from './roles';
 import type { BulkTaskColumn, FitmentStatus, TaskStatus } from './tasks';
 import type { PhotoKind, PhotoSource, PhotoStatus } from './verification';
+import type { FitmentFormDto } from './fitment-form';
 import type { FitmentAction, TaskEventType } from './workflow';
 import type { HomeLocationDto } from './mobile';
 import type { TravelAction, TravelAttachmentStatus, TravelEventType, TravelSource, TravelStatus } from './travel';
@@ -367,6 +368,9 @@ export interface FitmentDto {
   canEditVerification: boolean;
   /** Whether the caller may replace or remove photos and upload debug images (shared `canManagePhotos`). */
   canManagePhotos: boolean;
+  // --- Technician form (F10B) ---
+  /** The technician's answers (checks, readings, device replacement, device ids, comments). */
+  technicianForm: FitmentFormDto;
 }
 
 /** `GET /tasks/:id`: the task with resolved names, its fitments and what the caller may do. */
