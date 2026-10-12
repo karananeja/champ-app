@@ -1,18 +1,21 @@
+import { useRouter } from 'expo-router';
 import { useState } from 'react';
 import { FlatList, Modal, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Svg, { Path } from 'react-native-svg';
 import { dateLabel, dateOptions } from '../lib/format';
+import { useUnreadCount } from '../lib/notifications';
 import { useSelectedDate } from '../lib/selected-date';
 import { useTheme } from '../theme/use-theme';
 
-/** M4 header: the date chip (today and the 7 days before it, D-029) and the notifications bell (F13). */
+/** M4 header: the date chip (today and the 7 days before it, D-029) and the notifications bell with the unread count (F13). */
 export function AppHeader({ title }: { title: string }) {
   const { colors } = useTheme();
   const insets = useSafeAreaInsets();
   const { date, setDate } = useSelectedDate();
   const [open, setOpen] = useState(false);
-  const [tip, setTip] = useState(false);
+  const router = useRouter();
+  const unread = useUnreadCount();
 
   return (
     <View style={[styles.header, { paddingTop: insets.top + 8, backgroundColor: colors.background, borderColor: colors.border }]}>
@@ -31,25 +34,20 @@ export function AppHeader({ title }: { title: string }) {
       <Pressable
         testID="bell"
         accessibilityRole="button"
-        accessibilityLabel="Notifications"
-        accessibilityHint="Coming soon"
-        accessibilityState={{ disabled: true }}
-        onPress={() => {
-          setTip(true);
-          setTimeout(() => setTip(false), 2000);
-        }}
-        style={[styles.bell, { opacity: 0.5 }]}
+        accessibilityLabel={unread ? `Notifications, ${unread} unread` : 'Notifications'}
+        onPress={() => router.push('/notifications')}
+        style={styles.bell}
       >
         <Svg width={22} height={22} viewBox="0 0 24 24" fill="none" stroke={colors.foreground} strokeWidth={2}>
           <Path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9" />
           <Path d="M10.3 21a1.94 1.94 0 0 0 3.4 0" />
         </Svg>
+        {unread ? (
+          <View testID="bell-badge" style={[styles.badge, { backgroundColor: colors.destructive }]}>
+            <Text style={styles.badgeText}>{unread > 9 ? '9+' : unread}</Text>
+          </View>
+        ) : null}
       </Pressable>
-      {tip ? (
-        <View style={[styles.tip, { top: insets.top + 48, backgroundColor: colors.foreground }]}>
-          <Text style={{ color: colors.background, fontSize: 12 }}>Coming soon</Text>
-        </View>
-      ) : null}
       <DatePickerModal
         visible={open}
         value={date}
@@ -112,7 +110,8 @@ const styles = StyleSheet.create({
   title: { flex: 1, fontSize: 20, fontWeight: '700' },
   chip: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 999 },
   bell: { padding: 6 },
-  tip: { position: 'absolute', right: 12, paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6 },
+  badge: { position: 'absolute', top: 0, right: 0, minWidth: 16, height: 16, borderRadius: 8, paddingHorizontal: 3, alignItems: 'center', justifyContent: 'center' },
+  badgeText: { color: '#ffffff', fontSize: 10, fontWeight: '700' },
   backdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'center', padding: 24 },
   sheet: { borderRadius: 14, paddingVertical: 12, maxHeight: '80%' },
   sheetTitle: { fontSize: 16, fontWeight: '600', paddingHorizontal: 16, paddingBottom: 8 },
