@@ -102,6 +102,12 @@ Logistics* in New Delhi), with hard-coded coordinates.
 
 ### Tasks (F04)
 
+**Navigation (CR-10):** the sidebar has a single **Tasks** item: it opens the Board for SA and OM and the Open list
+for everyone else. The task views are tabs at the top of the Tasks page: Board (SA/OM), Open, Assigned (OE),
+Awaiting approval (SA/OM), Re-opened, Faulty, Completed, All, Travel. Each keeps its own URL (e.g. `/tasks/faulty`,
+`/tasks/travel?tt=…`); on phones the tab bar scrolls sideways. **Create task** and **Bulk upload** are at the top right
+of the Open tab (task creators).
+
 The **Tasks** menu (SA, OM, OE and RO; not OT) holds *Create task*, *Bulk upload* (creators only), *Open tasks*,
 *Assigned* (OEs: tasks where they are the operation executive), *Awaiting approval* (SA/OM), *Completed tasks*
 (latest completion first) and *All tasks* (every status; CR-04), *Faulty tasks* and *Re-opened* (F05, below) and
