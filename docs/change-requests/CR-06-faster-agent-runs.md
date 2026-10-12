@@ -3,7 +3,7 @@
 | | |
 |---|---|
 | Raised | 2026-10-12 by the user |
-| Status | Awaiting acceptance |
+| Status | ✅ Complete: accepted by the user on 2026-10-12 ("CR-06 accepted") |
 | Affects | `apps/web/playwright.config.ts`, how Claude briefs and runs implementation agents (`docs/agent-playbook.md`) |
 
 ## User request

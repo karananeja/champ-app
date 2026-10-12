@@ -221,3 +221,5 @@ Chronological log of the whole project conversation. Feature-level logs live in 
 - Recorded the F08 UAT sign-off and merged `feature/F08-travel-tasks` to `main`.
 - Analysed the agent transcripts. Feature agents took 35–51 min: ~60% model code-writing, ~40% tools. E2E debugging took 15–20 min per feature because failed Playwright runs waited out a 120–150 s test timeout (no `actionTimeout`). A small spec runs in 12 s, so infrastructure is not the issue.
 - Logged CR-06 on `cr/CR-06-faster-agent-runs`: Playwright `actionTimeout` 15 s and `navigationTimeout` 30 s (full E2E still passes: 67 passed, 4 skipped, 4.9 min). Wrote `docs/agent-playbook.md`: parallel backend/frontend agents, tight test loop, 20 min time box (D-127, proposed).
+
+**User:** "CR-06 accepted". CR-06 marked complete and merged to `main`.
