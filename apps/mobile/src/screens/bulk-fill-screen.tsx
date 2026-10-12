@@ -56,7 +56,7 @@ export function BulkFillScreen() {
   const router = useRouter();
   const toast = useToast();
   const queryClient = useQueryClient();
-  const { taskId } = useLocalSearchParams<{ taskId: string }>();
+  const { id: taskId } = useLocalSearchParams<{ id: string }>();
   const [preview, setPreview] = useState<BulkFillPreviewResponse | null>(null);
   const [dialog, setDialog] = useState<Dialogs>('none');
   const [locationMessage, setLocationMessage] = useState(LOCATION_DENIED_MESSAGE);
@@ -262,7 +262,7 @@ export function BulkFillScreen() {
             title="Add photos"
             variant="ghost"
             testID="add-photos"
-            onPress={() => router.push({ pathname: '/task/[taskId]/photos', params: { taskId } })}
+            onPress={() => router.push({ pathname: '/task/[id]/photos', params: { id: taskId } })}
           />
         ) : null}
         {readyCount > 0 ? <Button title={`Submit ready (${readyCount})`} testID="submit-ready" onPress={() => setDialog('submit')} /> : null}

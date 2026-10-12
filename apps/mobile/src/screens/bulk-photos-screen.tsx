@@ -22,7 +22,7 @@ export function BulkPhotosScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const queryClient = useQueryClient();
-  const { taskId } = useLocalSearchParams<{ taskId: string }>();
+  const { id: taskId } = useLocalSearchParams<{ id: string }>();
   const query = useQuery({
     queryKey: bulkFillQueryKey(taskId),
     queryFn: () => api<BulkFillTaskDto>(bulkFillPath(taskId)),

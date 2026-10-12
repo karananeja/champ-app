@@ -191,6 +191,6 @@ describe('FitmentScreen', () => {
     mockFetch(() => ({ status: 200, body: makeFitment({ taskFitmentCount: 2 }) }));
     await renderWithProviders(<FitmentScreen />);
     await fireEvent.press(await screen.findByTestId('bulk-fill'));
-    expect(router.push).toHaveBeenCalledWith({ pathname: '/task/[taskId]/bulk-fill', params: { taskId: 't1' } });
+    expect(router.push).toHaveBeenCalledWith({ pathname: '/task/[id]/bulk-fill', params: { id: 't1' } });
   });
 });

@@ -32,7 +32,7 @@ const task = makeBulkTask({
 
 beforeEach(() => {
   jest.clearAllMocks();
-  params.mockReturnValue({ taskId: 't1' });
+  params.mockReturnValue({ id: 't1' });
   prepare.mockResolvedValue(stamped);
   upload.mockImplementation(async (_fid: string, kind: string) => ({ id: `p-${kind}`, kind, url: 'https://img/p.jpg' }) as FitmentPhotoDto);
   mockFetch(() => ({ status: 200, body: task }));

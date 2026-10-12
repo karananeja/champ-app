@@ -44,8 +44,8 @@ function RootNavigator() {
           <Stack.Screen name="fitment/[id]/index" />
           <Stack.Screen name="fitment/[id]/continue" />
           <Stack.Screen name="fitment/[id]/summary" />
-          <Stack.Screen name="task/[taskId]/bulk-fill" />
-          <Stack.Screen name="task/[taskId]/photos" />
+          <Stack.Screen name="task/[id]/bulk-fill" />
+          <Stack.Screen name="task/[id]/photos" />
         </Stack.Protected>
         <Stack.Protected guard={signedIn}>
           <Stack.Screen name="onboarding/home-location" options={{ gestureEnabled: false }} />

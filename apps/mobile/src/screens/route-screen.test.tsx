@@ -136,7 +136,7 @@ describe('RouteScreen', () => {
     mockFetch(() => ({ status: 200, body: route }));
     await renderWithProviders(<RouteScreen />, { date: '2026-10-12' });
     await fireEvent.press(await screen.findByTestId('bulk-fill-a1'));
-    expect(router.push).toHaveBeenCalledWith({ pathname: '/task/[taskId]/bulk-fill', params: { taskId: 'tA' } });
+    expect(router.push).toHaveBeenCalledWith({ pathname: '/task/[id]/bulk-fill', params: { id: 'tA' } });
     expect(screen.queryByTestId('bulk-fill-a2')).toBeNull();
     expect(screen.queryByTestId('bulk-fill-b1')).toBeNull();
   });

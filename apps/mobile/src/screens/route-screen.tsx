@@ -117,7 +117,7 @@ export function RouteScreen() {
               onStart={() => open(item, true)}
               onBulkFill={
                 bulkEntryIds.has(item.fitment.id)
-                  ? () => router.push({ pathname: '/task/[taskId]/bulk-fill', params: { taskId: item.fitment.taskId } })
+                  ? () => router.push({ pathname: '/task/[id]/bulk-fill', params: { id: item.fitment.taskId } })
                   : undefined
               }
             />

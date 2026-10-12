@@ -219,7 +219,7 @@ export function FitmentScreen() {
             title="Bulk fill (CSV)"
             variant="secondary"
             testID="bulk-fill"
-            onPress={() => router.push({ pathname: '/task/[taskId]/bulk-fill', params: { taskId: f.taskId } })}
+            onPress={() => router.push({ pathname: '/task/[id]/bulk-fill', params: { id: f.taskId } })}
           />
         ) : null}
       </ScrollView>

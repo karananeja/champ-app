@@ -43,7 +43,7 @@ const callsTo = (fetchMock: jest.Mock, suffix: string) => fetchMock.mock.calls.f
 beforeEach(() => {
   jest.clearAllMocks();
   files.clear();
-  params.mockReturnValue({ taskId: 't1' });
+  params.mockReturnValue({ id: 't1' });
   requestPermission.mockResolvedValue({ status: 'granted' });
   getPosition.mockResolvedValue({ coords: { latitude: 13.031, longitude: 77.521 } });
   isAvailable.mockResolvedValue(true);
@@ -73,7 +73,7 @@ describe('BulkFillScreen', () => {
     expect(screen.getByTestId('submit-ready')).toHaveTextContent('Submit ready (1)');
 
     await fireEvent.press(screen.getByTestId('add-photos'));
-    expect(router.push).toHaveBeenCalledWith({ pathname: '/task/[taskId]/photos', params: { taskId: 't1' } });
+    expect(router.push).toHaveBeenCalledWith({ pathname: '/task/[id]/photos', params: { id: 't1' } });
     await fireEvent.press(screen.getByTestId('bulk-row-f2'));
     expect(router.push).toHaveBeenCalledWith({ pathname: '/fitment/[id]', params: { id: 'f2' } });
   });
