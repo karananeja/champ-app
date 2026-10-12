@@ -161,4 +161,8 @@ Chronological log of the whole project conversation. Feature-level logs live in 
 
 **Claude verification:** Re-ran all gates, the bundle simulator check and a kebab-case file scan; all pass. Applied the additive `completedAt` migration to the dev DB so the user can test.
 
-**Status:** CR-03 and CR-04 ready for user acceptance.
+**User:** "CR-03 and CR-04 accepted". Both CRs marked complete and merged to `main`.
+
+**Claude:** Wrote the F06 intent (OE verification screen, photo storage, image correction) and sent it for sign-off.
+
+**Status:** Waiting for F06 intent sign-off.
