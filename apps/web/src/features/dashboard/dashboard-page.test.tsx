@@ -46,10 +46,12 @@ describe('statCardsFor', () => {
       ['completedTasks', '/tasks/completed'],
     ];
     expect(cards('SUPER_ADMIN')).toEqual(manager);
-    expect(cards('OM')).toEqual(manager);
+    // F08: OM and OE also get "Travel to verify", linking to the Raised travel tasks.
+    expect(cards('OM')).toEqual([manager[0], manager[1], ['travelToVerify', '/tasks/travel?status=RAISED'], ...manager.slice(2)]);
     expect(cards('OE')).toEqual([
       ['assignedToMe', '/tasks/assigned'],
       ['awaitingMyVerification', '/tasks/assigned'],
+      ['travelToVerify', '/tasks/travel?status=RAISED'],
       ['openTasks', '/tasks'],
       ['reopened', '/tasks/reopened'],
       ['faulty', '/tasks/faulty'],
@@ -65,8 +67,8 @@ describe('statCardsFor', () => {
 describe('DashboardPage', () => {
   afterEach(() => vi.unstubAllGlobals());
 
-  it('OM: welcome with an illustration and the five cards with counts and links', async () => {
-    renderDashboard('OM', { openTasks: 12, completedTasks: 30, awaitingApproval: 3, reopened: 2, faulty: 1 });
+  it('OM: welcome with an illustration and the six cards with counts and links', async () => {
+    renderDashboard('OM', { openTasks: 12, completedTasks: 30, awaitingApproval: 3, reopened: 2, faulty: 1, travelToVerify: 4 });
     expect(screen.getByRole('heading', { name: 'Welcome, Test User' })).toBeInTheDocument();
     expect(document.querySelector('[data-illustration="dashboard"]')).toHaveAttribute('aria-hidden', 'true');
     expect(await within(card('openTasks')).findByText('12')).toBeInTheDocument();
@@ -76,13 +78,16 @@ describe('DashboardPage', () => {
     expect(card('reopened')).toHaveTextContent('2');
     expect(card('faulty')).toHaveTextContent('1');
     expect(card('completedTasks')).toHaveAttribute('href', '/tasks/completed');
-    expect(screen.getAllByRole('link')).toHaveLength(5);
+    expect(card('travelToVerify')).toHaveTextContent('Travel to verify4');
+    expect(card('travelToVerify')).toHaveAttribute('href', '/tasks/travel?status=RAISED');
+    expect(screen.getAllByRole('link')).toHaveLength(6);
   });
 
   it('OE: own tasks and what waits for verification', async () => {
-    renderDashboard('OE', { openTasks: 5, completedTasks: 1, reopened: 0, faulty: 0, assignedToMe: 4, awaitingMyVerification: 2 });
+    renderDashboard('OE', { openTasks: 5, completedTasks: 1, reopened: 0, faulty: 0, assignedToMe: 4, awaitingMyVerification: 2, travelToVerify: 3 });
     expect(await within(card('assignedToMe')).findByText('4')).toBeInTheDocument();
     expect(card('awaitingMyVerification')).toHaveTextContent('To verify2');
+    expect(card('travelToVerify')).toHaveTextContent('Travel to verify3');
     expect(screen.queryByTestId('stat-awaitingApproval')).not.toBeInTheDocument();
   });
 

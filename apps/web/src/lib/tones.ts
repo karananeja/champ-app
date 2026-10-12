@@ -1,4 +1,4 @@
-import type { FitmentStatus, TaskStatus } from '@champ/shared';
+import type { FitmentStatus, TaskStatus, TravelStatus } from '@champ/shared';
 
 /**
  * Badge colours (CR-03): one tone map, with light and dark values, used by every status badge so the same
@@ -29,4 +29,11 @@ export const STATUS_TONES: Record<FitmentStatus | TaskStatus, string> = {
   CLOSED_NOT_DONE: TONES.neutral,
   MOVED_TO_FT: TONES.red,
   REOPENED: TONES.orange,
+};
+
+/** Travel task statuses (F08): Raised waits for verification, Verified is done, Rejected needs a fix. */
+export const TRAVEL_STATUS_TONES: Record<TravelStatus, string> = {
+  RAISED: TONES.blue,
+  VERIFIED: TONES.emerald,
+  REJECTED: TONES.red,
 };

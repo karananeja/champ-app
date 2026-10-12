@@ -3,6 +3,7 @@ import {
   CircleCheckBig,
   ClipboardList,
   RotateCcw,
+  Route,
   SearchCheck,
   TriangleAlert,
   UserCheck,
@@ -42,20 +43,30 @@ const CARDS = {
     icon: SearchCheck,
     attention: true,
   },
+  travelToVerify: {
+    key: 'travelToVerify',
+    label: 'Travel to verify',
+    hint: 'Raised travel tasks',
+    to: '/tasks/travel?status=RAISED',
+    icon: Route,
+    attention: true,
+  },
 } satisfies Record<string, StatCard>;
 
 /**
  * The dashboard stat cards of a role (CR-03), each linking to the list its count comes from: SA/OM see open
  * tasks, awaiting approval, re-opened, faulty and completed; OE their own tasks, what waits for their
- * verification, open tasks, re-opened and faulty; RO open and completed tasks; OT none (no task access).
+ * verification, open tasks, re-opened and faulty; RO open and completed tasks; OT none (no task access). F08: OM and
+ * OE also get "Travel to verify" (Raised travel tasks), linking to the Travel tasks list filtered to Raised.
  */
 export function statCardsFor(role: Role): StatCard[] {
   switch (role) {
     case 'SUPER_ADMIN':
-    case 'OM':
       return [CARDS.openTasks, CARDS.awaitingApproval, CARDS.reopened, CARDS.faulty, CARDS.completedTasks];
+    case 'OM':
+      return [CARDS.openTasks, CARDS.awaitingApproval, CARDS.travelToVerify, CARDS.reopened, CARDS.faulty, CARDS.completedTasks];
     case 'OE':
-      return [CARDS.assignedToMe, CARDS.awaitingMyVerification, CARDS.openTasks, CARDS.reopened, CARDS.faulty];
+      return [CARDS.assignedToMe, CARDS.awaitingMyVerification, CARDS.travelToVerify, CARDS.openTasks, CARDS.reopened, CARDS.faulty];
     case 'RO':
       return [CARDS.openTasks, CARDS.completedTasks];
     default:

@@ -1,4 +1,4 @@
-import type { FitmentPhotoDto } from '@champ/shared';
+import { PHOTO_KIND_LABELS, type FitmentPhotoDto } from '@champ/shared';
 import { formatIst } from '@/lib/format';
 
 /** "Arjun", "12 Oct 2026, 10:40" (taken, else uploaded, in IST) and "GPS 12.97000, 77.59000" when known. */
@@ -22,3 +22,27 @@ export function photoChangeText(p: FitmentPhotoDto): string | null {
 export function keepOpenForLightbox(event: KeyboardEvent) {
   if (document.querySelector('.yarl__root')) event.preventDefault();
 }
+
+/** One image of the lightbox (`PhotoLightbox`). */
+export interface LightboxSlide {
+  src: string;
+  alt: string;
+  width?: number;
+  height?: number;
+  title: string;
+  description: string;
+}
+
+/** Fitment photos as lightbox slides: the kind as title, uploader, IST time and GPS as caption. */
+export const photoSlides = (photos: FitmentPhotoDto[]): LightboxSlide[] =>
+  photos.map((p) => ({
+    src: p.url,
+    alt: `${PHOTO_KIND_LABELS[p.kind]} photo`,
+    width: p.width ?? undefined,
+    height: p.height ?? undefined,
+    title: PHOTO_KIND_LABELS[p.kind],
+    description: photoMeta(p).join(' · '),
+  }));
+
+/** The dialog or sheet a gallery sits in: the lightbox mounts there so focus and pointer events keep working. */
+export const LIGHTBOX_LAYER = '[data-slot="dialog-content"], [data-slot="sheet-content"]';

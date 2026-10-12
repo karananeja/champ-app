@@ -49,7 +49,7 @@ export function DashboardPage() {
         (summary.isError ? (
           <ErrorState error={summary.error} size="sm" onRetry={() => void summary.refetch()} />
         ) : (
-          <ul className="grid grid-cols-2 gap-3 lg:grid-cols-5" aria-label="Summary" aria-busy={summary.isPending}>
+          <ul className="grid grid-cols-2 gap-3 lg:grid-cols-3 xl:grid-cols-6" aria-label="Summary" aria-busy={summary.isPending}>
             {cards.map(({ key, label, hint, to, icon: Icon, attention }) => {
               const count = summary.data?.[key];
               const highlight = attention && !!count;

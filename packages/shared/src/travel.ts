@@ -22,6 +22,8 @@ export const TRAVEL_STATUS_LABELS: Record<TravelStatus, string> = {
 export const TRAVEL_SOURCES = ['WEB', 'MOBILE'] as const;
 export type TravelSource = (typeof TRAVEL_SOURCES)[number];
 
+export const TRAVEL_SOURCE_LABELS: Record<TravelSource, string> = { WEB: 'Web', MOBILE: 'Field app' };
+
 export const TRAVEL_ACTIONS = ['VERIFY', 'REJECT', 'RESUBMIT', 'REOPEN'] as const;
 export type TravelAction = (typeof TRAVEL_ACTIONS)[number];
 

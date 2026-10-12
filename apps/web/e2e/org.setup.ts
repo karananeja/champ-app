@@ -3,7 +3,7 @@
  * an OM, two OEs, one technician (OT) per OE, (F03) one client, (F04) a task OM/OE/RO plus one task per
  * viewport and (F05) a workflow OM/OE with two technicians and, per viewport, the tasks of the workflow spec
  * (one already OE-verified for bulk approve), CR-03/04 accounts and tasks, and (F06) a verification OM/OE with
- * one task per viewport, and (F07) board OMs and tasks. Credentials go to e2e/.data/org.json.
+ * one task per viewport, (F07) board OMs and tasks, and (F08) travel OM/OE/technician per viewport and an RO. Credentials go to e2e/.data/org.json.
  */
 import fs from 'node:fs';
 import path from 'node:path';
@@ -272,6 +272,26 @@ setup('create the F02 test org', async ({ request }) => {
     f07Tasks[project] = { assign, keyboard, approve, reopen, forbidden, refetch };
   }
 
+  // F08: per viewport a travel OM, an OE reporting to them and one technician of that OE (so the raise dialog
+  // presets the technician), and one RO for the read-only check.
+  const f08: E2eOrg['f08'] = { projects: {}, ro: { email: `f08.ro.${run}@intellicar.in`, name: `Rita Travel RO ${run}`, password } };
+  await accept((await post<CreateInviteResponse>(request, '/api/invites', { email: f08.ro.email, role: 'RO' }, sa.accessToken)).link, f08.ro.name);
+  for (const project of ['desktop', 'mobile-360']) {
+    const tom = { email: `f08.om.${project}.${run}@intellicar.in`, name: `Travel OM ${project} ${run}`, password };
+    const tomSession = await accept((await post<CreateInviteResponse>(request, '/api/invites', { email: tom.email, role: 'OM' }, sa.accessToken)).link, tom.name);
+    const toe = { email: `f08.oe.${project}.${run}@intellicar.in`, name: `Travel OE ${project} ${run}`, password };
+    const toeSession = await accept((await post<CreateInviteResponse>(request, '/api/invites', { email: toe.email, role: 'OE' }, tomSession.accessToken)).link, toe.name);
+    const technician = `Tara Traveller ${project} ${run}`;
+    const invite = await post<CreateInviteResponse>(
+      request,
+      '/api/technicians',
+      { name: technician, phone: '+91 90000 00008', email: `f08.ot.${project}.${run}@intellicar.in`, technicianType: 'PAYROLL', baseLocationId: location.id },
+      toeSession.accessToken,
+    );
+    await accept(invite.link, technician);
+    f08.projects[project] = { om: tom, oe: toe, technician };
+  }
+
   const org: E2eOrg = {
     om,
     oeA: oes[0]!,
@@ -291,6 +311,7 @@ setup('create the F02 test org', async ({ request }) => {
     cr: { om: crOm, oe: crOe, ro: crRo, tasks: crTasks },
     f06: { om: f06Om, oe: f06Oe, tasks: f06Tasks },
     f07: { oms: f07Oms, oe: f07Oe, tasks: f07Tasks },
+    f08,
   };
   fs.mkdirSync(path.dirname(ORG_FILE), { recursive: true });
   fs.writeFileSync(ORG_FILE, JSON.stringify(org, null, 2));
