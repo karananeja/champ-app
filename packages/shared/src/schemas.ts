@@ -9,6 +9,7 @@ import {
   VEHICLE_CSV_COLUMNS,
   type VehicleCsvColumn,
 } from './tasks';
+import { PHOTO_KINDS } from './verification';
 import { MAX_BULK_APPROVE } from './workflow';
 
 export const roleSchema = z.enum(ROLES);
@@ -591,7 +592,15 @@ export type TaskFilters = Omit<ListTasksQuery, 'page' | 'pageSize'>;
 export const EXPORT_FORMATS = ['csv', 'xlsx'] as const;
 export type ExportFormat = (typeof EXPORT_FORMATS)[number];
 
-export const exportTasksQuerySchema = z.object({ ...taskFilterFields, format: z.enum(EXPORT_FORMATS).default('csv') });
+/** Export level (F06): one row per task (default) or one row per fitment with the verification columns. */
+export const EXPORT_LEVELS = ['task', 'fitment'] as const;
+export type ExportLevel = (typeof EXPORT_LEVELS)[number];
+
+export const exportTasksQuerySchema = z.object({
+  ...taskFilterFields,
+  format: z.enum(EXPORT_FORMATS).default('csv'),
+  level: z.enum(EXPORT_LEVELS).default('task'),
+});
 export type ExportTasksQuery = z.infer<typeof exportTasksQuerySchema>;
 
 /** POST /tasks/bulk/import: the preview rows sent back (the server validates them again). */
@@ -678,6 +687,55 @@ export const reopenReasonSchema = z
   .max(500, 'The reason must be at most 500 characters');
 const reopenPayload = z.object({ reason: reopenReasonSchema, note: noteSchema }, { error: 'Give a reason for reopening' });
 
+// --- Verification (F06) ---
+
+/** A verification reference: an id, or null to clear it; omitted = unchanged. */
+const verificationRef = z.string().trim().min(1).nullable().optional();
+
+/**
+ * The verification fields (F06 spec §4), all optional: a draft save sends what it has. `null` clears a field;
+ * `accessoryIds` replaces the whole set; blank remarks become null.
+ */
+export const verificationFieldsShape = {
+  issueObservedId: verificationRef,
+  actionTakenId: verificationRef,
+  accessoryIds: z.array(idSchema).max(50, 'At most 50 accessories').optional(),
+  oeRemarks: blankable(z.string().max(1000, 'The remarks must be at most 1000 characters')),
+  finalIssueId: verificationRef,
+};
+export const VERIFICATION_FIELD_KEYS = Object.keys(verificationFieldsShape) as (keyof typeof verificationFieldsShape)[];
+
+/** `PUT /fitments/:fid/verification` (draft save). */
+export const updateVerificationSchema = z.object(verificationFieldsShape);
+export type UpdateVerificationInput = z.infer<typeof updateVerificationSchema>;
+
+/** Reason of a photo replacement or removal: 3–300 characters. */
+export const PHOTO_REASON_MIN = 3;
+export const photoReasonSchema = z
+  .string({ error: 'Give a reason' })
+  .trim()
+  .min(PHOTO_REASON_MIN, `Give a reason (at least ${PHOTO_REASON_MIN} characters)`)
+  .max(300, 'The reason must be at most 300 characters');
+
+/** Multipart fields of `POST /fitments/:fid/photos`: only debug images are uploaded on the web. */
+export const uploadPhotoSchema = z.object({
+  kind: z
+    .enum(PHOTO_KINDS, { error: 'Choose a photo kind' })
+    .default('DEBUG')
+    .refine((kind) => kind === 'DEBUG', 'Technician photos come from the mobile app; only debug images can be uploaded here'),
+});
+export type UploadPhotoInput = z.infer<typeof uploadPhotoSchema>;
+
+/** Multipart fields of `POST /fitments/:fid/photos/:pid/replace`. */
+export const replacePhotoSchema = z.object({ reason: photoReasonSchema });
+/** `POST /fitments/:fid/photos/:pid/remove`. */
+export const removePhotoSchema = z.object({ reason: photoReasonSchema });
+export type PhotoChangeInput = z.infer<typeof removePhotoSchema>;
+
+/** `GET /fitments/:fid/photos?history=true`: also replaced and removed photos (SA, OM, the task's OE). */
+export const photoListQuerySchema = z.object({ history: booleanQuery });
+export type PhotoListQuery = z.infer<typeof photoListQuerySchema>;
+
 /** `POST /fitments/:fid/transitions`: `{ action, payload }`, the payload validated per action. */
 export const transitionSchema = z.discriminatedUnion(
   'action',
@@ -686,7 +744,8 @@ export const transitionSchema = z.discriminatedUnion(
     z.object({ action: z.literal('SUBMIT'), payload: notePayload.optional() }),
     z.object({ action: z.literal('CLOSE_NOT_DONE'), payload: closeNotDonePayload }),
     z.object({ action: z.literal('MARK_FAULTY'), payload: markFaultyPayload }),
-    z.object({ action: z.literal('VERIFY'), payload: notePayload.optional() }),
+    // F06: VERIFY may carry the verification fields, saved first in the same transaction.
+    z.object({ action: z.literal('VERIFY'), payload: notePayload.extend(verificationFieldsShape).optional() }),
     z.object({ action: z.literal('APPROVE'), payload: notePayload.optional() }),
     z.object({ action: z.literal('REOPEN'), payload: reopenPayload }),
   ],
@@ -701,7 +760,7 @@ export type TransitionPayload = {
   comments?: string;
   reason?: string;
   note?: string | null;
-};
+} & UpdateVerificationInput;
 
 /**
  * `POST /dev/fitments/:fid/simulate` (D-073): a technician step. START may leave out the location (the

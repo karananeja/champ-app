@@ -177,6 +177,13 @@ export async function createTaskWorld() {
   const issue = await createLookup('ISSUE_REPORTED', 'Device not reporting');
   const location = await createLocation({ city: 'Bengaluru' });
   const pune = await createLocation({ city: 'Pune' });
+  // F06: verification masters.
+  const observed = await createLookup('ISSUE_OBSERVED', 'Loose wiring');
+  const actionTaken = await createLookup('ACTION_TAKEN', 'Rewired power supply');
+  const billableIssue = await createLookup('FINAL_ISSUE', 'Wiring issue', { billable: true });
+  const freeIssue = await createLookup('FINAL_ISSUE', 'Device fault', { billable: false });
+  const relay = await createLookup('ACCESSORY', 'Relay');
+  const buzzer = await createLookup('ACCESSORY', 'Buzzer');
 
   const client = await prisma.client.create({
     data: {
@@ -252,6 +259,14 @@ export async function createTaskWorld() {
 
   return {
     ...org,
+    observed,
+    actionTaken,
+    billableIssue,
+    freeIssue,
+    relay,
+    buzzer,
+    /** F06: the required verification fields (D-098), for a VERIFY payload (billable final issue). */
+    verification: { issueObservedId: observed.id, actionTakenId: actionTaken.id, finalIssueId: billableIssue.id },
     taskType,
     vehicle,
     battery,

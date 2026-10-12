@@ -46,7 +46,7 @@ describe('workflow lists', () => {
     ] as const) {
       await step(tech, fid, 'START', GPS);
       await step(tech, fid, 'SUBMIT');
-      await step(oe, fid, 'VERIFY');
+      await step(oe, fid, 'VERIFY', w.verification);
     }
     const all = await list(w.om, 'awaiting-approval');
     expect(all.total).toBe(2);
@@ -149,11 +149,11 @@ describe('history and raw events (SA/OM, D-033)', () => {
     const [f1, f2] = task.fitments.map((f) => f.id) as [string, string];
     await step(w.techA, f1, 'START', GPS);
     await step(w.techA, f1, 'SUBMIT');
-    await step(w.oe, f1, 'VERIFY');
+    await step(w.oe, f1, 'VERIFY', w.verification);
     await step(w.om, f1, 'REOPEN', { reason: 'Wrong device id' });
     await step(w.techA, f1, 'START', GPS);
     await step(w.techA, f1, 'SUBMIT');
-    await step(w.oe, f1, 'VERIFY');
+    await step(w.oe, f1, 'VERIFY', w.verification);
     await step(w.om, f1, 'APPROVE');
 
     const res = await api().get(`/api/tasks/${task.id}/history`).set(bearer(w.om));
@@ -205,7 +205,7 @@ describe('history and raw events (SA/OM, D-033)', () => {
     await step(w.techA, fid, 'START', GPS);
     await api().patch(`/api/tasks/${task.id}`).set(bearer(w.om)).send({ pocName: 'Anil' });
     await step(w.techA, fid, 'SUBMIT');
-    await step(w.oe, fid, 'VERIFY');
+    await step(w.oe, fid, 'VERIFY', w.verification);
     await step(w.om, fid, 'APPROVE');
     await api().patch(`/api/tasks/${task.id}/fitments/${fid}`).set(bearer(w.om)).send({ chassisNo: 'CH-9' });
 
@@ -217,13 +217,14 @@ describe('history and raw events (SA/OM, D-033)', () => {
       'FITMENT_STARTED',
       'TASK_UPDATED',
       'FITMENT_SUBMITTED',
+      'FITMENT_VERIFICATION_SAVED', // F06: the inline verification fields of VERIFY
       'FITMENT_VERIFIED',
       'FITMENT_APPROVED',
       'FITMENT_UPDATED',
     ]);
     expect(items[1]).toMatchObject({ actor: { id: w.techA.id, name: 'Arjun Tech' }, fitment: { id: fid, tkId: 'TK-00001' }, fromStatus: 'ASSIGNED', toStatus: 'IN_PROGRESS' });
     expect(items[2]).toMatchObject({ fitment: null, data: { pocName: ['Priya Rao', 'Anil'], postStart: true } });
-    expect(items[6]!.data).toEqual({ chassisNo: [null, 'CH-9'], postApproval: true });
+    expect(items[7]!.data).toEqual({ chassisNo: [null, 'CH-9'], postApproval: true });
 
     const csv = await api().get(`/api/tasks/${task.id}/events`).query({ format: 'csv' }).set(bearer(w.om));
     expect(csv.status).toBe(200);
@@ -231,7 +232,7 @@ describe('history and raw events (SA/OM, D-033)', () => {
     expect(csv.headers['content-disposition']).toMatch(/^attachment; filename=champ-OM-00001-events-\d{8}-\d{4}\.csv$/);
     const lines = csv.text.replace(/^\uFEFF/, '').trim().split('\r\n');
     expect(lines[0]).toBe('Time (IST),Actor,Fitment,Event,Type,From,To,Data');
-    expect(lines).toHaveLength(8);
+    expect(lines).toHaveLength(9);
     expect(lines[2]).toContain(',Arjun Tech,TK-00001,Started,FITMENT_STARTED,ASSIGNED,IN_PROGRESS,');
     expect(lines[2]).toContain('"{""lat"":12.97,""lng"":77.59,""tkId"":""TK-00001""}"'); // jsonb key order
     expect((await api().get(`/api/tasks/${task.id}/events`).query({ format: 'xml' }).set(bearer(w.om))).status).toBe(400);
@@ -274,9 +275,9 @@ describe('dev technician simulator (D-073)', () => {
       ['FITMENT_REPLACEMENT_CREATED', w.techA.id, true],
     ]);
     // A real transition isn't flagged.
-    await step(w.oe, f1, 'VERIFY');
+    await step(w.oe, f1, 'VERIFY', w.verification);
     const verify = await prisma.taskEvent.findFirstOrThrow({ where: { type: 'FITMENT_VERIFIED' } });
-    expect(verify.data).toEqual({ tkId: 'TK-00001' });
+    expect(verify.data).toEqual({ tkId: 'TK-00001', finalIssue: 'Wiring issue', billable: true }); // F06 snapshot
   });
 
   it('caller permissions, technician required, workflow rules and validation still apply', async () => {

@@ -7,6 +7,7 @@ import { devSimulatorEnabled, env } from './config/env';
 import { createGeocoder, type Geocoder } from './lib/geocoder';
 import { createGoogleAuth, type GoogleAuth } from './lib/google';
 import { logger } from './lib/logger';
+import { defaultStorage, type Storage } from './lib/storage';
 import { errorHandler, notFoundHandler } from './middleware/error';
 import { authRouter } from './modules/auth/router';
 import { clientsRouter } from './modules/clients/router';
@@ -27,11 +28,14 @@ export interface AppDeps {
   geocoder?: Geocoder;
   /** Mount the dev technician simulator (D-073); defaults to `ENABLE_DEV_SIMULATOR`, never in production. */
   devSimulator?: boolean;
+  /** Photo storage (F06); defaults to the process-wide driver chosen by `STORAGE_DRIVER`. */
+  storage?: Storage;
 }
 
 export function createApp(deps: AppDeps = {}) {
   const google = deps.google ?? createGoogleAuth();
   const geocoder = deps.geocoder ?? createGeocoder();
+  const storage = deps.storage ?? defaultStorage();
   const devSimulator = env.NODE_ENV !== 'production' && (deps.devSimulator ?? devSimulatorEnabled());
   const app = express();
 
@@ -67,8 +71,8 @@ export function createApp(deps: AppDeps = {}) {
   api.use('/clients', clientsRouter());
   api.use('/geo', geoRouter(geocoder));
   api.use('/tasks', tasksRouter());
-  api.use('/fitments', fitmentsRouter());
-  if (devSimulator) api.use('/dev', devSimulatorRouter());
+  api.use('/fitments', fitmentsRouter(storage));
+  if (devSimulator) api.use('/dev', devSimulatorRouter(storage));
   api.use(notFoundHandler);
 
   app.use('/api', api);

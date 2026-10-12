@@ -45,7 +45,7 @@ describe('GET /tasks/summary (CR-03 dashboard)', () => {
       await w.step(w.techA, fid, 'START', GPS);
       await w.step(w.techA, fid, 'SUBMIT');
     }
-    await w.step(w.oe, m2, 'VERIFY');
+    await w.step(w.oe, m2, 'VERIFY', w.verification);
     // Theirs (OE = otherOe): one fitment reopened, one moved to FT.
     const theirs = await w.createTask({ oeId: w.otherOe.id });
     const [t1, t2] = theirs.fitments.map((f) => f.id) as [string, string];
@@ -59,7 +59,7 @@ describe('GET /tasks/summary (CR-03 dashboard)', () => {
     const d1 = done.fitments[0]!.id;
     await w.step(w.techA, d1, 'START', GPS);
     await w.step(w.techA, d1, 'SUBMIT');
-    await w.step(w.oe, d1, 'VERIFY');
+    await w.step(w.oe, d1, 'VERIFY', w.verification);
     await w.step(w.om, d1, 'APPROVE');
     const gone = await w.createTask();
     expect((await api().delete(`/api/tasks/${gone.id}`).set(bearer(w.om))).status).toBe(204);

@@ -27,37 +27,40 @@ enum AuthProvider {
 }
 
 model User {
-  id                 String              @id @default(cuid())
-  email              String              @unique // stored lowercased
-  name               String
-  phone              String?
-  jobTitle           String?
-  role               Role
-  status             UserStatus          @default(ACTIVE)
-  passwordHash       String?
-  authProvider       AuthProvider        @default(PASSWORD)
-  managerId          String?
-  manager            User?               @relation("Reports", fields: [managerId], references: [id])
-  reportees          User[]              @relation("Reports")
-  canManageUsers     Boolean             @default(false) // delegation flag (OM only)
-  canManageTaskTypes Boolean             @default(false) // delegation flag (OM only, used in F02)
-  technicianType     TechnicianType? // required for role OT (service layer), null otherwise
-  baseLocationId     String? // required for role OT (service layer), null otherwise
-  baseLocation       Location?           @relation("UserBaseLocation", fields: [baseLocationId], references: [id])
-  createdAt          DateTime            @default(now())
-  updatedAt          DateTime            @updatedAt
-  invitesSent        Invite[]            @relation("InvitedBy")
-  refreshTokens      RefreshToken[]
-  clientsCreated     Client[]            @relation("ClientCreatedBy")
-  tasksAsOe          Task[]              @relation("TaskOe")
-  tasksCreated       Task[]              @relation("TaskCreatedBy")
-  tasksDeleted       Task[]              @relation("TaskDeletedBy")
-  fitments           Fitment[]           @relation("FitmentTechnician")
-  taskEvents         TaskEvent[]         @relation("TaskEventActor")
-  fitmentsVerified   Fitment[]           @relation("FitmentVerifiedBy")
-  fitmentsApproved   Fitment[]           @relation("FitmentApprovedBy")
-  fitmentsReopened   Fitment[]           @relation("FitmentLastReopenedBy")
-  reopenAttributions ReopenAttribution[]
+  id                          String              @id @default(cuid())
+  email                       String              @unique // stored lowercased
+  name                        String
+  phone                       String?
+  jobTitle                    String?
+  role                        Role
+  status                      UserStatus          @default(ACTIVE)
+  passwordHash                String?
+  authProvider                AuthProvider        @default(PASSWORD)
+  managerId                   String?
+  manager                     User?               @relation("Reports", fields: [managerId], references: [id])
+  reportees                   User[]              @relation("Reports")
+  canManageUsers              Boolean             @default(false) // delegation flag (OM only)
+  canManageTaskTypes          Boolean             @default(false) // delegation flag (OM only, used in F02)
+  technicianType              TechnicianType? // required for role OT (service layer), null otherwise
+  baseLocationId              String? // required for role OT (service layer), null otherwise
+  baseLocation                Location?           @relation("UserBaseLocation", fields: [baseLocationId], references: [id])
+  createdAt                   DateTime            @default(now())
+  updatedAt                   DateTime            @updatedAt
+  invitesSent                 Invite[]            @relation("InvitedBy")
+  refreshTokens               RefreshToken[]
+  clientsCreated              Client[]            @relation("ClientCreatedBy")
+  tasksAsOe                   Task[]              @relation("TaskOe")
+  tasksCreated                Task[]              @relation("TaskCreatedBy")
+  tasksDeleted                Task[]              @relation("TaskDeletedBy")
+  fitments                    Fitment[]           @relation("FitmentTechnician")
+  taskEvents                  TaskEvent[]         @relation("TaskEventActor")
+  fitmentsVerified            Fitment[]           @relation("FitmentVerifiedBy")
+  fitmentsApproved            Fitment[]           @relation("FitmentApprovedBy")
+  fitmentsReopened            Fitment[]           @relation("FitmentLastReopenedBy")
+  reopenAttributions          ReopenAttribution[]
+  fitmentsVerificationUpdated Fitment[]           @relation("FitmentVerificationUpdatedBy")
+  photosUploaded              FitmentPhoto[]      @relation("PhotoUploadedBy")
+  photosChanged               FitmentPhoto[]      @relation("PhotoChangedBy")
 
   @@index([managerId])
   @@index([role, baseLocationId])
@@ -126,27 +129,31 @@ enum TechnicianType {
  * Simple masters share one table keyed by kind (D-047). Never deleted, only deactivated.
  */
 model LookupItem {
-  id                String     @id @default(cuid())
-  kind              LookupKind
-  name              String
-  nameKey           String // lower(trim(name)), used for uniqueness
-  code              String? // stable code for built-ins (VEHICLE, BATTERY, OT, TT, FT, DAY, NIGHT, EARLY_MORNING, LAF5)
-  isSystem          Boolean    @default(false) // built-in: cannot rename or deactivate
-  active            Boolean    @default(true)
-  billable          Boolean? // FINAL_ISSUE only
-  sortOrder         Int        @default(0)
-  createdAt         DateTime   @default(now())
-  updatedAt         DateTime   @updatedAt
-  activities        Activity[]
-  locationsInState  Location[] @relation("LocationState")
-  locationsInRegion Location[] @relation("LocationRegion")
-  tasksByType       Task[]     @relation("TaskType")
-  tasksByAssetType  Task[]     @relation("TaskAssetType")
-  tasksByDevice     Task[]     @relation("TaskDeviceType")
-  tasksByInstall    Task[]     @relation("TaskInstallationType")
-  tasksByShift      Task[]     @relation("TaskShiftType")
-  tasksByIssue      Task[]     @relation("TaskIssueReported")
-  fitmentsClosed    Fitment[]  @relation("FitmentCloseReason")
+  id                 String             @id @default(cuid())
+  kind               LookupKind
+  name               String
+  nameKey            String // lower(trim(name)), used for uniqueness
+  code               String? // stable code for built-ins (VEHICLE, BATTERY, OT, TT, FT, DAY, NIGHT, EARLY_MORNING, LAF5)
+  isSystem           Boolean            @default(false) // built-in: cannot rename or deactivate
+  active             Boolean            @default(true)
+  billable           Boolean? // FINAL_ISSUE only
+  sortOrder          Int                @default(0)
+  createdAt          DateTime           @default(now())
+  updatedAt          DateTime           @updatedAt
+  activities         Activity[]
+  locationsInState   Location[]         @relation("LocationState")
+  locationsInRegion  Location[]         @relation("LocationRegion")
+  tasksByType        Task[]             @relation("TaskType")
+  tasksByAssetType   Task[]             @relation("TaskAssetType")
+  tasksByDevice      Task[]             @relation("TaskDeviceType")
+  tasksByInstall     Task[]             @relation("TaskInstallationType")
+  tasksByShift       Task[]             @relation("TaskShiftType")
+  tasksByIssue       Task[]             @relation("TaskIssueReported")
+  fitmentsClosed     Fitment[]          @relation("FitmentCloseReason")
+  fitmentsObserved   Fitment[]          @relation("FitmentIssueObserved")
+  fitmentsActions    Fitment[]          @relation("FitmentActionTaken")
+  fitmentsFinal      Fitment[]          @relation("FitmentFinalIssue")
+  fitmentAccessories FitmentAccessory[]
 
   @@unique([kind, nameKey])
   @@unique([kind, code])
@@ -351,52 +358,137 @@ model Task {
  * One vehicle of a task: the technician's unit of work (TK-00001). F05 adds the workflow fields.
  */
 model Fitment {
-  id                 String              @id @default(cuid())
-  tkNo               Int                 @unique // TK-00001
-  taskId             String
-  task               Task                @relation(fields: [taskId], references: [id])
-  seq                Int // 1..N within the task
-  status             FitmentStatus       @default(OPEN)
-  technicianId       String?
-  technician         User?               @relation("FitmentTechnician", fields: [technicianId], references: [id])
-  vehicleRegNo       String?
-  chassisNo          String?
-  assetNumber        String?
-  oldDeviceId        String?
+  id                      String              @id @default(cuid())
+  tkNo                    Int                 @unique // TK-00001
+  taskId                  String
+  task                    Task                @relation(fields: [taskId], references: [id])
+  seq                     Int // 1..N within the task
+  status                  FitmentStatus       @default(OPEN)
+  technicianId            String?
+  technician              User?               @relation("FitmentTechnician", fields: [technicianId], references: [id])
+  vehicleRegNo            String?
+  chassisNo               String?
+  assetNumber             String?
+  oldDeviceId             String?
   // --- Workflow (F05) ---
-  startedAt          DateTime?
-  startLat           Float?
-  startLng           Float?
-  submittedAt        DateTime?
-  verifiedAt         DateTime? // cleared by a reopen (the history keeps it)
-  verifiedById       String?
-  verifiedBy         User?               @relation("FitmentVerifiedBy", fields: [verifiedById], references: [id])
-  approvedAt         DateTime? // cleared by a reopen
-  approvedById       String?
-  approvedBy         User?               @relation("FitmentApprovedBy", fields: [approvedById], references: [id])
-  closedAt           DateTime?
-  closeReasonId      String? // LookupItem CLOSE_REASON
-  closeReason        LookupItem?         @relation("FitmentCloseReason", fields: [closeReasonId], references: [id])
-  closeComments      String?
-  faultyAt           DateTime?
-  faultReason        String?
-  replacementOfId    String?             @unique // set on the replacement of a fitment moved to FT (D-012)
-  replacementOf      Fitment?            @relation("Replacement", fields: [replacementOfId], references: [id])
-  replacement        Fitment?            @relation("Replacement")
-  reopenCount        Int                 @default(0)
-  lastReopenReason   String?
-  lastReopenedAt     DateTime?
-  lastReopenedById   String?
-  lastReopenedBy     User?               @relation("FitmentLastReopenedBy", fields: [lastReopenedById], references: [id])
-  createdAt          DateTime            @default(now())
-  updatedAt          DateTime            @updatedAt
-  events             TaskEvent[]
-  reopenAttributions ReopenAttribution[]
+  startedAt               DateTime?
+  startLat                Float?
+  startLng                Float?
+  submittedAt             DateTime?
+  verifiedAt              DateTime? // cleared by a reopen (the history keeps it)
+  verifiedById            String?
+  verifiedBy              User?               @relation("FitmentVerifiedBy", fields: [verifiedById], references: [id])
+  approvedAt              DateTime? // cleared by a reopen
+  approvedById            String?
+  approvedBy              User?               @relation("FitmentApprovedBy", fields: [approvedById], references: [id])
+  closedAt                DateTime?
+  closeReasonId           String? // LookupItem CLOSE_REASON
+  closeReason             LookupItem?         @relation("FitmentCloseReason", fields: [closeReasonId], references: [id])
+  closeComments           String?
+  faultyAt                DateTime?
+  faultReason             String?
+  replacementOfId         String?             @unique // set on the replacement of a fitment moved to FT (D-012)
+  replacementOf           Fitment?            @relation("Replacement", fields: [replacementOfId], references: [id])
+  replacement             Fitment?            @relation("Replacement")
+  reopenCount             Int                 @default(0)
+  lastReopenReason        String?
+  lastReopenedAt          DateTime?
+  lastReopenedById        String?
+  lastReopenedBy          User?               @relation("FitmentLastReopenedBy", fields: [lastReopenedById], references: [id])
+  // --- OE verification (F06) ---
+  issueObservedId         String? // LookupItem ISSUE_OBSERVED
+  issueObserved           LookupItem?         @relation("FitmentIssueObserved", fields: [issueObservedId], references: [id])
+  actionTakenId           String? // LookupItem ACTION_TAKEN
+  actionTaken             LookupItem?         @relation("FitmentActionTaken", fields: [actionTakenId], references: [id])
+  finalIssueId            String? // LookupItem FINAL_ISSUE
+  finalIssue              LookupItem?         @relation("FitmentFinalIssue", fields: [finalIssueId], references: [id])
+  oeRemarks               String?
+  otRemarks               String? // set by the technician on submit (F10, or the dev simulator)
+  billable                Boolean? // snapshot of the final issue's flag at verification (D-101); cleared by a reopen
+  verificationUpdatedAt   DateTime?
+  verificationUpdatedById String?
+  verificationUpdatedBy   User?               @relation("FitmentVerificationUpdatedBy", fields: [verificationUpdatedById], references: [id])
+  accessories             FitmentAccessory[]
+  photos                  FitmentPhoto[]
+  createdAt               DateTime            @default(now())
+  updatedAt               DateTime            @updatedAt
+  events                  TaskEvent[]
+  reopenAttributions      ReopenAttribution[]
 
   @@unique([taskId, seq])
   @@index([technicianId, status])
   @@index([status])
   @@index([reopenCount])
+}
+
+// --- OE verification and photos (F06) ---
+
+enum PhotoKind {
+  BEFORE
+  AFTER
+  ASSET
+  CLUSTER
+  PLACEMENT
+  DEBUG
+}
+
+enum PhotoStatus {
+  ACTIVE
+  REPLACED
+  REMOVED
+}
+
+enum PhotoSource {
+  OT
+  OE
+  OM
+  SIMULATOR
+}
+
+/**
+ * A photo of a fitment, stored in object storage under `objectKey` (D-102). Never deleted: a replaced or
+ * removed photo keeps its object and gets a status, reason, actor and time (D-100).
+ */
+model FitmentPhoto {
+  id           String        @id @default(cuid())
+  fitmentId    String
+  fitment      Fitment       @relation(fields: [fitmentId], references: [id])
+  kind         PhotoKind
+  objectKey    String        @unique // fitments/{fitmentId}/{photoId}.{ext}
+  contentType  String
+  sizeBytes    Int
+  width        Int?
+  height       Int?
+  originalName String?
+  takenAt      DateTime?
+  lat          Float?
+  lng          Float?
+  uploadedById String
+  uploadedBy   User          @relation("PhotoUploadedBy", fields: [uploadedById], references: [id])
+  source       PhotoSource
+  status       PhotoStatus   @default(ACTIVE)
+  replacedById String?       @unique // the photo that replaced this one
+  replacedBy   FitmentPhoto? @relation("PhotoReplacement", fields: [replacedById], references: [id])
+  replaces     FitmentPhoto? @relation("PhotoReplacement")
+  changeReason String?
+  changedById  String?
+  changedBy    User?         @relation("PhotoChangedBy", fields: [changedById], references: [id])
+  changedAt    DateTime?
+  createdAt    DateTime      @default(now())
+
+  @@index([fitmentId, status])
+}
+
+/**
+ * Accessories fitted (many-to-many with LookupItem of kind ACCESSORY).
+ */
+model FitmentAccessory {
+  fitmentId   String
+  fitment     Fitment    @relation(fields: [fitmentId], references: [id])
+  accessoryId String
+  accessory   LookupItem @relation(fields: [accessoryId], references: [id])
+
+  @@id([fitmentId, accessoryId])
 }
 
 /**
@@ -428,7 +520,7 @@ model TaskEvent {
   fitment      Fitment?            @relation(fields: [fitmentId], references: [id])
   actorId      String
   actor        User                @relation("TaskEventActor", fields: [actorId], references: [id])
-  type         String // TASK_EVENT_TYPES in @champ/shared (F04 types plus the F05 FITMENT_* workflow events)
+  type         String // TASK_EVENT_TYPES in @champ/shared (F04 types, F05 FITMENT_* workflow events, F06 verification/photo events)
   fromStatus   String?
   toStatus     String?
   data         Json? // a diff { field: [before, after] } or a payload (+ simulated / postStart / postApproval flags)

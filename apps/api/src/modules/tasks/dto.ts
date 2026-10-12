@@ -2,6 +2,8 @@ import {
   availableActions,
   canDeleteTask,
   canEditFitmentData,
+  canEditVerification,
+  canManagePhotos,
   canManageTask,
   canViewHistory,
   formatOeId,
@@ -17,6 +19,7 @@ import {
 } from '@champ/shared';
 import type { Prisma } from '../../generated/prisma/client';
 import type { User } from '../../lib/prisma';
+import { photoCounts, toVerificationDto, verificationInclude } from '../verification/dto';
 
 const iso = (d: Date) => d.toISOString();
 const isoOrNull = (d: Date | null) => (d ? d.toISOString() : null);
@@ -49,7 +52,7 @@ export const taskListInclude = {
   assetType: { select: { id: true, name: true } },
   activity: { select: { id: true, name: true } },
   oe: { select: { id: true, name: true } },
-  fitments: { select: { status: true, technicianId: true } },
+  fitments: { select: { status: true, technicianId: true, verifiedAt: true, billable: true } },
 } satisfies Prisma.TaskInclude;
 type TaskListRow = Prisma.TaskGetPayload<{ include: typeof taskListInclude }>;
 
@@ -69,7 +72,14 @@ export function toTaskListItem(task: TaskListRow): TaskListItemDto {
     fitmentAt: iso(task.fitmentAt),
     createdAt: iso(task.createdAt),
     completedAt: isoOrNull(task.completedAt),
+    ...verificationCounts(task.fitments),
   };
+}
+
+/** F06: fitments currently verified (verifiedAt is cleared by a reopen) and, of those, billable. */
+export function verificationCounts(fitments: readonly { verifiedAt: Date | null; billable: boolean | null }[]) {
+  const verified = fitments.filter((f) => f.verifiedAt);
+  return { verifiedCount: verified.length, billableCount: verified.filter((f) => f.billable === true).length };
 }
 
 // --- Detail ---
@@ -84,6 +94,7 @@ export const fitmentInclude = {
   closeReason: { select: { id: true, name: true } },
   replacementOf: { select: { id: true, tkNo: true } },
   replacement: { select: { id: true, tkNo: true, status: true } },
+  ...verificationInclude,
 } satisfies Prisma.FitmentInclude;
 export type FitmentRow = Prisma.FitmentGetPayload<{ include: typeof fitmentInclude }>;
 
@@ -145,6 +156,10 @@ export function toFitmentDto(f: FitmentRow, task: { oeId: string }, actor: User)
     reopenCount: f.reopenCount,
     lastReopenReason: f.lastReopenReason,
     lastReopenedAt: isoOrNull(f.lastReopenedAt),
+    verification: toVerificationDto(f),
+    photoCounts: photoCounts(f.photos),
+    canEditVerification: canEditVerification(actor, ctx),
+    canManagePhotos: canManagePhotos(actor, ctx),
   };
 }
 

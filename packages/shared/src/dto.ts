@@ -1,6 +1,7 @@
 import type { LookupKind, TechnicianType } from './masters';
 import type { AuthProvider, InviteStatus, Role, UserStatus } from './roles';
 import type { BulkTaskColumn, FitmentStatus, TaskStatus } from './tasks';
+import type { PhotoKind, PhotoSource, PhotoStatus } from './verification';
 import type { FitmentAction, TaskEventType } from './workflow';
 
 export interface UserRef {
@@ -293,6 +294,30 @@ export interface TaskListItemDto {
   createdAt: string;
   /** When the task last became Completed (CR-04); null while it isn't. */
   completedAt: string | null;
+  /** F06: fitments currently verified (OE verified or OM approved) and, of those, billable ("3 / 5"). */
+  verifiedCount: number;
+  billableCount: number;
+}
+
+/** The OE verification of a fitment (F06), names resolved; inactive values keep `active: false`. */
+export interface FitmentVerificationDto {
+  issueObserved: TaskRef | null;
+  actionTaken: TaskRef | null;
+  accessories: TaskRef[];
+  oeRemarks: string | null;
+  /** Entered by the technician on submit (F10, or the dev simulator). */
+  otRemarks: string | null;
+  /** The final issue with its current master flag (what a change would snapshot). */
+  finalIssue: (TaskRef & { billable: boolean }) | null;
+  /** Snapshot taken at verification (D-101); null until verified. */
+  billable: boolean | null;
+  updatedAt: string | null;
+  updatedBy: UserRef | null;
+}
+
+export interface PhotoCounts {
+  active: number;
+  byKind: Partial<Record<PhotoKind, number>>;
 }
 
 export interface FitmentDto {
@@ -331,6 +356,13 @@ export interface FitmentDto {
   reopenCount: number;
   lastReopenReason: string | null;
   lastReopenedAt: string | null;
+  // --- Verification and photos (F06) ---
+  verification: FitmentVerificationDto;
+  photoCounts: PhotoCounts;
+  /** Whether the caller may save the verification (shared `canEditVerification`). */
+  canEditVerification: boolean;
+  /** Whether the caller may replace or remove photos and upload debug images (shared `canManagePhotos`). */
+  canManagePhotos: boolean;
 }
 
 /** `GET /tasks/:id`: the task with resolved names, its fitments and what the caller may do. */
@@ -498,6 +530,48 @@ export interface TaskEventDto {
   data: unknown;
 }
 
+// --- Photos (F06) ---
+
+/** A photo of a fitment; `url` is a short-lived presigned GET URL (10 minutes). */
+export interface FitmentPhotoDto {
+  id: string;
+  fitmentId: string;
+  kind: PhotoKind;
+  status: PhotoStatus;
+  url: string;
+  contentType: string;
+  sizeBytes: number;
+  width: number | null;
+  height: number | null;
+  originalName: string | null;
+  takenAt: string | null;
+  lat: number | null;
+  lng: number | null;
+  source: PhotoSource;
+  uploadedBy: UserRef;
+  createdAt: string;
+  /** On a replaced photo: the photo that replaced it. */
+  replacedById: string | null;
+  /** Why it was replaced or removed, by whom and when. */
+  changeReason: string | null;
+  changedBy: UserRef | null;
+  changedAt: string | null;
+}
+
+/** `GET /fitments/:fid/photos`. */
+export interface FitmentPhotosResponse {
+  items: FitmentPhotoDto[];
+  /** Whether the caller may ask for `?history=true`. */
+  canViewHistory: boolean;
+  /** Whether the caller may replace, remove and upload now. */
+  canManage: boolean;
+}
+
+/** `POST /fitments/:fid/photos` and `…/replace`: the new photo. */
+export interface PhotoUploadResponse {
+  photo: FitmentPhotoDto;
+}
+
 export const ERROR_CODES = [
   'VALIDATION_ERROR',
   'UNAUTHENTICATED',
@@ -535,6 +609,10 @@ export const ERROR_CODES = [
   'TASK_STARTED',
   'FITMENT_LOCKED',
   'INVALID_TRANSITION',
+  'VERIFICATION_INCOMPLETE',
+  'FILE_TOO_LARGE',
+  'UNSUPPORTED_FILE',
+  'STORAGE_UNAVAILABLE',
   'INTERNAL_ERROR',
 ] as const;
 export type ErrorCode = (typeof ERROR_CODES)[number];

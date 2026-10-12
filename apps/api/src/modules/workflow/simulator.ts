@@ -1,7 +1,14 @@
+import { randomUUID } from 'node:crypto';
 import { Router } from 'express';
-import { canManageTask, formatTkId, simulateSchema, type SimulateInput, type TransitionPayload } from '@champ/shared';
+import { TECHNICIAN_PHOTO_KINDS, canManageTask, formatTkId, simulateSchema, type SimulateInput, type TransitionPayload } from '@champ/shared';
+import type { Prisma } from '../../generated/prisma/client';
 import { conflict, forbidden, notFound } from '../../lib/errors';
-import { prisma } from '../../lib/prisma';
+import { logger } from '../../lib/logger';
+import { prisma, type User } from '../../lib/prisma';
+import type { Storage } from '../../lib/storage';
+import { writeEvent } from '../tasks/events';
+import { SAMPLE_OT_REMARKS, loadSamplePhotos } from '../dev/sample-photos';
+import { photoObjectKey } from '../verification/photos';
 import { authenticate, currentUser } from '../../middleware/auth';
 import { requireRole } from '../../middleware/require-role';
 import { validate } from '../../middleware/validate';
@@ -11,9 +18,10 @@ import { transitionFitment } from './engine';
  * Dev-only technician simulator (D-073): `POST /dev/fitments/:fid/simulate` performs a technician step as the
  * fitment's assigned technician, so the OT steps can be tested before the mobile app (F10). Mounted only when
  * enabled (never in production); the caller must be SA, OM or the task's OE. START defaults to the site's
- * coordinates. Events are flagged `simulated: true`.
+ * coordinates. Events are flagged `simulated: true`. F06: SUBMIT also stores OT remarks and the five sample
+ * photos (Before, After, Asset, Cluster, Placement) as the technician, with the site's coordinates.
  */
-export function devSimulatorRouter() {
+export function devSimulatorRouter(storage: Storage) {
   const router = Router();
   router.use(authenticate, requireRole('SUPER_ADMIN', 'OM', 'OE'));
 
@@ -31,8 +39,86 @@ export function devSimulatorRouter() {
     }
     const body: TransitionPayload =
       action === 'START' ? { lat: fitment.task.site.lat, lng: fitment.task.site.lng, ...payload } : { ...payload };
-    res.json(await transitionFitment(fitment.technician, fitment.id, action, body, { simulated: true, viewer: caller }));
+    if (action !== 'SUBMIT') {
+      res.json(await transitionFitment(fitment.technician, fitment.id, action, body, { simulated: true, viewer: caller }));
+      return;
+    }
+    // A resubmit after a reopen keeps the photos already there (the technician would only retake what's asked).
+    const existing = await prisma.fitmentPhoto.count({
+      where: { fitmentId: fitment.id, status: 'ACTIVE', kind: { in: [...TECHNICIAN_PHOTO_KINDS] } },
+    });
+    const photos = existing ? [] : await storeSamplePhotos(storage, fitment.id);
+    try {
+      res.json(
+        await transitionFitment(fitment.technician, fitment.id, action, body, {
+          simulated: true,
+          viewer: caller,
+          afterApply: (tx, f) => attachSamples(tx, fitment.technician!, f, photos, fitment.task.site),
+        }),
+      );
+    } catch (err) {
+      await Promise.all(photos.map((p) => storage.delete(p.key).catch(() => undefined)));
+      throw err;
+    }
   });
 
   return router;
+}
+
+type StoredSample = Awaited<ReturnType<typeof loadSamplePhotos>>[number] & { id: string; key: string };
+
+/** Uploads the sample photos before the transaction (objects are cleaned up if it fails). */
+async function storeSamplePhotos(storage: Storage, fitmentId: string): Promise<StoredSample[]> {
+  const samples = await loadSamplePhotos();
+  const stored: StoredSample[] = [];
+  try {
+    for (const sample of samples) {
+      const id = randomUUID();
+      const key = photoObjectKey(fitmentId, id, 'jpg');
+      await storage.put(key, sample.body, 'image/jpeg');
+      stored.push({ ...sample, id, key });
+    }
+  } catch (err) {
+    logger.error({ err }, 'Simulator: could not store the sample photos');
+    await Promise.all(stored.map((p) => storage.delete(p.key).catch(() => undefined)));
+    throw err;
+  }
+  return stored;
+}
+
+/** Inside the SUBMIT transaction: the OT remarks and, when new, the photo rows and one PHOTO_ADDED event. */
+async function attachSamples(
+  tx: Prisma.TransactionClient,
+  technician: User,
+  fitment: { id: string; taskId: string; tkId: string },
+  photos: StoredSample[],
+  site: { lat: number; lng: number },
+) {
+  await tx.fitment.update({ where: { id: fitment.id }, data: { otRemarks: SAMPLE_OT_REMARKS } });
+  if (!photos.length) return;
+  const now = new Date();
+  await tx.fitmentPhoto.createMany({
+    data: photos.map((p) => ({
+      id: p.id,
+      fitmentId: fitment.id,
+      kind: p.kind,
+      objectKey: p.key,
+      contentType: 'image/jpeg',
+      sizeBytes: p.body.length,
+      width: p.width,
+      height: p.height,
+      originalName: p.fileName,
+      takenAt: now,
+      lat: site.lat,
+      lng: site.lng,
+      uploadedById: technician.id,
+      source: 'SIMULATOR' as const,
+    })),
+  });
+  await writeEvent(tx, technician, {
+    taskId: fitment.taskId,
+    fitmentId: fitment.id,
+    type: 'PHOTO_ADDED',
+    data: { tkId: fitment.tkId, photoIds: photos.map((p) => p.id), kinds: photos.map((p) => p.kind), simulated: true },
+  });
 }
