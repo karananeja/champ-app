@@ -331,3 +331,5 @@ Chronological log of the whole project conversation. Feature-level logs live in 
 **Status:** F12 ready for UAT by the user.
 
 **User:** "F12 accepted". UAT sign-off recorded and `feature/F12-mobile-history-approve-visit` merged to `main`.
+
+**Claude:** Wrote the F13 intent (in-app notifications, web and mobile) and sent it for sign-off.

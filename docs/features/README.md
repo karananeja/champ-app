@@ -18,6 +18,6 @@ A feature is **Complete** only after it has been implemented, tested and signed 
 | F10B | Mobile fitment form and submit (photos, checks, scan, summary) | F10 | ✅ Complete (UAT 2026-10-12) |
 | F11 | Mobile CSV bulk fill | F10B | ✅ Complete (UAT 2026-10-12) |
 | F12 | Mobile history timeline, distance, Approve visit | F10 | ✅ Complete (UAT 2026-10-12) |
-| F13 | In-app notifications (web and mobile) | F05 | Not started |
+| F13 | In-app notifications (web and mobile) | F05 | Intent awaiting sign-off |
 | F14 | Global search | F04 | Not started |
 | F15 | Reports (billing) and analytics | F06 | Not started |
