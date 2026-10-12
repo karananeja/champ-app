@@ -9,9 +9,21 @@ import {
   MAX_VEHICLES_PER_TASK,
   TASK_STATUSES,
   VEHICLE_CSV_COLUMNS,
+  istDayStart,
   type VehicleCsvColumn,
 } from './tasks';
 import { PHOTO_KINDS } from './verification';
+import {
+  DEFAULT_TRAVEL_SORT,
+  TRAVEL_MAX_DISTANCE_KM,
+  TRAVEL_PURPOSE_MAX,
+  TRAVEL_PURPOSE_MIN,
+  TRAVEL_REASON_MAX,
+  TRAVEL_REASON_MIN,
+  TRAVEL_SORTS,
+  TRAVEL_STATUSES,
+  istTodayDay,
+} from './travel';
 import { MAX_BULK_APPROVE } from './workflow';
 
 export const roleSchema = z.enum(ROLES);
@@ -833,3 +845,120 @@ export const boardColumnQuerySchema = boardQuerySchema.extend({ page: z.coerce.n
 export type BoardColumnQuery = z.infer<typeof boardColumnQuerySchema>;
 
 export const boardColumnParamsSchema = z.object({ status: z.enum(FITMENT_STATUSES, { error: 'Unknown board column' }) });
+
+// --- Travel tasks (F08) ---
+
+/** Purpose of travel: 3–1000 characters. */
+export const travelPurposeSchema = z
+  .string({ error: 'Describe the purpose of travel' })
+  .trim()
+  .min(TRAVEL_PURPOSE_MIN, `Describe the purpose of travel (at least ${TRAVEL_PURPOSE_MIN} characters)`)
+  .max(TRAVEL_PURPOSE_MAX, `The purpose must be at most ${TRAVEL_PURPOSE_MAX} characters`);
+
+/** Travel date: an IST calendar day, not in the future (D-119). */
+export const travelDateSchema = z
+  .string({ error: 'Choose the travel date' })
+  .regex(/^\d{4}-\d{2}-\d{2}$/, 'Choose the travel date')
+  .refine((day) => !!istDayStart(day), 'Choose a valid travel date')
+  .refine((day) => day <= istTodayDay(), "The travel date can't be in the future");
+
+/** Distance in km, as reported: more than 0, at most 5,000; rounded to one decimal. Null clears it. */
+export const travelDistanceSchema = z
+  .number({ error: 'Enter the distance in km' })
+  .gt(0, 'The distance must be more than 0 km')
+  .max(TRAVEL_MAX_DISTANCE_KM, `The distance must be at most ${TRAVEL_MAX_DISTANCE_KM.toLocaleString('en-IN')} km`)
+  .transform((km) => Math.max(0.1, Math.round(km * 10) / 10))
+  .nullish();
+
+/** Reason of a reject or reopen: 3–500 characters. */
+export const travelReasonSchema = z
+  .string({ error: 'Give a reason' })
+  .trim()
+  .min(TRAVEL_REASON_MIN, `Give a reason (at least ${TRAVEL_REASON_MIN} characters)`)
+  .max(TRAVEL_REASON_MAX, `The reason must be at most ${TRAVEL_REASON_MAX} characters`);
+
+/** An optional reference: an id, or null / '' to clear it. */
+const optionalTravelRef = z
+  .string()
+  .trim()
+  .transform((v) => (v === '' ? null : v))
+  .nullish();
+
+/** `POST /travel-tasks`. Customer, related task and distance are optional (D-119). */
+export const createTravelSchema = z.object({
+  technicianId: refId('Choose a technician'),
+  locationId: refId('Choose a location'),
+  clientId: optionalTravelRef,
+  purpose: travelPurposeSchema,
+  travelDate: travelDateSchema,
+  relatedFitmentId: optionalTravelRef,
+  distanceKm: travelDistanceSchema,
+});
+export type CreateTravelInput = z.infer<typeof createTravelSchema>;
+
+/** The editable fields, all optional (a PATCH or the `changes` of a resubmit). */
+export const travelChangesSchema = z.object({
+  technicianId: idSchema.optional(),
+  locationId: idSchema.optional(),
+  clientId: optionalTravelRef,
+  purpose: travelPurposeSchema.optional(),
+  travelDate: travelDateSchema.optional(),
+  relatedFitmentId: optionalTravelRef,
+  distanceKm: travelDistanceSchema,
+});
+export type TravelChangesInput = z.infer<typeof travelChangesSchema>;
+
+/** `PATCH /travel-tasks/:id`. */
+export const updateTravelSchema = travelChangesSchema.refine(atLeastOne, nothingToUpdate);
+export type UpdateTravelInput = z.infer<typeof updateTravelSchema>;
+
+/** `POST /travel-tasks/:id/transitions`: `{ action, reason?, changes? }`. */
+export const travelTransitionSchema = z.discriminatedUnion(
+  'action',
+  [
+    z.object({ action: z.literal('VERIFY') }),
+    z.object({ action: z.literal('REJECT'), reason: travelReasonSchema }),
+    z.object({ action: z.literal('RESUBMIT'), changes: travelChangesSchema.optional() }),
+    z.object({ action: z.literal('REOPEN'), reason: travelReasonSchema }),
+  ],
+  { error: 'Choose a valid action' },
+);
+export type TravelTransitionInput = z.infer<typeof travelTransitionSchema>;
+
+/** Filters of `GET /travel-tasks` and its export. `from`/`to`: travel date, IST days, both inclusive. */
+const travelFilterFields = {
+  technicianId: idSchema.optional(),
+  /** The technician's reporting OE. */
+  oeId: idSchema.optional(),
+  clientId: idSchema.optional(),
+  locationId: idSchema.optional(),
+  status: z.enum(TRAVEL_STATUSES).optional(),
+  from: istDay.optional(),
+  to: istDay.optional(),
+  /** A TT id or number. */
+  q: searchQuery,
+  sort: z.enum(TRAVEL_SORTS).default(DEFAULT_TRAVEL_SORT),
+};
+
+export const listTravelQuerySchema = z.object({
+  ...travelFilterFields,
+  page: z.coerce.number().int().min(1).default(1),
+  pageSize: z.coerce.number().int().min(1).max(100).default(20),
+});
+export type ListTravelQuery = z.infer<typeof listTravelQuerySchema>;
+export type TravelFilters = Omit<ListTravelQuery, 'page' | 'pageSize'>;
+
+export const exportTravelQuerySchema = z.object({ ...travelFilterFields, format: z.enum(EXPORT_FORMATS).default('csv') });
+export type ExportTravelQuery = z.infer<typeof exportTravelQuerySchema>;
+
+/** `POST /travel-tasks/:id/attachments/:aid/remove`: an optional reason. */
+export const removeTravelAttachmentSchema = z.object({
+  reason: blankable(z.string().max(300, 'The reason must be at most 300 characters')),
+});
+export type RemoveTravelAttachmentInput = z.infer<typeof removeTravelAttachmentSchema>;
+
+/** `GET /fitments/lookup?q=`: a TK id or number. */
+export const fitmentLookupQuerySchema = z.object({
+  q: z.string({ error: 'Type a TK id' }).trim().min(1, 'Type a TK id').max(100),
+});
+export type FitmentLookupQuery = z.infer<typeof fitmentLookupQuerySchema>;

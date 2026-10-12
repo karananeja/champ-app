@@ -1,5 +1,5 @@
 import { vi } from 'vitest';
-import type { FitmentDto, FitmentPhotoDto, LookupsResponse, TaskDto, UserDto } from '@champ/shared';
+import type { FitmentDto, FitmentPhotoDto, LookupsResponse, TaskDto, TravelTaskDto, UserDto } from '@champ/shared';
 
 export function makeUser(overrides: Partial<UserDto> = {}): UserDto {
   return {
@@ -203,6 +203,47 @@ export function makePhoto(overrides: Partial<FitmentPhotoDto> = {}): FitmentPhot
     changeReason: null,
     changedBy: null,
     changedAt: null,
+    ...overrides,
+  };
+}
+
+// --- Travel tasks (F08) ---
+
+/** A Raised TT of technician Arjun (OE Esha), raised by the OE, as an OE who may verify it sees it. */
+export function makeTravelTask(overrides: Partial<TravelTaskDto> = {}): TravelTaskDto {
+  return {
+    id: 'tt-1',
+    ttId: 'TT-00001',
+    status: 'RAISED',
+    source: 'WEB',
+    travelDate: '2026-10-10',
+    technician: { id: 'ot-1', name: 'Arjun Tech', technicianType: 'PAYROLL' },
+    oe: { id: 'oe-1', name: 'Esha Exec' },
+    location: { id: 'loc-blr', city: 'Bengaluru', active: true },
+    client: { id: 'cl-1', name: 'Zoomcar', active: true },
+    purpose: 'Picked up a faulty device',
+    distanceKm: 42.5,
+    relatedFitment: null,
+    attachmentCount: 0,
+    raisedBy: { id: 'oe-1', name: 'Esha Exec' },
+    createdAt: '2026-10-10T05:30:00.000Z',
+    verifiedAt: null,
+    verifiedBy: null,
+    rejectedAt: null,
+    rejectedBy: null,
+    rejectionReason: null,
+    reopenedAt: null,
+    reopenedBy: null,
+    reopenReason: null,
+    updatedAt: '2026-10-10T05:30:00.000Z',
+    attachments: [],
+    events: [
+      { id: 'ev-1', at: '2026-10-10T05:30:00.000Z', actor: { id: 'oe-1', name: 'Esha Exec' }, type: 'TT_RAISED', fromStatus: null, toStatus: 'RAISED', data: { ttId: 'TT-00001' } },
+    ],
+    canEdit: true,
+    canVerify: true,
+    canManageAttachments: true,
+    availableActions: ['VERIFY', 'REJECT'],
     ...overrides,
   };
 }

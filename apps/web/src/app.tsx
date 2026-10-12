@@ -15,15 +15,14 @@ import { MastersPage } from '@/features/masters/masters-page';
 import { ProfilePage } from '@/features/profile/profile-page';
 import { BoardPage } from '@/features/tasks/board/board-page';
 import { BulkUploadPage } from '@/features/tasks/bulk-upload-page';
-import { ComingSoonPage } from '@/features/tasks/coming-soon-page';
 import { FitmentListPage } from '@/features/tasks/fitment-list-page';
 import { TaskDetailPage } from '@/features/tasks/task-detail-page';
 import { TaskFormPage } from '@/features/tasks/task-form-page';
 import { TaskListPage } from '@/features/tasks/task-list-page';
 import { TechniciansPage } from '@/features/technicians/technicians-page';
+import { TravelTasksPage } from '@/features/travel/travel-tasks-page';
 import { UsersPage } from '@/features/users/users-page';
 import { useAuth } from '@/lib/auth';
-import { Route as RouteIcon } from 'lucide-react';
 import {
   canApproveFitments,
   canCreateTask,
@@ -114,14 +113,7 @@ export function App() {
           <Route path="/tasks/board" element={<BoardRoute />} />
           <Route path="/tasks/new" element={<TasksRoute create><TaskFormPage /></TasksRoute>} />
           <Route path="/tasks/bulk" element={<TasksRoute create><BulkUploadPage /></TasksRoute>} />
-          <Route
-            path="/tasks/travel"
-            element={
-              <TasksRoute>
-                <ComingSoonPage title="Travel tasks" description="Travel between fitment sites (F08)." icon={RouteIcon} />
-              </TasksRoute>
-            }
-          />
+          <Route path="/tasks/travel" element={<TasksRoute><TravelTasksPage /></TasksRoute>} />
           <Route path="/tasks/awaiting-approval" element={<TasksRoute approver><FitmentListPage key="awaiting-approval" list="awaiting-approval" /></TasksRoute>} />
           <Route path="/tasks/faulty" element={<TasksRoute><FitmentListPage key="faulty" list="faulty" /></TasksRoute>} />
           <Route path="/tasks/reopened" element={<TasksRoute><FitmentListPage key="reopened" list="reopened" /></TasksRoute>} />

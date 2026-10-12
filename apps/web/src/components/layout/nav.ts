@@ -31,7 +31,7 @@ export interface NavItem {
 
 /**
  * The Tasks group (F04/F05): creators get Create/Bulk upload, OEs get Assigned, SA/OM get the Board (F07) and Awaiting approval;
- * Completed tasks, All tasks (CR-04), Faulty and Re-opened for every task viewer; Travel is a placeholder (F08).
+ * Completed tasks, All tasks (CR-04), Travel tasks (F08), Faulty and Re-opened for every task viewer.
  */
 function taskItems(user: UserDto): NavItem[] {
   const creator = canCreateTask(user);

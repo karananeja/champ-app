@@ -87,17 +87,18 @@ describe('Tasks route guards (F04)', () => {
     });
   }
 
-  it('RO opens Open tasks and the placeholder pages', async () => {
+  it('RO opens Open tasks and sees Travel tasks in the menu', async () => {
     renderAt('/tasks', 'RO');
     expect(await screen.findByRole('heading', { name: 'Open tasks' })).toBeInTheDocument();
     expect(screen.queryByRole('link', { name: 'Create task' })).not.toBeInTheDocument();
     expect(sidebar().getByRole('link', { name: 'Travel tasks' })).toBeInTheDocument();
   });
 
-  it('the travel placeholder says it is coming later', async () => {
-    renderAt('/tasks/travel', 'OE');
+  it('F08: Travel tasks is a real list (the placeholder is gone)', async () => {
+    renderAt('/tasks/travel', 'OE', { 'GET /api/travel-tasks': { items: [], total: 0, page: 1, pageSize: 20 } });
     expect(await screen.findByRole('heading', { name: 'Travel tasks' })).toBeInTheDocument();
-    expect(screen.getByText('Coming in a later release')).toBeInTheDocument();
+    expect(await screen.findByText('No travel tasks yet')).toBeInTheDocument();
+    expect(screen.queryByText('Coming in a later release')).not.toBeInTheDocument();
   });
 
   it('F05: Faulty and Re-opened are real lists; Awaiting approval is for SA/OM only', async () => {

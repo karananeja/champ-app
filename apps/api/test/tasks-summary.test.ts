@@ -66,7 +66,9 @@ describe('GET /tasks/summary (CR-03 dashboard)', () => {
 
     for (const manager of [w.sa, w.om]) {
       const s = await w.summary(manager);
-      expect(s, manager.role).toEqual({ openTasks: 2, completedTasks: 1, awaitingApproval: 1, reopened: 1, faulty: 1 });
+      // F08: an OM also gets travelToVerify (SA only views travel tasks).
+      const travel = manager.role === 'OM' ? { travelToVerify: 0 } : {};
+      expect(s, manager.role).toEqual({ openTasks: 2, completedTasks: 1, awaitingApproval: 1, reopened: 1, faulty: 1, ...travel });
       expect(s.openTasks).toBe(await w.total(manager, '/api/tasks', { view: 'open' }));
       expect(s.completedTasks).toBe(await w.total(manager, '/api/tasks', { view: 'completed' }));
       expect(s.awaitingApproval).toBe(await w.total(manager, '/api/fitments/awaiting-approval'));
@@ -76,7 +78,7 @@ describe('GET /tasks/summary (CR-03 dashboard)', () => {
 
     // OE: own tasks for the Assigned view and the fitment lists; one fitment waits for their verification.
     const oe = await w.summary(w.oe);
-    expect(oe).toEqual({ openTasks: 2, completedTasks: 1, reopened: 0, faulty: 0, assignedToMe: 2, awaitingMyVerification: 1 });
+    expect(oe).toEqual({ openTasks: 2, completedTasks: 1, reopened: 0, faulty: 0, assignedToMe: 2, awaitingMyVerification: 1, travelToVerify: 0 });
     expect(oe.assignedToMe).toBe(await w.total(w.oe, '/api/tasks', { view: 'assigned' }));
     expect(oe.reopened).toBe(await w.total(w.oe, '/api/fitments/reopened'));
     const other = await w.summary(w.otherOe);
@@ -95,6 +97,6 @@ describe('GET /tasks/summary (CR-03 dashboard)', () => {
   it('an empty system gives zeros', async () => {
     const w = await world();
     expect(await prisma.task.count()).toBe(0);
-    expect(await w.summary(w.om)).toEqual({ openTasks: 0, completedTasks: 0, awaitingApproval: 0, reopened: 0, faulty: 0 });
+    expect(await w.summary(w.om)).toEqual({ openTasks: 0, completedTasks: 0, awaitingApproval: 0, reopened: 0, faulty: 0, travelToVerify: 0 });
   });
 });

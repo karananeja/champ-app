@@ -127,6 +127,8 @@ export interface E2eOrg {
     oe: Account;
     tasks: Record<string, Record<'assign' | 'keyboard' | 'approve' | 'reopen' | 'forbidden' | 'refetch', BoardTask>>;
   };
+  /** F08: per Playwright project a travel OM, an OE reporting to them and the OE's only technician; one RO. */
+  f08: { projects: Record<string, { om: Account; oe: Account; technician: string }>; ro: Account };
 }
 
 export interface BoardTask extends WorkflowTask {
@@ -325,4 +327,19 @@ export async function pickDateRange(page: Page, trigger: Locator, from: string, 
   await chooseCalendarDay(page, to);
   await page.getByRole('dialog').getByRole('button', { name: 'Done' }).click();
   await expect(page.getByRole('dialog')).toBeHidden();
+}
+
+// --- F08 ---
+
+/** The visible travel task row (desktop table) or card (small screens) that contains `text`. */
+export const travelItem = (page: Page, text: string): Locator =>
+  page.locator('[data-testid="travel-row"], [data-testid="travel-card"]').filter({ hasText: text, visible: true });
+
+/** Opens the detail sheet of a TT from the list (its id button on desktop, the card on phones). */
+export async function openTravel(page: Page, ttId: string) {
+  const item = travelItem(page, ttId);
+  await expect(item).toHaveCount(1);
+  // Desktop: the id button in the row; phones: the whole card is a button named "Open TT-…".
+  await item.getByRole('button', { name: new RegExp(`^(Open )?${ttId}$`) }).filter({ visible: true }).first().click();
+  await expect(page.getByTestId('travel-detail').getByRole('heading', { name: ttId })).toBeVisible();
 }

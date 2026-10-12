@@ -10,13 +10,11 @@ import { Switch } from '@/components/ui/switch';
 import { TONES } from '@/lib/tones';
 import { cn } from '@/lib/utils';
 import { RemovePhotoDialog, ReplacePhotoDialog } from './photo-change-dialogs';
-import { photoChangeText, photoMeta } from './photo-meta';
+import { LIGHTBOX_LAYER, photoChangeText, photoMeta, photoSlides } from './photo-meta';
 import { useFitmentPhotos } from './queries';
 
 const PhotoLightbox = lazy(() => import('./photo-lightbox'));
 
-/** The dialog or sheet the gallery sits in: the lightbox mounts there so focus and pointer events keep working. */
-const LAYER = '[data-slot="dialog-content"], [data-slot="sheet-content"]';
 
 interface Props {
   fitmentId: string;
@@ -119,7 +117,7 @@ export function PhotoGallery({ fitmentId, manage = true, allowHistory = true, co
       )}
       {open >= 0 && (
         <Suspense fallback={null}>
-          <PhotoLightbox photos={photos} index={open} onClose={() => setOpen(-1)} root={() => wrapper.current?.closest(LAYER) ?? null} />
+          <PhotoLightbox slides={photoSlides(photos)} index={open} onClose={() => setOpen(-1)} root={() => wrapper.current?.closest(LIGHTBOX_LAYER) ?? null} />
         </Suspense>
       )}
       {replacing && <ReplacePhotoDialog fitmentId={fitmentId} photo={replacing} onClose={() => setReplacing(null)} />}

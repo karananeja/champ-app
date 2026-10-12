@@ -202,4 +202,15 @@ Chronological log of the whole project conversation. Feature-level logs live in 
 
 **Claude:** Wrote the F08 intent (travel tasks) and sent it for sign-off.
 
-**Status:** Waiting for F08 intent sign-off.
+**User:** "approved" (F08 intent). All four open points were accepted as proposed (D-119 – D-121).
+
+**Claude:**
+- Created branch `feature/F08-travel-tasks`.
+- Wrote the F08 spec, including D-122 (separate travel tables, and an API that already lets OTs raise their own TTs).
+- Launched an implementation agent with the usual hard rules.
+
+**Implementation agent (F08):** Finished in 4 commits on the correct branch. Reported 876 tests, E2E 67 passed + 4 skipped. Applied the migration to the dev DB. Added D-123–D-126.
+
+**Claude verification:** Re-ran all gates (all pass) and reviewed the route guards.
+
+**Status:** F08 ready for UAT by the user.

@@ -16,27 +16,45 @@ interface DropzoneProps {
   /** Called with the message when a file fails them. */
   onInvalid: (message: string) => void;
   className?: string;
+  /** Picker `accept` (default: the photo types). */
+  accept?: string;
+  /** Client-side check (default: `validateImageFile`). */
+  validate?: (file: File) => string | null;
+  /** Take several files at once (each goes through `validate` and `onFile`). */
+  multiple?: boolean;
 }
 
 /**
  * A drop area with a file picker for one image (JPEG, PNG or WebP, ≤ 10 MB), checked in the browser before
- * anything is sent. Keyboard users get the picker through the visible button.
+ * anything is sent. Keyboard users get the picker through the visible button. F08 travel receipts pass their
+ * own `accept` / `validate` (images or PDF) and `multiple`.
  */
-export function PhotoDropzone({ label, hint, disabled, onFile, onInvalid, className }: DropzoneProps) {
+export function PhotoDropzone({
+  label,
+  hint,
+  disabled,
+  onFile,
+  onInvalid,
+  className,
+  accept = PHOTO_ACCEPT,
+  validate = validateImageFile,
+  multiple = false,
+}: DropzoneProps) {
   const inputId = useId();
   const input = useRef<HTMLInputElement>(null);
   const [over, setOver] = useState(false);
 
-  const take = (file: File | undefined) => {
-    if (!file) return;
-    const error = validateImageFile(file);
-    if (error) onInvalid(error);
-    else onFile(file);
+  const take = (files: FileList | null | undefined) => {
+    for (const file of Array.from(files ?? []).slice(0, multiple ? undefined : 1)) {
+      const error = validate(file);
+      if (error) onInvalid(multiple ? `${file.name}: ${error}` : error);
+      else onFile(file);
+    }
   };
   const onDrop = (e: DragEvent) => {
     e.preventDefault();
     setOver(false);
-    if (!disabled) take(e.dataTransfer.files[0]);
+    if (!disabled) take(e.dataTransfer.files);
   };
 
   return (
@@ -64,11 +82,12 @@ export function PhotoDropzone({ label, hint, disabled, onFile, onInvalid, classN
         ref={input}
         id={inputId}
         type="file"
-        accept={PHOTO_ACCEPT}
+        accept={accept}
+        multiple={multiple}
         className="sr-only"
         disabled={disabled}
         onChange={(e) => {
-          take(e.target.files?.[0]);
+          take(e.target.files);
           e.target.value = '';
         }}
       />
