@@ -253,7 +253,10 @@ describe('GET /api/mobile/home and /api/mobile/fitments', () => {
       photos: [],
       startedAt: null,
       submittedAt: null,
+      // F11: my fitments in the same task
+      taskFitmentCount: 2,
     });
+    expect(body.items[2]!.taskFitmentCount).toBe(1);
 
     // The day before has only the 23:59 fitment.
     const yesterday = await w.list(w.techA, YESTERDAY);

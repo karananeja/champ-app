@@ -135,3 +135,16 @@ jest.mock('expo-text-extractor', () => ({
   isSupported: true,
   extractTextFromImage: jest.fn(async () => [] as string[]),
 }));
+
+/* F11 bulk fill: the CSV picker and the share sheet. */
+jest.mock('expo-document-picker', () => ({
+  getDocumentAsync: jest.fn(async () => ({
+    canceled: false,
+    assets: [{ uri: 'file:///cache/fill.csv', name: 'fill.csv', mimeType: 'text/csv', size: 120 }],
+  })),
+}));
+
+jest.mock('expo-sharing', () => ({
+  isAvailableAsync: jest.fn(async () => true),
+  shareAsync: jest.fn(async () => undefined),
+}));

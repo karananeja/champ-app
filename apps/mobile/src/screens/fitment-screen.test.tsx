@@ -179,4 +179,18 @@ describe('FitmentScreen', () => {
     expect(screen.queryByTestId('start')).toBeNull();
     expect(screen.getByTestId('close')).toBeOnTheScreen();
   });
+
+  it('hides Bulk fill (CSV) when the task has only this one of my fitments', async () => {
+    mockFetch(() => ({ status: 200, body: makeFitment({ taskFitmentCount: 1 }) }));
+    await renderWithProviders(<FitmentScreen />);
+    await screen.findByTestId('start');
+    expect(screen.queryByTestId('bulk-fill')).toBeNull();
+  });
+
+  it('shows Bulk fill (CSV) when the task has two or more of my fitments', async () => {
+    mockFetch(() => ({ status: 200, body: makeFitment({ taskFitmentCount: 2 }) }));
+    await renderWithProviders(<FitmentScreen />);
+    await fireEvent.press(await screen.findByTestId('bulk-fill'));
+    expect(router.push).toHaveBeenCalledWith({ pathname: '/task/[id]/bulk-fill', params: { id: 't1' } });
+  });
 });

@@ -23,6 +23,8 @@ export function makeFitment(over: Partial<MyFitmentDto> = {}): MyFitmentDto {
     photos: [],
     startedAt: null,
     submittedAt: null,
+    // F11
+    taskFitmentCount: 1,
     ...over,
   };
 }

@@ -11,3 +11,4 @@ export * from './travel';
 export * from './mobile';
 export * from './route';
 export * from './fitment-form';
+export * from './bulk-fill';

@@ -11,6 +11,7 @@ import { StatusBadge } from '../components/status-badge';
 import { useToast } from '../components/toast';
 import { Button, Card, Muted, TextField } from '../components/ui';
 import { api, isNetworkError } from '../lib/api-client';
+import { showsBulkFill } from '../lib/bulk-fill';
 import { formatIstTime } from '../lib/format';
 import { requireFreshFix } from '../lib/location';
 import { directionsUrls, fitmentQueryKey } from '../lib/route';
@@ -213,6 +214,14 @@ export function FitmentScreen() {
         ) : null}
         {can('CLOSE_NOT_DONE') ? <Button title="Close (not done)" variant="ghost" testID="close" onPress={() => setDialog('close')} /> : null}
         {can('MARK_FAULTY') ? <Button title="Mark faulty" variant="ghost" testID="mark-faulty" onPress={() => setDialog('faulty')} /> : null}
+        {showsBulkFill(f) ? (
+          <Button
+            title="Bulk fill (CSV)"
+            variant="secondary"
+            testID="bulk-fill"
+            onPress={() => router.push({ pathname: '/task/[id]/bulk-fill', params: { id: f.taskId } })}
+          />
+        ) : null}
       </ScrollView>
 
       <Dialog visible={dialog === 'location'} title="Location required" onClose={() => setDialog('none')} testID="location-dialog">

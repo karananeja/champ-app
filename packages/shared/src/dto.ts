@@ -422,9 +422,9 @@ export interface TaskOptionsResponse {
   assignableOes: UserRef[];
 }
 
-export interface BulkCellError {
+export interface BulkCellError<C extends string = BulkTaskColumn> {
   /** A bulk CSV column, or '' for a row-level error. */
-  column: BulkTaskColumn | '';
+  column: C | '';
   message: string;
 }
 
@@ -627,6 +627,7 @@ export const ERROR_CODES = [
   'MOBILE_ROLE_NOT_ALLOWED',
   'ROUTE_ORDER',
   'FORM_INCOMPLETE',
+  'GPS_REQUIRED',
   'INTERNAL_ERROR',
 ] as const;
 export type ErrorCode = (typeof ERROR_CODES)[number];

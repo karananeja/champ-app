@@ -39,23 +39,26 @@ export async function getHome(actor: User, date: string): Promise<MobileHomeResp
   return { date, showTasks, approveVisit };
 }
 
-export const myFitmentInclude = {
-  task: {
-    select: {
-      id: true,
-      oeId: true,
-      fitmentAt: true,
-      client: { select: { name: true } },
-      site: { select: { name: true, address: true, lat: true, lng: true } },
-      activity: { select: { name: true } },
-      oe: { select: { name: true, phone: true } },
-      assetType: { select: { name: true, code: true } },
-      installationType: { select: { name: true } },
+/** What the app's fitment view needs; `_count.fitments` counts the caller's fitments of the task (F11). */
+export const myFitmentInclude = (technicianId: string) =>
+  ({
+    task: {
+      select: {
+        id: true,
+        _count: { select: { fitments: { where: { technicianId } } } },
+        oeId: true,
+        fitmentAt: true,
+        client: { select: { name: true } },
+        site: { select: { name: true, address: true, lat: true, lng: true } },
+        activity: { select: { name: true } },
+        oe: { select: { name: true, phone: true } },
+        assetType: { select: { name: true, code: true } },
+        installationType: { select: { name: true } },
+      },
     },
-  },
-} satisfies Prisma.FitmentInclude;
+  }) satisfies Prisma.FitmentInclude;
 
-export type MyFitmentRow = Prisma.FitmentGetPayload<{ include: typeof myFitmentInclude }>;
+export type MyFitmentRow = Prisma.FitmentGetPayload<{ include: ReturnType<typeof myFitmentInclude> }>;
 
 /**
  * The field app's view of one of my fitments (F09, F10, F10B additions), with what I may do now. `photos` are
@@ -84,6 +87,7 @@ export function toMyFitmentDto(f: MyFitmentRow, actor: User, photos: FitmentPhot
     photos,
     startedAt: f.startedAt ? f.startedAt.toISOString() : null,
     submittedAt: f.submittedAt ? f.submittedAt.toISOString() : null,
+    taskFitmentCount: f.task._count.fitments,
   };
 }
 
@@ -91,7 +95,7 @@ export function toMyFitmentDto(f: MyFitmentRow, actor: User, photos: FitmentPhot
 export async function listMyFitments(actor: User, date: string): Promise<MyFitmentsResponse> {
   const rows = await prisma.fitment.findMany({
     where: myFitmentsWhere(actor, date),
-    include: myFitmentInclude,
+    include: myFitmentInclude(actor.id),
     orderBy: [{ task: { fitmentAt: 'asc' } }, { tkNo: 'asc' }],
   });
   return { date, items: rows.map((f) => toMyFitmentDto(f, actor)) };
@@ -101,7 +105,7 @@ export async function listMyFitments(actor: User, date: string): Promise<MyFitme
 export async function getMyFitment(storage: Storage, actor: User, fitmentId: string): Promise<MyFitmentDto> {
   const row = await prisma.fitment.findFirst({
     where: { id: fitmentId, technicianId: actor.id, task: { deletedAt: null } },
-    include: myFitmentInclude,
+    include: myFitmentInclude(actor.id),
   });
   if (!row) throw notFound('Fitment not found');
   return toMyFitmentDto(row, actor, await technicianPhotos(storage, row.id));

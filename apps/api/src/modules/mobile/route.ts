@@ -3,7 +3,6 @@ import {
   formatIstDateTime,
   formatTkId,
   isOpenRouteStatus,
-  nextStopId,
   routeOrderMessage,
   type DayRouteDto,
   type FitmentStatus,
@@ -64,7 +63,7 @@ export interface RouteRequest {
 export async function getDayRoute(actor: User, date: string, req: RouteRequest, optimizer: RouteOptimizer): Promise<DayRouteDto> {
   const rows = await prisma.fitment.findMany({
     where: myFitmentsWhere(actor, date),
-    include: myFitmentInclude,
+    include: myFitmentInclude(actor.id),
     orderBy: [{ task: { fitmentAt: 'asc' } }, { tkNo: 'asc' }],
   });
   const open = rows.filter((f) => isOpenRouteStatus(f.status));
@@ -93,8 +92,7 @@ export async function getDayRoute(actor: User, date: string, req: RouteRequest, 
 
   const byId = new Map(rows.map((f) => [f.id, f]));
   const openOrdered = (route?.fitmentIds ?? []).map((id) => byId.get(id)!);
-  const nextId = nextStopId(openOrdered.map((f) => ({ id: f.id, status: f.status })));
-  const nextTk = nextId ? formatTkId(byId.get(nextId)!.tkNo) : null;
+  const blockers = routeBlockers(openOrdered);
   const legById = new Map((route?.legs ?? []).map((l) => [l.fitmentId, l]));
 
   const stops: RouteStopDto[] = [
@@ -106,8 +104,8 @@ export async function getDayRoute(actor: User, date: string, req: RouteRequest, 
       return {
         fitment: toMyFitmentDto(f, actor),
         done: false,
-        isNext: f.id === nextId,
-        blockedBy: f.id === nextId ? null : nextTk,
+        isNext: blockers.get(f.id) === null,
+        blockedBy: blockers.get(f.id) ?? null,
         legFromPrevious: hasLeg ? { distanceM: leg.distanceM, durationS: leg.durationS } : null,
       };
     }),
@@ -189,15 +187,39 @@ async function computeRoute(
   };
 }
 
+interface RouteOrderStop {
+  id: string;
+  tkNo: number;
+  status: FitmentStatus;
+  taskId: string;
+}
+
 /**
- * Strict order on START (D-156), inside the transition's transaction: refuses with 409 ROUTE_ORDER when
- * another open fitment of the technician on the same IST day is In progress, or comes before this one in the
- * stored route. Without a stored route any open fitment may start.
+ * The stop that must go first (TK id) for each open stop in visiting order, or null when it may be started now
+ * (D-156, relaxed within a task by D-202): an In-progress stop is never blocked; otherwise an In-progress stop of
+ * another task blocks, then the first stop of another task before it. Mirrors `assertRouteOrder`.
+ */
+export function routeBlockers(openOrdered: readonly RouteOrderStop[]): Map<string, string | null> {
+  const out = new Map<string, string | null>();
+  openOrdered.forEach((stop, i) => {
+    if (stop.status === 'IN_PROGRESS') return out.set(stop.id, null);
+    const otherTask = (f: RouteOrderStop) => f.taskId !== stop.taskId;
+    const blocker = openOrdered.find((f) => otherTask(f) && f.status === 'IN_PROGRESS') ?? openOrdered.slice(0, i).find(otherTask);
+    out.set(stop.id, blocker ? formatTkId(blocker.tkNo) : null);
+  });
+  return out;
+}
+
+/**
+ * Strict order on START (D-156), inside the transition's transaction: refuses with 409 ROUTE_ORDER when an
+ * open fitment of another task of the technician on the same IST day is In progress, or comes before this one
+ * in the stored route. Fitments of the same task never block (D-202, F11). Without a stored route any open
+ * fitment may start.
  */
 export async function assertRouteOrder(
   tx: Tx,
   technicianId: string,
-  fitment: { id: string; task: { fitmentAt: Date } },
+  fitment: { id: string; taskId: string; task: { fitmentAt: Date } },
 ): Promise<void> {
   const date = istDayOf(fitment.task.fitmentAt);
   const stored = await tx.dayRoute.findUnique({ where: { technicianId_date: { technicianId, date: dbDate(date) } } });
@@ -205,7 +227,12 @@ export async function assertRouteOrder(
   const others = await tx.fitment.findMany({
     where: {
       AND: [
-        { technicianId, id: { not: fitment.id }, status: { in: [...OPEN_ROUTE_STATUSES] as FitmentStatus[] } },
+        {
+          technicianId,
+          id: { not: fitment.id },
+          taskId: { not: fitment.taskId },
+          status: { in: [...OPEN_ROUTE_STATUSES] as FitmentStatus[] },
+        },
         onIstDay(date),
       ],
     },

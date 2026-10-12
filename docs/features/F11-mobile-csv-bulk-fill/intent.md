@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| Status | **Awaiting user sign-off** |
+| Status | **Approved** 2026-10-12 ("ok continue"; open points as proposed, D-201 – D-205) |
 | Requirements | SRS §6.6.8 · source doc: "If the tasks assigned to OT has too many sub tasks then they can upload the task updates in csv file and the system parses that sheet and fills the task and asks for confirmation from OT, also this should be mobile first only than filling the sheet and uploading the sheet" · M14 · Decisions D-021 (CSV pre-fills the forms, the OT confirms before submitting), D-156 (strict order), D-180–D-184 (form rules) |
 | Depends on | F10B (complete) |
 

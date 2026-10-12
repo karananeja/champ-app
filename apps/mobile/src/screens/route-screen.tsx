@@ -9,6 +9,7 @@ import { NoConnection, StateView } from '../components/state-view';
 import { StatusBadge } from '../components/status-badge';
 import { Button, Muted } from '../components/ui';
 import { api, isNetworkError } from '../lib/api-client';
+import { showsBulkFill } from '../lib/bulk-fill';
 import { formatIstTime } from '../lib/format';
 import { requireFreshFix, tryRouteFix } from '../lib/location';
 import { formatKm, formatLeg, routeQueryKey } from '../lib/route';
@@ -80,6 +81,7 @@ export function RouteScreen() {
   } else {
     const route = query.data;
     const openStops = route.stops.filter((s) => !s.done).length;
+    const bulkEntryIds = bulkEntryStopIds(route.stops);
     body = (
       <>
         <View style={styles.map}>
@@ -108,7 +110,18 @@ export function RouteScreen() {
               ) : null}
             </View>
           }
-          renderItem={({ item }) => <StopRow stop={item} onOpen={() => open(item)} onStart={() => open(item, true)} />}
+          renderItem={({ item }) => (
+            <StopRow
+              stop={item}
+              onOpen={() => open(item)}
+              onStart={() => open(item, true)}
+              onBulkFill={
+                bulkEntryIds.has(item.fitment.id)
+                  ? () => router.push({ pathname: '/task/[id]/bulk-fill', params: { id: item.fitment.taskId } })
+                  : undefined
+              }
+            />
+          )}
         />
       </>
     );
@@ -131,7 +144,19 @@ function Notice({ text, testID }: { text: string; testID: string }) {
   );
 }
 
-function StopRow({ stop: s, onOpen, onStart }: { stop: RouteStopDto; onOpen: () => void; onStart: () => void }) {
+/** F11: the first stop of each task with two or more of my fitments carries the *Bulk fill* link. */
+export function bulkEntryStopIds(stops: RouteStopDto[]): Set<string> {
+  const seen = new Set<string>();
+  const ids = new Set<string>();
+  for (const s of stops) {
+    if (seen.has(s.fitment.taskId)) continue;
+    seen.add(s.fitment.taskId);
+    if (showsBulkFill(s.fitment)) ids.add(s.fitment.id);
+  }
+  return ids;
+}
+
+function StopRow({ stop: s, onOpen, onStart, onBulkFill }: { stop: RouteStopDto; onOpen: () => void; onStart: () => void; onBulkFill?: () => void }) {
   const { colors, radius } = useTheme();
   const f = s.fitment;
   const canStart = s.isNext && f.availableActions.includes('START');
@@ -175,6 +200,11 @@ function StopRow({ stop: s, onOpen, onStart }: { stop: RouteStopDto; onOpen: () 
         {!s.done && !s.isNext && s.blockedBy ? (
           <Text testID={`blocked-${f.id}`} style={[styles.small, { color: colors.mutedForeground }]}>
             After {s.blockedBy}
+          </Text>
+        ) : null}
+        {onBulkFill ? (
+          <Text testID={`bulk-fill-${f.id}`} accessibilityRole="link" onPress={onBulkFill} style={[styles.small, { color: colors.primary, fontWeight: '600' }]}>
+            Bulk fill
           </Text>
         ) : null}
       </View>
