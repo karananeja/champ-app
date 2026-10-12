@@ -15,3 +15,4 @@ export * from './bulk-fill';
 export * from './mobile-history';
 export * from './notifications';
 export * from './search';
+export * from './reports';

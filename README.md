@@ -442,6 +442,30 @@ fitment's verification sheet (`/tasks/:id?fitment=`) or the travel task. *Show a
 API: `GET /api/search?q=&limit=` (`{q, hits, total, truncated}`; default 20, max 100), `GET /api/search/identifiers`
 and `PUT /api/search/identifiers` (`{items: [{identifier, enabled}]}`, all ten in ranking order; SA only).
 
+### Reports: billing and analytics (F15)
+
+A **Reports** menu group (after Tasks):
+
+- **Billing** (SA, OM, RO): pick a month (IST) and optionally a customer. It lists the **billable fitments that got
+  their final OM approval in that month**, grouped by client, with billable and non-billable counts (no amounts, D-018,
+  D-264). *Download CSV* (one flat file) or *Download Excel* (a Summary sheet plus one sheet per client, D-268). A fitment
+  reopened after approval leaves the report until it is approved again.
+- **Analytics** (SA, OM, RO; an OE sees only their own tasks and technicians, D-266): filters for a date range
+  (default this month), customer, OE and region. KPI tiles (D-030, D-265) with weekly trends:
+  - **Tasks by status** (fitments dated in the range, by current status)
+  - **Turnaround**: median and P90 of assigned → submitted (field) and created → final approval (end to end)
+  - **Reopen rate**: reopens ÷ submitted, per technician and per OE by who the reopen counts against (D-074)
+  - **Fitments per technician per day**: submitted ÷ days with at least one start
+  - **Faulty rate**: moved to FT ÷ started
+  - **Km travelled**: the F12 day distances summed per technician ("≈" when straight-line)
+
+  Technician and OE tables (sortable) download as CSV. Counts come from the event log, so resubmits and reopens are
+  counted as they happened.
+
+API: `GET /api/reports/billing?month=YYYY-MM&clientId=&format=json|csv|xlsx` and
+`GET /api/reports/analytics?from=&to=&clientId=&oeId=&regionId=&format=json|csv&table=technicians|oes` (inclusive IST
+days, at most 366).
+
 ### Notifications (F13)
 
 A **bell** in the web top bar (every role) and in the app header shows the unread count; opening it lists the latest

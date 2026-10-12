@@ -17,9 +17,9 @@ describe('navGroupsFor', () => {
 
   it('OE and RO keep their other menu items', () => {
     const top = ['/', '/users', '/technicians', '/clients'];
-    expect(linksFor('OE').filter((l) => !l.startsWith('/tasks'))).toEqual([...top, '/profile']);
-    expect(linksFor('RO').filter((l) => !l.startsWith('/tasks'))).toEqual([...top, '/profile']);
-    expect(linksFor('OM').filter((l) => !l.startsWith('/tasks'))).toEqual([...top, '/masters', '/profile']);
+    expect(linksFor('OE').filter((l) => !l.startsWith('/tasks'))).toEqual([...top, '/reports/analytics', '/profile']);
+    expect(linksFor('RO').filter((l) => !l.startsWith('/tasks'))).toEqual([...top, '/reports/billing', '/reports/analytics', '/profile']);
+    expect(linksFor('OM').filter((l) => !l.startsWith('/tasks'))).toEqual([...top, '/reports/billing', '/reports/analytics', '/masters', '/profile']);
   });
 
   it('one Tasks item for task viewers (CR-10: the views are tabs), opening the Board for SA/OM; none for OT; Settings for SA only', () => {

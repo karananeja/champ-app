@@ -401,3 +401,18 @@ Chronological log of the whole project conversation. Feature-level logs live in 
 **User:** "F14 accepted". UAT sign-off recorded; CR-08 – CR-11 were on the same branch and are taken as accepted with F14; `feature/F14-global-search` merged to `main`.
 
 **Claude:** Wrote the F15 intent (billing report and analytics) and sent it for sign-off.
+
+**User:** "ok continue" (F15 intent). Taken as approval with all five open points as proposed (D-264 – D-268).
+
+**Claude:** Created branch `feature/F15-reports-analytics`, wrote the F15 spec, and launched two parallel agents (Backend: shared, API; Web: Reports pages and charts). Only the Web agent runs the full E2E.
+
+**Implementation agents (F15):** Backend ~9 min (3 commits), Web ~26 min (2 commits). No new dependency (hand-drawn charts per the dataviz guidance).
+
+**Claude verification:**
+- All gates pass (1,121 tests; E2E 81 passed + 4 skipped), run once by the Web agent after the Backend's last commit.
+- Load check with 5,000 fitments in a month: billing ~40 ms, analytics ~130 ms, Excel ~125 ms; counts and turnaround exactly as built.
+- Wrote the README, the test report and D-269 – D-273.
+
+**Status:** F15 ready for UAT by the user.
+
+**User:** "F15 accepted". UAT sign-off recorded and `feature/F15-reports-analytics` merged to `main`. All fifteen planned features are complete.

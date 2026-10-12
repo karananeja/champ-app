@@ -12,6 +12,8 @@ import { ForbiddenPage, NotFoundPage } from '@/features/errors/error-pages';
 import { AcceptInvitePage } from '@/features/invites/accept-invite-page';
 import { MasterPage } from '@/features/masters/master-page';
 import { MastersPage } from '@/features/masters/masters-page';
+import { AnalyticsPage } from '@/features/reports/analytics-page';
+import { BillingPage } from '@/features/reports/billing-page';
 import { ProfilePage } from '@/features/profile/profile-page';
 import { SearchPage } from '@/features/search/search-page';
 import { SearchSettingsPage } from '@/features/search/search-settings-page';
@@ -32,6 +34,8 @@ import {
   canUseBoard,
   canEditClients,
   canManageSearchSettings,
+  canViewAnalytics,
+  canViewBilling,
   canViewClients,
   canViewMasters,
   canViewTasks,
@@ -94,6 +98,17 @@ function SearchSettingsRoute() {
   return user && canManageSearchSettings(user) ? <SearchSettingsPage /> : <ForbiddenPage />;
 }
 
+/** Reports (F15, D-266): Billing for SA/OM/RO, Analytics also for OE; others get the 403 page. */
+function BillingRoute() {
+  const { user } = useAuth();
+  return user && canViewBilling(user) ? <BillingPage /> : <ForbiddenPage />;
+}
+
+function AnalyticsRoute() {
+  const { user } = useAuth();
+  return user && canViewAnalytics(user) ? <AnalyticsPage /> : <ForbiddenPage />;
+}
+
 /** The board (F07): SA and OM only; others get the 403 page (CR-03). */
 function BoardRoute() {
   const { user } = useAuth();
@@ -133,6 +148,8 @@ export function App() {
           <Route path="/tasks/:id" element={<TasksRoute><TaskDetailPage /></TasksRoute>} />
           <Route path="/tasks/:id/edit" element={<TasksRoute create><TaskFormPage /></TasksRoute>} />
           <Route path="/search" element={<TasksRoute><SearchPage /></TasksRoute>} />
+          <Route path="/reports/billing" element={<BillingRoute />} />
+          <Route path="/reports/analytics" element={<AnalyticsRoute />} />
           <Route path="/settings/search" element={<SearchSettingsRoute />} />
           <Route path="/profile" element={<ProfilePage />} />
           <Route path="*" element={<NotFoundPage />} />
