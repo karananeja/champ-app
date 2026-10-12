@@ -734,3 +734,12 @@ model Notification {
   @@index([userId, createdAt])
   @@index([createdAt])
 }
+
+/// Global search identifiers (F14, D-243): the fixed set (SEARCH_IDENTIFIERS in @champ/shared), switched on/off and
+/// ranked by the SA. Seeded by the migration. The trigram expression indexes on Fitment's identifier columns live in
+/// the migration only (Prisma can't express them).
+model SearchIdentifierSetting {
+  identifier String  @id // SearchIdentifier
+  enabled    Boolean @default(true)
+  sortOrder  Int
+}
