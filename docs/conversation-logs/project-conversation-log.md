@@ -351,3 +351,7 @@ Chronological log of the whole project conversation. Feature-level logs live in 
 **User:** "F13 accepted". UAT sign-off recorded and `feature/F13-notifications` merged to `main`.
 
 **Claude:** Wrote the F14 intent (global search) and sent it for sign-off.
+
+**User:** "ok continue" (F14 intent). Taken as approval with all five open points as proposed (D-242 – D-246).
+
+**Claude:** Created branch `feature/F14-global-search`, wrote the F14 spec, and launched two parallel agents (Backend: shared, API; Web: search box, results page, SA settings). Only the Web agent runs the full E2E suite (lesson from F13).
