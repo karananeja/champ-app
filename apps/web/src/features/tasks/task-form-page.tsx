@@ -16,6 +16,7 @@ import {
   type UserDto,
   type VehicleRowInput,
 } from '@champ/shared';
+import { DateTimePicker } from '@/components/date-picker';
 import { FieldError } from '@/components/field-error';
 import { SearchableSelect, type SelectOption } from '@/components/searchable-select';
 import { Alert, AlertDescription } from '@/components/ui/alert';
@@ -49,7 +50,7 @@ export interface TaskFormValues {
   deviceTypeId: string;
   makeModelId: string;
   installationTypeId: string;
-  /** `datetime-local` values, entered in IST. */
+  /** `YYYY-MM-DDTHH:mm` values from the DateTimePicker, entered in IST (CR-04). */
   requestedAt: string;
   fitmentAt: string;
   shiftTypeId: string;
@@ -492,20 +493,32 @@ export function TaskForm({
       </Section>
 
       <Section title="Schedule" description="Dates and times are in IST.">
-        <TextField
-          id="task-requested-at"
-          label="Requested fitment date and time (IST)"
-          type="datetime-local"
-          error={errors.requestedAt?.message}
-          {...register('requestedAt')}
-        />
-        <TextField
-          id="task-fitment-at"
-          label="Fitment date and time (IST)"
-          type="datetime-local"
-          error={errors.fitmentAt?.message}
-          {...register('fitmentAt')}
-        />
+        {(['requestedAt', 'fitmentAt'] as const).map((name) => {
+          const id = name === 'requestedAt' ? 'task-requested-at' : 'task-fitment-at';
+          const error = errors[name]?.message;
+          return (
+            <div key={name} className="grid grid-cols-1 gap-2">
+              <Label id={`${id}-label`} htmlFor={id}>
+                {name === 'requestedAt' ? 'Requested fitment date and time (IST)' : 'Fitment date and time (IST)'}
+              </Label>
+              <Controller
+                control={control}
+                name={name}
+                render={({ field }) => (
+                  <DateTimePicker
+                    id={id}
+                    value={field.value}
+                    onChange={field.onChange}
+                    onBlur={field.onBlur}
+                    aria-invalid={!!error}
+                    aria-describedby={error ? `${id}-error` : undefined}
+                  />
+                )}
+              />
+              <FieldError id={`${id}-error`} message={error} />
+            </div>
+          );
+        })}
         <div className="grid grid-cols-1 gap-2 md:col-span-2">
           <Label id="task-shift-label">Shift type</Label>
           <Controller

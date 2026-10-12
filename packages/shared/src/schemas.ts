@@ -546,11 +546,22 @@ export const assignFitmentsSchema = z.object({
 });
 export type AssignFitmentsInput = z.infer<typeof assignFitmentsSchema>;
 
-export const TASK_VIEWS = ['open', 'assigned', 'all'] as const;
+/** Task list views: open = not completed; assigned = the caller's own (OE); completed (CR-04); all. */
+export const TASK_VIEWS = ['open', 'assigned', 'completed', 'all'] as const;
 export type TaskView = (typeof TASK_VIEWS)[number];
 
-export const TASK_SORTS = ['fitmentAt:asc', 'fitmentAt:desc', 'createdAt:asc', 'createdAt:desc'] as const;
+export const TASK_SORTS = [
+  'fitmentAt:asc',
+  'fitmentAt:desc',
+  'createdAt:asc',
+  'createdAt:desc',
+  'completedAt:desc',
+  'completedAt:asc',
+] as const;
 export type TaskSort = (typeof TASK_SORTS)[number];
+
+/** The sort used when none is given: latest completion first for Completed tasks (CR-04), else soonest fitment. */
+export const defaultTaskSort = (view: TaskView): TaskSort => (view === 'completed' ? 'completedAt:desc' : 'fitmentAt:asc');
 
 const istDay = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Use YYYY-MM-DD');
 
@@ -565,7 +576,8 @@ const taskFilterFields = {
   activityId: idSchema.optional(),
   from: istDay.optional(),
   to: istDay.optional(),
-  sort: z.enum(TASK_SORTS).default('fitmentAt:asc'),
+  /** Optional: when left out, `defaultTaskSort(view)` applies. */
+  sort: z.enum(TASK_SORTS).optional(),
 };
 
 export const listTasksQuerySchema = z.object({

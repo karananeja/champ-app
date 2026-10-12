@@ -1,12 +1,13 @@
-import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { MemoryRouter } from 'react-router-dom';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { LookupsResponse, Paginated, TaskListItemDto, UserDto } from '@champ/shared';
 import { AuthContext, type AuthContextValue } from '@/lib/auth';
+import { pickDateRange } from '@/test/date-picker';
 import { lookupsFixture, makeUser, mockApi } from '@/test/fixtures';
-import { EMPTY_FILTERS, buildTaskQuery, exportPath } from './task-query';
+import { EMPTY_FILTERS, buildTaskQuery, exportPath, type TaskListView } from './task-query';
 import { TaskTable } from './task-table';
 
 const lookups: LookupsResponse = {
@@ -31,11 +32,12 @@ const item: TaskListItemDto = {
   fitments: { total: 3, assigned: 2, open: 1 },
   fitmentAt: '2026-10-21T05:00:00.000Z',
   createdAt: '2026-10-11T00:00:00.000Z',
+  completedAt: null,
 };
 
 const page: Paginated<TaskListItemDto> = { items: [item], total: 1, page: 1, pageSize: 20 };
 
-function renderTable(actor: UserDto, view: 'open' | 'assigned' = 'open') {
+function renderTable(actor: UserDto, view: TaskListView = 'open') {
   const auth: AuthContextValue = {
     status: 'authenticated',
     user: actor,
@@ -139,8 +141,8 @@ describe('TaskTable', () => {
     await user.click(await screen.findByRole('option', { name: /Zoomcar/ }));
     await user.click(screen.getByRole('combobox', { name: 'Filter by OE' }));
     await user.click(await screen.findByRole('option', { name: 'Esha Exec' }));
-    fireEvent.change(screen.getByLabelText('Fitment from'), { target: { value: '2026-10-01' } });
-    fireEvent.change(screen.getByLabelText('Fitment to'), { target: { value: '2026-10-31' } });
+    await pickDateRange(user, 'Filter by fitment date', '2026-10-01', '2026-10-31');
+    expect(screen.getByRole('button', { name: /^Filter by fitment date/ })).toHaveTextContent('1 Oct 2026 – 31 Oct 2026');
 
     await waitFor(() =>
       expect(params(listUrls(fetchMock).at(-1)!)).toEqual({
@@ -182,5 +184,52 @@ describe('TaskTable', () => {
     expect(exportCall).toBe('/api/tasks/export?view=assigned&clientId=cl-zoom&sort=fitmentAt%3Aasc&format=xlsx');
     const link = click.mock.contexts[0] as HTMLAnchorElement;
     expect(link.download).toBe('champ-tasks-20261011-1030.xlsx');
+  });
+
+  it('Completed tasks (CR-04): latest completion first, no status filter, completion sorts offered, export uses view=completed', async () => {
+    const user = userEvent.setup();
+    const click = vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => {});
+    const done = { ...item, status: 'COMPLETED' as const, completedAt: '2026-10-22T05:00:00.000Z' };
+    const fetchMock = mockApi({
+      ...routes,
+      'GET /api/tasks': { ...page, items: [done] },
+      'GET /api/tasks/export': () => new Response(new Blob(['csv']), { headers: { 'Content-Disposition': 'attachment; filename=x.csv' } }),
+    });
+    renderTable(makeUser({ role: 'RO' }), 'completed');
+    const row = await within(await screen.findByRole('table')).findByTestId('task-row');
+    expect(row).toHaveTextContent('Completed');
+    expect(params(listUrls(fetchMock)[0]!)).toEqual({ view: 'completed', sort: 'completedAt:desc', page: '1', pageSize: '20' });
+    expect(screen.queryByRole('combobox', { name: 'Filter by status' })).not.toBeInTheDocument();
+    await user.click(screen.getByRole('combobox', { name: 'Sort' }));
+    expect(screen.getByRole('option', { name: 'Completed (oldest first)' })).toBeInTheDocument();
+    await user.click(screen.getByRole('option', { name: 'Completed (oldest first)' }));
+    await waitFor(() => expect(params(listUrls(fetchMock).at(-1)!)).toMatchObject({ view: 'completed', sort: 'completedAt:asc' }));
+
+    await user.click(screen.getByRole('button', { name: 'Download' }));
+    await user.click(await screen.findByRole('menuitem', { name: 'CSV' }));
+    await waitFor(() => expect(click).toHaveBeenCalled());
+    const exportCall = fetchMock.mock.calls.map(([url]) => url as string).find((u) => u.startsWith('/api/tasks/export'));
+    expect(exportCall).toBe('/api/tasks/export?view=completed&sort=completedAt%3Aasc&format=csv');
+  });
+
+  it('All tasks (CR-04): view=all with a status filter that includes Completed', async () => {
+    const user = userEvent.setup();
+    const fetchMock = mockApi(routes);
+    renderTable(makeUser({ role: 'OM' }), 'all');
+    await screen.findAllByTestId('task-row');
+    expect(params(listUrls(fetchMock)[0]!)).toMatchObject({ view: 'all', sort: 'fitmentAt:asc' });
+    await user.click(screen.getByRole('combobox', { name: 'Filter by status' }));
+    await user.click(await screen.findByRole('option', { name: 'Completed' }));
+    await waitFor(() => expect(params(listUrls(fetchMock).at(-1)!)).toMatchObject({ view: 'all', status: 'COMPLETED' }));
+  });
+
+  it('Open tasks leaves Completed out of the status filter', async () => {
+    const user = userEvent.setup();
+    mockApi(routes);
+    renderTable(makeUser({ role: 'OM' }), 'open');
+    await screen.findAllByTestId('task-row');
+    await user.click(screen.getByRole('combobox', { name: 'Filter by status' }));
+    expect(screen.queryByRole('option', { name: 'Completed' })).not.toBeInTheDocument();
+    expect(screen.getByRole('option', { name: 'In progress' })).toBeInTheDocument();
   });
 });

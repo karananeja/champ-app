@@ -68,6 +68,7 @@ export function toTaskListItem(task: TaskListRow): TaskListItemDto {
     fitments: countFitments(task.fitments),
     fitmentAt: iso(task.fitmentAt),
     createdAt: iso(task.createdAt),
+    completedAt: isoOrNull(task.completedAt),
   };
 }
 
@@ -194,6 +195,7 @@ export function toTaskDto(task: TaskDetailRow, actor: User): TaskDto {
     createdBy: task.createdBy,
     createdAt: iso(task.createdAt),
     updatedAt: iso(task.updatedAt),
+    completedAt: isoOrNull(task.completedAt),
     permissions: taskPermissions(actor, task),
   };
 }

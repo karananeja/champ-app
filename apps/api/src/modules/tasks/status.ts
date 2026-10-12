@@ -5,12 +5,14 @@ import { conflict } from '../../lib/errors';
 /**
  * The single place that sets `Task.status` (spec §2): reads the task's fitments and stores the aggregate
  * (any Open → OPEN; all Assigned → ASSIGNED; all final → COMPLETED; otherwise IN_PROGRESS, which includes
- * Reopened). The rule lives in the shared `deriveTaskStatus`.
+ * Reopened). The rule lives in the shared `deriveTaskStatus`. It also keeps `completedAt` (CR-04): set to now
+ * when the task becomes COMPLETED, cleared when it leaves COMPLETED (e.g. a reopen), untouched otherwise.
  */
 export async function recomputeTaskStatus(tx: Prisma.TransactionClient, taskId: string): Promise<TaskStatus> {
   const fitments = await tx.fitment.findMany({ where: { taskId }, select: { status: true } });
   const status = deriveTaskStatus(fitments.map((f) => f.status));
-  await tx.task.updateMany({ where: { id: taskId, NOT: { status } }, data: { status } });
+  const completedAt = status === 'COMPLETED' ? new Date() : null;
+  await tx.task.updateMany({ where: { id: taskId, NOT: { status } }, data: { status, completedAt } });
   return status;
 }
 

@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { toast } from 'sonner';
 import { CheckCheck, ChevronLeft, ChevronRight, Loader2, X } from 'lucide-react';
 import type { WorkflowFitmentItemDto } from '@champ/shared';
+import { DateRangePicker } from '@/components/date-picker';
 import { FitmentStatusBadge } from '@/components/fitment-status-badge';
 import { SearchableSelect } from '@/components/searchable-select';
 import {
@@ -18,8 +19,6 @@ import {
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { ApiError } from '@/lib/api';
@@ -38,8 +37,8 @@ interface Column {
 interface ListConfig {
   title: string;
   description: string;
-  /** Label of the date the from/to filter applies to. */
-  dateLabel: string;
+  /** The date the from/to filter applies to, as it reads in "Filter by <dateFilter>". */
+  dateFilter: string;
   empty: string;
   columns: Column[];
   /** Re-opened only: a "currently reopened" toggle. */
@@ -82,7 +81,7 @@ const LISTS: Record<WorkflowListName, ListConfig> = {
   'awaiting-approval': {
     title: 'Awaiting approval',
     description: 'Fitments the OE has verified, waiting for final approval.',
-    dateLabel: 'Verified',
+    dateFilter: 'verification date',
     empty: 'Nothing is waiting for final approval.',
     bulkApprove: true,
     columns: [...COMMON, { header: 'Verified (IST)', cell: (i) => when(i.verifiedAt, i.verifiedBy) }],
@@ -90,7 +89,7 @@ const LISTS: Record<WorkflowListName, ListConfig> = {
   reopened: {
     title: 'Re-opened',
     description: 'Fitments sent back for rework, with how often and why.',
-    dateLabel: 'Reopened',
+    dateFilter: 'reopen date',
     empty: 'No fitment has been reopened.',
     currentFilter: true,
     columns: [
@@ -111,7 +110,7 @@ const LISTS: Record<WorkflowListName, ListConfig> = {
   faulty: {
     title: 'Faulty tasks',
     description: 'Fitments moved to FT because of a faulty device, and their replacements.',
-    dateLabel: 'Moved to FT',
+    dateFilter: 'Moved to FT date',
     empty: 'No fitment has been moved to FT.',
     columns: [
       ...COMMON.filter((c) => c.header !== 'OE'),
@@ -258,18 +257,16 @@ export function FitmentListPage({ list }: { list: WorkflowListName }) {
             Only currently reopened
           </label>
         )}
-        <div className="grid min-w-0 grid-cols-1 gap-1">
-          <Label htmlFor={`${list}-from`} className="text-xs text-muted-foreground">
-            {config.dateLabel} from
-          </Label>
-          <Input id={`${list}-from`} type="date" value={filters.from} max={filters.to || undefined} onChange={(e) => update('from', e.target.value)} />
-        </div>
-        <div className="grid min-w-0 grid-cols-1 gap-1">
-          <Label htmlFor={`${list}-to`} className="text-xs text-muted-foreground">
-            {config.dateLabel} to
-          </Label>
-          <Input id={`${list}-to`} type="date" value={filters.to} min={filters.from || undefined} onChange={(e) => update('to', e.target.value)} />
-        </div>
+        <DateRangePicker
+          aria-label={`Filter by ${config.dateFilter}`}
+          className="col-span-2 lg:col-span-1"
+          placeholder={`Any ${config.dateFilter}`}
+          value={{ from: filters.from, to: filters.to }}
+          onChange={({ from, to }) => {
+            setFilters((prev) => ({ ...prev, from, to }));
+            setPage(1);
+          }}
+        />
         {hasFilters && (
           <Button
             variant="ghost"

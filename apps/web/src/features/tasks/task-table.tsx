@@ -10,11 +10,11 @@ import {
   type TaskSort,
   type TaskStatus,
 } from '@champ/shared';
+import { DateRangePicker } from '@/components/date-picker';
 import { SearchableSelect } from '@/components/searchable-select';
 import { Button } from '@/components/ui/button';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -24,11 +24,16 @@ import { useCurrentUser } from '@/lib/auth';
 import { formatIst } from '@/lib/format';
 import { useLookups } from '../masters/queries';
 import { downloadFile, useTaskOptions, useTasks } from './queries';
-import { EMPTY_FILTERS, buildTaskQuery, exportPath, hasFilters, type TaskFilterState, type TaskListView } from './task-query';
+import { EMPTY_FILTERS, buildTaskQuery, emptyFiltersFor, exportPath, hasFilters, type TaskFilterState, type TaskListView } from './task-query';
 import { TaskStatusBadge } from '@/components/fitment-status-badge';
 
 const PAGE_SIZE = 20;
 const ALL = 'ALL';
+
+const COMPLETION_SORTS: { value: TaskSort; label: string }[] = [
+  { value: 'completedAt:desc', label: 'Completed (latest first)' },
+  { value: 'completedAt:asc', label: 'Completed (oldest first)' },
+];
 
 const SORTS: { value: TaskSort; label: string }[] = [
   { value: 'fitmentAt:asc', label: 'Fitment date (soonest first)' },
@@ -40,12 +45,12 @@ const SORTS: { value: TaskSort; label: string }[] = [
 const fitmentsLabel = (t: TaskListItemDto) => `${t.fitments.assigned}/${t.fitments.total}`;
 
 /**
- * The task list shared by Open tasks and Assigned: filters, id search, sorting, paging and a Download menu
+ * The task list shared by Open tasks, Assigned, Completed tasks and All tasks (CR-04): filters, id search, sorting, paging and a Download menu
  * (CSV / Excel with the current filters). A table on md+ and cards on phones.
  */
 export function TaskTable({ view }: { view: TaskListView }) {
   const actor = useCurrentUser();
-  const [filters, setFilters] = useState<TaskFilterState>(EMPTY_FILTERS);
+  const [filters, setFilters] = useState<TaskFilterState>(() => emptyFiltersFor(view));
   const [page, setPage] = useState(1);
   const [downloading, setDownloading] = useState<ExportFormat | null>(null);
   const q = useDebounced(filters.q);
@@ -62,7 +67,10 @@ export function TaskTable({ view }: { view: TaskListView }) {
   };
 
   const assetName = (id: string) => lookups.data?.assetTypes.find((a) => a.id === id)?.name;
+  // Open leaves Completed out; Completed tasks are all Completed (no status filter); All offers every status.
   const statuses = TASK_STATUSES.filter((s) => view !== 'open' || s !== 'COMPLETED');
+  const showStatusFilter = view !== 'completed';
+  const sorts = view === 'completed' || view === 'all' ? [...COMPLETION_SORTS, ...SORTS] : SORTS;
   // An OE has the Assigned view for their own tasks, so the OE filter is for SA/OM/RO.
   const showOeFilter = actor.role !== 'OE';
 
@@ -155,43 +163,43 @@ export function TaskTable({ view }: { view: TaskListView }) {
           clearLabel="All activities"
           searchPlaceholder="Search activity"
         />
-        <Select value={filters.status || ALL} onValueChange={(v) => update('status', v === ALL ? '' : (v as TaskStatus))}>
-          <SelectTrigger aria-label="Filter by status" className="w-full">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value={ALL}>All statuses</SelectItem>
-            {statuses.map((s) => (
-              <SelectItem key={s} value={s}>
-                {TASK_STATUS_LABELS[s]}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        {showStatusFilter && (
+          <Select value={filters.status || ALL} onValueChange={(v) => update('status', v === ALL ? '' : (v as TaskStatus))}>
+            <SelectTrigger aria-label="Filter by status" className="w-full">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value={ALL}>All statuses</SelectItem>
+              {statuses.map((s) => (
+                <SelectItem key={s} value={s}>
+                  {TASK_STATUS_LABELS[s]}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        )}
         <Select value={filters.sort} onValueChange={(v) => update('sort', v as TaskSort)}>
           <SelectTrigger aria-label="Sort" className="w-full">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
-            {SORTS.map((s) => (
+            {sorts.map((s) => (
               <SelectItem key={s.value} value={s.value}>
                 {s.label}
               </SelectItem>
             ))}
           </SelectContent>
         </Select>
-        <div className="grid min-w-0 grid-cols-1 gap-1">
-          <Label htmlFor={`${view}-from`} className="text-xs text-muted-foreground">
-            Fitment from
-          </Label>
-          <Input id={`${view}-from`} type="date" value={filters.from} max={filters.to || undefined} onChange={(e) => update('from', e.target.value)} />
-        </div>
-        <div className="grid min-w-0 grid-cols-1 gap-1">
-          <Label htmlFor={`${view}-to`} className="text-xs text-muted-foreground">
-            Fitment to
-          </Label>
-          <Input id={`${view}-to`} type="date" value={filters.to} min={filters.from || undefined} onChange={(e) => update('to', e.target.value)} />
-        </div>
+        <DateRangePicker
+          aria-label="Filter by fitment date"
+          className="col-span-2 lg:col-span-1"
+          placeholder="Any fitment date"
+          value={{ from: filters.from, to: filters.to }}
+          onChange={({ from, to }) => {
+            setFilters((prev) => ({ ...prev, from, to }));
+            setPage(1);
+          }}
+        />
       </div>
 
       {isPending ? (

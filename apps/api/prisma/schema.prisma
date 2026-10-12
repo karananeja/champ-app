@@ -329,6 +329,7 @@ model Task {
   comments           String?
   vehicleEntry       VehicleEntry
   status             TaskStatus        @default(OPEN)
+  completedAt        DateTime? // when the task last became COMPLETED; cleared when it leaves (CR-04, set by recomputeTaskStatus)
   createdById        String
   createdBy          User              @relation("TaskCreatedBy", fields: [createdById], references: [id])
   createdAt          DateTime          @default(now())
@@ -343,6 +344,7 @@ model Task {
   @@index([oeId])
   @@index([clientId])
   @@index([fitmentAt])
+  @@index([completedAt])
 }
 
 /**

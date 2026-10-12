@@ -101,13 +101,15 @@ Logistics* in New Delhi), with hard-coded coordinates.
 ### Tasks (F04)
 
 The **Tasks** menu (SA, OM, OE and RO; not OT) holds *Create task*, *Bulk upload* (creators only), *Open tasks*,
-*Assigned* (OEs: tasks where they are the operation executive), *Awaiting approval* (SA/OM), *Faulty tasks* and
-*Re-opened* (F05, below) and a placeholder for *Travel tasks* (F08).
+*Assigned* (OEs: tasks where they are the operation executive), *Awaiting approval* (SA/OM), *Completed tasks*
+(latest completion first) and *All tasks* (every status; CR-04), *Faulty tasks* and *Re-opened* (F05, below) and a
+placeholder for *Travel tasks* (F08).
 
 - **Create task** is a full page: customer → site (the fitment city comes from the site), POC prefilled from the
   customer's primary contact, operation executive (locked to yourself as an OE), optional technician type and
   technician, asset type → activity, device type (LAF5 by default), make/model (vehicles only), installation type,
-  requested and fitment date-time **in IST**, shift, issue reported, GPS address and comments. Vehicles are either a
+  requested and fitment date-time **in IST** (calendar date-time picker: day, hour, minute in 5-minute steps; CR-04),
+  shift, issue reported, GPS address and comments. Vehicles are either a
   count or a CSV (`registration_number, chassis_number, asset_number, old_device_id`, all optional, up to 500 rows;
   sample on the page).
 - Saving creates the task with an **OM id** (`OM-00001`), an **OE id** (`OE-00001`) and **one fitment per vehicle**
@@ -119,7 +121,7 @@ The **Tasks** menu (SA, OM, OE and RO; not OT) holds *Create task*, *Bulk upload
 - **Bulk upload**: download the sample, upload a CSV (one row per task, `vehicle_count` vehicles; customer code or
   name, site name, emails and master names; dates `YYYY-MM-DD HH:mm` IST; ≤ 2 MB, ≤ 1,000 rows), check the preview
   (bad cells in red with the reason), import the valid rows and download the error rows to fix.
-- Lists filter by customer, OE, technician, status, activity and fitment date, search ids (`OM-00001`, `tk-1`, `12`),
+- Lists filter by customer, OE, technician, status, activity and a fitment date range (one calendar control), search ids (`OM-00001`, `tk-1`, `12`),
   customer or POC, and **Download** CSV or Excel with the current filters (up to 10,000 rows).
 
 Every change writes a `TaskEvent` row (audit trail for F05's history). Sample CSVs for UAT are in

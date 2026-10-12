@@ -71,6 +71,7 @@ const COLUMNS: { header: string; width: number; value: (t: ExportRow) => string 
   { header: 'Comments', width: 24, value: (t) => t.comments ?? '' },
   { header: 'Created by', width: 18, value: (t) => t.createdBy.name },
   { header: 'Created at (IST)', width: 18, value: (t) => formatIstDateTime(t.createdAt) },
+  { header: 'Completed at (IST)', width: 18, value: (t) => (t.completedAt ? formatIstDateTime(t.completedAt) : '') },
 ];
 
 /**
@@ -91,7 +92,7 @@ export async function exportTasks(actor: User, query: ExportTasksQuery): Promise
   const tasks = await prisma.task.findMany({
     where: taskWhere(actor, query),
     include: exportInclude,
-    orderBy: taskOrderBy(query.sort),
+    orderBy: taskOrderBy(query),
     take: EXPORT_MAX_ROWS,
   });
   const header = COLUMNS.map((c) => c.header);

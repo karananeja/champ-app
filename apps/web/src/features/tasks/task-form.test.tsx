@@ -1,9 +1,10 @@
-import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { LookupsResponse, TaskDto, TaskOptionsResponse, UserDto } from '@champ/shared';
+import { pickDateTime } from '@/test/date-picker';
 import { callsTo, lookupsFixture, makeUser, mockApi } from '@/test/fixtures';
 import { TaskForm } from './task-form-page';
 
@@ -102,8 +103,8 @@ async function fillValidTask(user: User) {
   await pick(user, 'Activity', 'New installation');
   await pick(user, 'Vehicle make/model', 'Tata Ace');
   await pick(user, 'Installation type', 'GPS');
-  fireEvent.change(screen.getByLabelText('Requested fitment date and time (IST)'), { target: { value: '2026-10-20T10:00' } });
-  fireEvent.change(screen.getByLabelText('Fitment date and time (IST)'), { target: { value: '2026-10-21T10:30' } });
+  await pickDateTime(user, 'Requested fitment date and time (IST)', '2026-10-20T10:00');
+  await pickDateTime(user, 'Fitment date and time (IST)', '2026-10-21T10:30');
   await user.click(screen.getByRole('radio', { name: 'Day' }));
   await pick(user, 'Issue reported by client', 'Device not reporting');
 }
@@ -325,6 +326,7 @@ describe('TaskForm — edit', () => {
     createdBy: { id: 'om-1', name: 'Maya Manager' },
     createdAt: '2026-10-11T00:00:00.000Z',
     updatedAt: '2026-10-11T00:00:00.000Z',
+    completedAt: null,
     permissions: { canEdit: true, canAssign: true, canDelete: true, canViewHistory: true },
   };
 
@@ -333,7 +335,7 @@ describe('TaskForm — edit', () => {
     const fetchMock = mockApi({ 'PATCH /api/tasks/task-1': { ...task, omId: 'OM-00007' } });
     renderForm(om, task);
     expect(screen.getByRole('heading', { name: 'Edit OM-00007' })).toBeInTheDocument();
-    expect(screen.getByLabelText('Fitment date and time (IST)')).toHaveValue('2026-10-21T10:30');
+    expect(screen.getByLabelText('Fitment date and time (IST)')).toHaveTextContent('21 Oct 2026, 10:30');
     expect(screen.getByRole('radio', { name: 'Early morning (inactive)' })).toBeChecked();
     expect(screen.getByTestId('vehicle-count-fixed')).toHaveTextContent('4 vehicle(s)');
     expect(screen.queryByRole('combobox', { name: 'Technician (optional)' })).not.toBeInTheDocument();

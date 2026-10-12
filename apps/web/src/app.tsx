@@ -98,8 +98,10 @@ export function App() {
           <Route path="/clients/:id/edit" element={<ClientsRoute edit><ClientFormPage /></ClientsRoute>} />
           <Route path="/masters" element={<MastersRoute><MastersPage /></MastersRoute>} />
           <Route path="/masters/:slug" element={<MastersRoute><MasterPage /></MastersRoute>} />
-          <Route path="/tasks" element={<TasksRoute><TaskListPage view="open" /></TasksRoute>} />
-          <Route path="/tasks/assigned" element={<TasksRoute oeOnly><TaskListPage view="assigned" /></TasksRoute>} />
+          <Route path="/tasks" element={<TasksRoute><TaskListPage key="open" view="open" /></TasksRoute>} />
+          <Route path="/tasks/assigned" element={<TasksRoute oeOnly><TaskListPage key="assigned" view="assigned" /></TasksRoute>} />
+          <Route path="/tasks/completed" element={<TasksRoute><TaskListPage key="completed" view="completed" /></TasksRoute>} />
+          <Route path="/tasks/all" element={<TasksRoute><TaskListPage key="all" view="all" /></TasksRoute>} />
           <Route path="/tasks/new" element={<TasksRoute create><TaskFormPage /></TasksRoute>} />
           <Route path="/tasks/bulk" element={<TasksRoute create><BulkUploadPage /></TasksRoute>} />
           <Route

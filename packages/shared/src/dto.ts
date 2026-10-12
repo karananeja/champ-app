@@ -291,6 +291,8 @@ export interface TaskListItemDto {
   fitments: FitmentCounts;
   fitmentAt: string;
   createdAt: string;
+  /** When the task last became Completed (CR-04); null while it isn't. */
+  completedAt: string | null;
 }
 
 export interface FitmentDto {
@@ -364,6 +366,8 @@ export interface TaskDto {
   createdBy: UserRef;
   createdAt: string;
   updatedAt: string;
+  /** When the task last became Completed (CR-04); null while it isn't. */
+  completedAt: string | null;
   /** Whether the caller may edit, assign or delete (spec §3, untouched rule), and see the History tab (F05). */
   permissions: { canEdit: boolean; canAssign: boolean; canDelete: boolean; canViewHistory: boolean };
 }

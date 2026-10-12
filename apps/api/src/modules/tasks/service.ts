@@ -68,7 +68,7 @@ export async function listTasks(actor: User, query: ListTasksQuery): Promise<Pag
     prisma.task.findMany({
       where,
       include: taskListInclude,
-      orderBy: taskOrderBy(query.sort),
+      orderBy: taskOrderBy(query),
       skip: (query.page - 1) * query.pageSize,
       take: query.pageSize,
     }),

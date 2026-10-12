@@ -1,8 +1,9 @@
-import type { ExportFormat, TaskSort, TaskStatus } from '@champ/shared';
+import { defaultTaskSort, type ExportFormat, type TaskSort, type TaskStatus, type TaskView } from '@champ/shared';
 import { withQuery } from '@/lib/api';
 import type { TaskListParams } from './queries';
 
-export type TaskListView = 'open' | 'assigned';
+/** Open tasks, Assigned (OE), Completed tasks and All tasks (CR-04). */
+export type TaskListView = TaskView;
 
 /** The filters of a task table, as the UI holds them ('' or null = not set). */
 export interface TaskFilterState {
@@ -29,6 +30,9 @@ export const EMPTY_FILTERS: TaskFilterState = {
   to: '',
   sort: 'fitmentAt:asc',
 };
+
+/** The empty filters of a view, with its default sort (latest completion first for Completed tasks). */
+export const emptyFiltersFor = (view: TaskListView): TaskFilterState => ({ ...EMPTY_FILTERS, sort: defaultTaskSort(view) });
 
 /** Whether any filter (other than the sort) is set. */
 export const hasFilters = (f: TaskFilterState) =>

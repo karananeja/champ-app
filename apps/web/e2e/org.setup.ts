@@ -163,6 +163,37 @@ setup('create the F02 test org', async ({ request }) => {
     workflow[project] = { flow: ref(flow), reopen: ref(reopen), faulty: ref(faulty), bulk: ref(bulk) };
   }
 
+  // CR-03/CR-04: own OM, OE and RO accounts (each logs in a few times only) and, per viewport, one Completed task
+  // (simulator as the OM, verify as the OE, final approve as the OM) and one Open task with a fitment date in
+  // March 2027 (for the date-range filter).
+  const crOm = { email: `cr.om.${run}@intellicar.in`, name: `Chitra CR OM ${run}`, password };
+  const crOmSession = await accept((await post<CreateInviteResponse>(request, '/api/invites', { email: crOm.email, role: 'OM' }, sa.accessToken)).link, crOm.name);
+  const crOe = { email: `cr.oe.${run}@intellicar.in`, name: `Dev CR OE ${run}`, password };
+  const crOeSession = await accept(
+    (await post<CreateInviteResponse>(request, '/api/invites', { email: crOe.email, role: 'OE' }, crOmSession.accessToken)).link,
+    crOe.name,
+  );
+  const crRo = { email: `cr.ro.${run}@intellicar.in`, name: `Rhea CR RO ${run}`, password };
+  await accept((await post<CreateInviteResponse>(request, '/api/invites', { email: crRo.email, role: 'RO' }, sa.accessToken)).link, crRo.name);
+  const crTask = (comments: string, extra: Record<string, unknown> = {}) =>
+    post<TaskDto>(
+      request,
+      '/api/tasks',
+      { ...taskBody, oeId: crOeSession.user.id, technicianId: wfTechs[0]!.id, vehicles: { entry: 'COUNT', count: 1 }, comments, ...extra },
+      crOmSession.accessToken,
+    );
+  const crTasks: E2eOrg['cr']['tasks'] = {};
+  for (const project of ['desktop', 'mobile-360']) {
+    const completed = await crTask(`CR-04 completed ${project}`);
+    const fid = completed.fitments[0]!.id;
+    await post(request, `/api/dev/fitments/${fid}/simulate`, { action: 'START' }, crOmSession.accessToken);
+    await post(request, `/api/dev/fitments/${fid}/simulate`, { action: 'SUBMIT' }, crOmSession.accessToken);
+    await post(request, `/api/fitments/${fid}/transitions`, { action: 'VERIFY' }, crOeSession.accessToken);
+    await post(request, `/api/fitments/${fid}/transitions`, { action: 'APPROVE' }, crOmSession.accessToken);
+    const march = await crTask(`CR-04 march ${project}`, { requestedAt: '2027-03-14T04:30:00.000Z', fitmentAt: '2027-03-15T04:30:00.000Z' });
+    crTasks[project] = { completed: completed.omId, march: march.omId };
+  }
+
   const org: E2eOrg = {
     om,
     oeA: oes[0]!,
@@ -179,6 +210,7 @@ setup('create the F02 test org', async ({ request }) => {
     wfOe,
     wfTechs: wfTechs.map((t) => t.name),
     workflow,
+    cr: { om: crOm, oe: crOe, ro: crRo, tasks: crTasks },
   };
   fs.mkdirSync(path.dirname(ORG_FILE), { recursive: true });
   fs.writeFileSync(ORG_FILE, JSON.stringify(org, null, 2));

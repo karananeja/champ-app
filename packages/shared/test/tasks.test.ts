@@ -9,6 +9,7 @@ import {
   canManageTask,
   canViewTasks,
   createTaskSchema,
+  defaultTaskSort,
   createTaskSchemaFor,
   deriveTaskStatus,
   formatIstDateTime,
@@ -210,10 +211,24 @@ describe('createTaskSchema', () => {
   });
 
   it('list query defaults and validation', () => {
-    expect(listTasksQuerySchema.parse({})).toEqual({ view: 'open', sort: 'fitmentAt:asc', page: 1, pageSize: 20 });
+    // The sort is optional: the API falls back to defaultTaskSort(view) (CR-04).
+    expect(listTasksQuerySchema.parse({})).toEqual({ view: 'open', page: 1, pageSize: 20 });
+    expect(listTasksQuerySchema.parse({ view: 'completed', sort: 'completedAt:asc' })).toMatchObject({
+      view: 'completed',
+      sort: 'completedAt:asc',
+    });
     expect(listTasksQuerySchema.safeParse({ view: 'mine' }).success).toBe(false);
     expect(listTasksQuerySchema.safeParse({ from: '2026-1-1' }).success).toBe(false);
     expect(bulkImportSchema.safeParse({ rows: [] }).success).toBe(false);
+  });
+});
+
+describe('defaultTaskSort (CR-04)', () => {
+  it('sorts Completed tasks by latest completion and every other view by soonest fitment', () => {
+    expect(defaultTaskSort('completed')).toBe('completedAt:desc');
+    expect(defaultTaskSort('open')).toBe('fitmentAt:asc');
+    expect(defaultTaskSort('assigned')).toBe('fitmentAt:asc');
+    expect(defaultTaskSort('all')).toBe('fitmentAt:asc');
   });
 });
 

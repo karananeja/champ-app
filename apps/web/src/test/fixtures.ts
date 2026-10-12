@@ -155,6 +155,7 @@ export function makeTask(overrides: Partial<TaskDto> = {}): TaskDto {
     createdBy: { id: 'om-1', name: 'Maya Manager' },
     createdAt: '2026-10-11T00:00:00.000Z',
     updatedAt: '2026-10-11T00:00:00.000Z',
+    completedAt: null,
     permissions: { canEdit: false, canAssign: false, canDelete: false, canViewHistory: false },
     ...overrides,
   };

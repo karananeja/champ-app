@@ -9,9 +9,11 @@ import { TaskTable } from './task-table';
 const COPY: Record<TaskListView, { title: string; description: string }> = {
   open: { title: 'Open tasks', description: 'Every task that is not finished yet.' },
   assigned: { title: 'Assigned to me', description: 'Tasks where you are the operation executive.' },
+  completed: { title: 'Completed tasks', description: 'Every finished task, latest completion first.' },
+  all: { title: 'All tasks', description: 'Every task, whatever its status.' },
 };
 
-/** `/tasks` (Open tasks) and `/tasks/assigned` (an OE's own tasks). */
+/** `/tasks` (Open tasks), `/tasks/assigned` (an OE's own tasks), `/tasks/completed` and `/tasks/all` (CR-04). */
 export function TaskListPage({ view }: { view: TaskListView }) {
   const actor = useCurrentUser();
   return (
