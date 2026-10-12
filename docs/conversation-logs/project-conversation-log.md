@@ -198,4 +198,8 @@ Chronological log of the whole project conversation. Feature-level logs live in 
 
 **Claude verification:** Re-ran all gates (all pass) and confirmed no code references to port 5173 remain.
 
-**Status:** F07 and CR-05 ready for user acceptance.
+**User:** "F07 and CR-05 accepted". Both recorded and merged to `main`.
+
+**Claude:** Wrote the F08 intent (travel tasks) and sent it for sign-off.
+
+**Status:** Waiting for F08 intent sign-off.
