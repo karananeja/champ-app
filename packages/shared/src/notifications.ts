@@ -27,6 +27,8 @@ export interface NotificationDto {
   body: string | null;
   /** Where a tap goes. */
   target: { kind: 'FITMENT'; taskId: string; fitmentId: string | null } | { kind: 'TRAVEL'; travelTaskId: string };
+  /** The recipient is the fitment's technician (not its OE or OM): the app opens the fitment screen, else Approve visit. */
+  forTechnician: boolean;
   /** Fitments covered (grouped notifications have several). */
   count: number;
   actor: { id: string; name: string } | null;

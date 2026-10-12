@@ -8,6 +8,8 @@ export function makeNotification(overrides: Partial<NotificationDto> = {}): Noti
     title: 'TK-00012 assigned to you',
     body: 'Zoomcar · Bengaluru depot · 14 Oct, 10:00 am',
     target: { kind: 'FITMENT', taskId: 't1', fitmentId: 'f1' },
+    // The technician gets assignments, approvals and reopens; a submission goes to the task's OE.
+    forTechnician: overrides.type !== 'FITMENT_SUBMITTED',
     count: 1,
     actor: { id: 'm1', name: 'Asha Rao' },
     read: false,

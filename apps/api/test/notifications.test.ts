@@ -1,3 +1,4 @@
+import { once } from 'node:events';
 import type { AddressInfo } from 'node:net';
 import { io as connect, type Socket } from 'socket.io-client';
 import { describe, expect, it } from 'vitest';
@@ -93,6 +94,13 @@ describe('notifications — recipients (D-228)', () => {
     expect((await typesOf(w.oe))[0]).toBe('FITMENT_APPROVED');
     expect(await typesOf(w.om)).toEqual(['FITMENT_VERIFIED']);
     expect((await inbox(w.techA))[0]!.title).toBe('TK-00001 approved');
+    // The same approval tells the app who is reading: the technician opens the fitment, the OE Approve visit.
+    const forTech = async (user: User) =>
+      ((await api().get('/api/notifications').set(bearer(user))).body as { items: { type: string; forTechnician: boolean }[] }).items.find(
+        (n) => n.type === 'FITMENT_APPROVED',
+      )!.forTechnician;
+    expect(await forTech(w.techA)).toBe(true);
+    expect(await forTech(w.oe)).toBe(false);
   });
 
   it('verify by an OE without an active OM manager → every active OM (inactive skipped)', async () => {
@@ -280,12 +288,14 @@ describe('notifications — Socket.IO hub', () => {
     const w = await setup(1);
     const [f] = w.fids as [string];
     await run([w.techA, f, 'START', GPS]);
-    const server = createApp().listen(0);
+    // Wait until it listens: under a loaded full run a client could otherwise connect too early ("websocket error").
+    const server = createApp().listen(0, '127.0.0.1');
+    await once(server, 'listening');
     const hub = await startNotificationHub(server);
     const url = `http://127.0.0.1:${(server.address() as AddressInfo).port}`;
     const sockets: Socket[] = [];
     const open = (token: string) => {
-      const s = connect(url, { path: NOTIFICATION_SOCKET_PATH, auth: { token }, transports: ['websocket'], reconnection: false });
+      const s = connect(url, { path: NOTIFICATION_SOCKET_PATH, auth: { token }, transports: ['websocket'], reconnection: false, timeout: 15_000 });
       sockets.push(s);
       return s;
     };

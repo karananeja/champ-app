@@ -34,6 +34,7 @@ function makeNotification(overrides: Partial<NotificationDto> = {}): Notificatio
     title: 'TK-00001 submitted by Ravi · ready to verify',
     body: 'Zoomcar · Bengaluru depot',
     target: { kind: 'FITMENT', taskId: 'task-1', fitmentId: 'fit-1' },
+    forTechnician: false,
     count: 1,
     actor: { id: 'ot-1', name: 'Ravi Kumar' },
     read: false,

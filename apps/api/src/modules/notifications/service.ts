@@ -27,7 +27,16 @@ const dtoSelect = {
 
 type Row = Prisma.NotificationGetPayload<{ select: typeof dtoSelect }>;
 
-export function toNotificationDto(n: Row): NotificationDto {
+/** The technician of each single-fitment notification's fitment, to tell technician recipients from OE/OM ones. */
+async function techniciansOf(rows: readonly Row[]): Promise<Map<string, string | null>> {
+  const ids = rows.filter((n) => n.fitmentIds.length === 1).map((n) => n.fitmentIds[0]!);
+  if (ids.length === 0) return new Map();
+  const fitments = await prisma.fitment.findMany({ where: { id: { in: ids } }, select: { id: true, technicianId: true } });
+  return new Map(fitments.map((f) => [f.id, f.technicianId]));
+}
+
+export function toNotificationDto(n: Row & { userId: string }, technicianOf: Map<string, string | null>): NotificationDto {
+  const fitmentId = n.fitmentIds.length === 1 ? (n.fitmentIds[0] ?? null) : null;
   return {
     id: n.id,
     type: n.type as NotificationType,
@@ -36,7 +45,8 @@ export function toNotificationDto(n: Row): NotificationDto {
     // A grouped notification opens its latest fitment's task; the web/app pick the fitment only when there is one.
     target: n.travelTaskId
       ? { kind: 'TRAVEL', travelTaskId: n.travelTaskId }
-      : { kind: 'FITMENT', taskId: n.taskId ?? '', fitmentId: n.fitmentIds.length === 1 ? (n.fitmentIds[0] ?? null) : null },
+      : { kind: 'FITMENT', taskId: n.taskId ?? '', fitmentId },
+    forTechnician: fitmentId !== null && technicianOf.get(fitmentId) === n.userId,
     count: n.count,
     actor: n.actor,
     read: n.readAt !== null,
@@ -50,7 +60,7 @@ export const unreadCount = (userId: string) => prisma.notification.count({ where
 
 export async function getNotificationDto(id: string): Promise<{ userId: string; dto: NotificationDto } | null> {
   const row = await prisma.notification.findUnique({ where: { id }, select: { ...dtoSelect, userId: true } });
-  return row ? { userId: row.userId, dto: toNotificationDto(row) } : null;
+  return row ? { userId: row.userId, dto: toNotificationDto(row, await techniciansOf([row])) } : null;
 }
 
 const encodeCursor = (n: { updatedAt: Date; id: string }) => Buffer.from(`${n.updatedAt.toISOString()}|${n.id}`).toString('base64url');
@@ -70,12 +80,13 @@ export async function listNotifications(userId: string, query: NotificationListQ
     ...(after && { OR: [{ updatedAt: { lt: after.updatedAt } }, { updatedAt: after.updatedAt, id: { lt: after.id } }] }),
   };
   const [rows, count] = await Promise.all([
-    prisma.notification.findMany({ where, select: dtoSelect, orderBy: [{ updatedAt: 'desc' }, { id: 'desc' }], take: query.limit + 1 }),
+    prisma.notification.findMany({ where, select: { ...dtoSelect, userId: true }, orderBy: [{ updatedAt: 'desc' }, { id: 'desc' }], take: query.limit + 1 }),
     unreadCount(userId),
   ]);
   const page = rows.slice(0, query.limit);
+  const technicianOf = await techniciansOf(page);
   return {
-    items: page.map(toNotificationDto),
+    items: page.map((n) => toNotificationDto(n, technicianOf)),
     unreadCount: count,
     nextCursor: rows.length > query.limit ? encodeCursor(page[page.length - 1]!) : null,
   };

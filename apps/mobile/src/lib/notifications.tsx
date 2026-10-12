@@ -119,8 +119,13 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
 export function notificationHref(n: NotificationDto): Href {
   if (n.target.kind === 'FITMENT' && n.target.fitmentId) {
     const id = n.target.fitmentId;
-    if (n.type === 'FITMENT_SUBMITTED') return { pathname: '/approve-visit/[id]', params: { id } };
-    if (n.type === 'FITMENT_ASSIGNED' || n.type === 'FITMENT_APPROVED' || n.type === 'FITMENT_REOPENED') return { pathname: '/fitment/[id]', params: { id } };
+    // The technician opens the fitment; the task's OE (submitted, approved, reopened by an OM) opens it in Approve visit.
+    if (n.forTechnician && (n.type === 'FITMENT_ASSIGNED' || n.type === 'FITMENT_APPROVED' || n.type === 'FITMENT_REOPENED')) {
+      return { pathname: '/fitment/[id]', params: { id } };
+    }
+    if (!n.forTechnician && (n.type === 'FITMENT_SUBMITTED' || n.type === 'FITMENT_APPROVED' || n.type === 'FITMENT_REOPENED')) {
+      return { pathname: '/approve-visit/[id]', params: { id } };
+    }
   }
   return '/home';
 }
