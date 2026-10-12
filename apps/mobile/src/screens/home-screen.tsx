@@ -47,7 +47,7 @@ export function HomeScreen() {
           testID="tile-show-tasks"
           accessibilityRole="button"
           accessibilityLabel={`Show tasks, ${count(query.data?.showTasks)}`}
-          onPress={() => router.push('/tasks')}
+          onPress={() => router.push('/route')}
           style={tileStyle}
         >
           <Text style={[styles.count, { color: colors.primary }]}>{count(query.data?.showTasks)}</Text>

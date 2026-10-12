@@ -41,6 +41,8 @@ function RootNavigator() {
       <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: colors.background } }}>
         <Stack.Protected guard={signedIn && !needsHomeLocation}>
           <Stack.Screen name="(app)" />
+          <Stack.Screen name="fitment/[id]/index" />
+          <Stack.Screen name="fitment/[id]/continue" />
         </Stack.Protected>
         <Stack.Protected guard={signedIn}>
           <Stack.Screen name="onboarding/home-location" options={{ gestureEnabled: false }} />
