@@ -228,7 +228,7 @@ export function FitmentListPage({ list }: { list: WorkflowListName }) {
 
   return (
     <div className="grid grid-cols-1 gap-6">
-      <PageHeader icon={config.icon} title={config.title} description={config.description} />
+      <PageHeader icon={config.icon} title={config.title} description={config.description} level={2} />
 
       <div className="grid grid-cols-2 gap-2 lg:grid-cols-4">
         <SearchableSelect

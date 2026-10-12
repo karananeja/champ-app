@@ -1,26 +1,16 @@
 import {
-  BadgeCheck,
   Building2,
-  CircleCheckBig,
   ClipboardList,
   Database,
-  FilePlus2,
   HardHat,
   LayoutDashboard,
-  ListTodo,
-  RotateCcw,
   Search,
-  Route,
-  SquareKanban,
-  TriangleAlert,
-  Upload,
-  UserCheck,
   UserRound,
   Users,
   type LucideIcon,
 } from 'lucide-react';
 import type { UserDto } from '@champ/shared';
-import { canApproveFitments, canCreateTask, canManageSearchSettings, canUseBoard, canViewClients, canViewMasters, canViewTasks, canViewTechnicians, canViewUsers } from '@/lib/permissions';
+import { canManageSearchSettings, canViewClients, canViewMasters, canViewTasks, canViewTechnicians, canViewUsers } from '@/lib/permissions';
 
 export interface NavItem {
   to: string;
@@ -28,28 +18,8 @@ export interface NavItem {
   icon: LucideIcon;
   /** Active only on this exact path (not on child paths). */
   end?: boolean;
-}
-
-/**
- * The Tasks group (F04/F05): creators get Create/Bulk upload, OEs get Assigned, SA/OM get the Board (F07) and Awaiting approval;
- * Completed tasks, All tasks (CR-04), Travel tasks (F08), Faulty and Re-opened for every task viewer.
- */
-function taskItems(user: UserDto): NavItem[] {
-  const creator = canCreateTask(user);
-  return [
-    ...(creator ? [{ to: '/tasks/new', label: 'Create task', icon: FilePlus2 }] : []),
-    ...(creator ? [{ to: '/tasks/bulk', label: 'Bulk upload', icon: Upload }] : []),
-    { to: '/tasks', label: 'Open tasks', icon: ClipboardList, end: true },
-    // F07: the kanban board, SA/OM only.
-    ...(canUseBoard(user) ? [{ to: '/tasks/board', label: 'Board', icon: SquareKanban }] : []),
-    ...(user.role === 'OE' ? [{ to: '/tasks/assigned', label: 'Assigned', icon: UserCheck }] : []),
-    ...(canApproveFitments(user) ? [{ to: '/tasks/awaiting-approval', label: 'Awaiting approval', icon: BadgeCheck }] : []),
-    { to: '/tasks/completed', label: 'Completed tasks', icon: CircleCheckBig },
-    { to: '/tasks/all', label: 'All tasks', icon: ListTodo },
-    { to: '/tasks/travel', label: 'Travel tasks', icon: Route },
-    { to: '/tasks/faulty', label: 'Faulty tasks', icon: TriangleAlert },
-    { to: '/tasks/reopened', label: 'Re-opened', icon: RotateCcw },
-  ];
+  /** Also active on these paths and their child paths (CR-10: Tasks stays active on Search). */
+  alsoActiveOn?: string[];
 }
 
 export interface NavGroup {
@@ -69,7 +39,9 @@ export function navGroupsFor(user: UserDto): NavGroup[] {
         ...(canViewClients(user) ? [{ to: '/clients', label: 'Clients', icon: Building2 }] : []),
       ],
     },
-    ...(canViewTasks(user) ? [{ label: 'Tasks', items: taskItems(user) }] : []),
+    // CR-10: one Tasks item; the task views are tabs on the Tasks page (task-tabs.ts). Active on every /tasks
+    // route (lists, new, bulk, detail) and on Search, whose results are tasks.
+    ...(canViewTasks(user) ? [{ items: [{ to: '/tasks', label: 'Tasks', icon: ClipboardList, alsoActiveOn: ['/search'] }] }] : []),
     // Masters admin: SA and OM only (D-059).
     ...(canViewMasters(user) ? [{ label: 'Masters', items: [{ to: '/masters', label: 'All masters', icon: Database }] }] : []),
     // F14: SA only.

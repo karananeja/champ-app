@@ -1,5 +1,5 @@
 import { expect, test, type Locator, type Page } from '@playwright/test';
-import { login, pickSearchable, readOrg, type BoardTask } from './helpers';
+import { login, navigate, pickSearchable, readOrg, taskTabs, type BoardTask } from './helpers';
 
 /**
  * F07: the OM kanban board. Desktop: real pointer drags (mouse down, move in steps, up) and one keyboard drag.
@@ -63,8 +63,8 @@ test('Open → Assigned asks for the technician; the task page agrees', async ({
   const task = tasks.assign;
   const tk = task.tkIds[0]!;
   if (!isMobile(testInfo.project.name)) {
-    // The nav entry (Tasks → Board).
-    await page.getByRole('navigation', { name: 'Main' }).getByRole('link', { name: 'Board', exact: true }).click();
+    // The Board tab of the Tasks page (CR-10).
+    await navigate(page, 'Board');
     await expect(page.getByRole('heading', { name: 'Board', exact: true })).toBeVisible();
     await expect(page.getByTestId('finished-note')).toBeVisible();
   }
@@ -224,12 +224,14 @@ test('the quick view opens from a card and links to the task', async ({ page }, 
   await expect(page.getByRole('heading', { name: task.omId })).toBeVisible();
 });
 
-test('non-OM roles get the 403 page and no Board menu entry', async ({ page }, testInfo) => {
+test('non-OM roles get the 403 page and no Board tab', async ({ page }, testInfo) => {
   test.skip(isMobile(testInfo.project.name), 'Role check once is enough');
   const { f07 } = readOrg();
   await login(page, f07.oe.email, f07.oe.password);
   await expect(page.getByRole('heading', { name: `Welcome, ${f07.oe.name}` })).toBeVisible();
-  await expect(page.getByRole('navigation', { name: 'Main' }).getByRole('link', { name: 'Board', exact: true })).toHaveCount(0);
+  await navigate(page, 'Open tasks');
+  await expect(taskTabs(page).getByRole('link', { name: 'Open', exact: true })).toBeVisible();
+  await expect(taskTabs(page).getByRole('link', { name: 'Board', exact: true })).toHaveCount(0);
   await page.goto('/tasks/board');
   await expect(page.getByTestId('forbidden-page')).toBeVisible();
 });

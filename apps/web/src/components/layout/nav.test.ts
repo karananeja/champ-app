@@ -22,15 +22,17 @@ describe('navGroupsFor', () => {
     expect(linksFor('OM').filter((l) => !l.startsWith('/tasks'))).toEqual([...top, '/masters', '/profile']);
   });
 
-  it('Tasks group (F04/F05, CR-04 Completed/All for every viewer): creators get Create/Bulk upload, only OEs get Assigned, SA/OM get the Board (F07) and Awaiting approval, OT gets nothing', () => {
-    const views = ['/tasks/completed', '/tasks/all', '/tasks/travel', '/tasks/faulty', '/tasks/reopened'];
+  it('one Tasks item for task viewers (CR-10: the views are tabs on the Tasks page), none for OT; Settings for SA only', () => {
     const tasksOf = (role: Role) => linksFor(role).filter((l) => l.startsWith('/tasks'));
-    expect(tasksOf('SUPER_ADMIN')).toEqual(['/tasks/new', '/tasks/bulk', '/tasks', '/tasks/board', '/tasks/awaiting-approval', ...views]);
-    expect(tasksOf('OM')).toEqual(['/tasks/new', '/tasks/bulk', '/tasks', '/tasks/board', '/tasks/awaiting-approval', ...views]);
-    expect(tasksOf('OE')).toEqual(['/tasks/new', '/tasks/bulk', '/tasks', '/tasks/assigned', ...views]);
-    expect(tasksOf('RO')).toEqual(['/tasks', ...views]);
+    for (const role of ['SUPER_ADMIN', 'OM', 'OE', 'RO'] as const) {
+      expect(tasksOf(role), role).toEqual(['/tasks']);
+      const item = navGroupsFor(makeUser({ role })).flatMap((g) => g.items).find((i) => i.to === '/tasks');
+      expect(item?.label).toBe('Tasks');
+      expect(item?.alsoActiveOn).toEqual(['/search']);
+    }
     expect(tasksOf('OT')).toEqual([]);
-    expect(groupLabelsFor('OT')).not.toContain('Tasks');
-    expect(groupLabelsFor('RO')).toContain('Tasks');
+    for (const role of ROLES) {
+      expect(linksFor(role).includes('/settings/search'), role).toBe(role === 'SUPER_ADMIN');
+    }
   });
 });

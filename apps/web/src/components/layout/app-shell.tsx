@@ -37,6 +37,8 @@ function Brand() {
 /** The menu (CR-03): groups split by dividers, the active item marked with a brand accent bar and colour. */
 function NavLinks({ onNavigate }: { onNavigate?: () => void }) {
   const user = useCurrentUser();
+  const { pathname } = useLocation();
+  const onPath = (prefix: string) => pathname === prefix || pathname.startsWith(`${prefix}/`);
   return (
     <nav className="grid grid-cols-1" aria-label="Main">
       {navGroupsFor(user).map((group, index) => (
@@ -46,19 +48,20 @@ function NavLinks({ onNavigate }: { onNavigate?: () => void }) {
               {group.label}
             </div>
           )}
-          {group.items.map(({ to, label, icon: Icon, end }) => (
+          {group.items.map(({ to, label, icon: Icon, end, alsoActiveOn }) => (
             <NavLink
               key={to}
               to={to}
               end={end ?? to === '/'}
               onClick={onNavigate}
-              className={({ isActive }) =>
-                cn(
+              className={({ isActive: linkActive }) => {
+                const isActive = linkActive || !!alsoActiveOn?.some(onPath);
+                return cn(
                   'relative flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium text-sidebar-foreground/80 transition-colors hover:bg-sidebar-accent/60 hover:text-sidebar-accent-foreground',
                   isActive &&
                     'bg-sidebar-accent text-sidebar-accent-foreground before:absolute before:inset-y-1.5 before:left-0 before:w-1 before:rounded-full before:bg-sidebar-primary [&>svg]:text-sidebar-primary',
-                )
-              }
+                );
+              }}
             >
               <Icon className="size-4" />
               {label}

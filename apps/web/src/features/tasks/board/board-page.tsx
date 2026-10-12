@@ -387,7 +387,7 @@ export function BoardPage() {
 
   return (
     <div className="grid min-w-0 grid-cols-1 gap-4">
-      <PageHeader icon={SquareKanban} title="Board" description="Every fitment by status. Drag a card to assign, approve or reopen it." />
+      <PageHeader icon={SquareKanban} title="Board" description="Every fitment by status. Drag a card to assign, approve or reopen it." level={2} />
       <BoardFilterBar filters={filters} onChange={updateFilters} />
 
       {selection && (
