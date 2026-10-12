@@ -5,3 +5,4 @@ export * from './tasks';
 export * from './schemas';
 export * from './dto';
 export * from './workflow';
+export * from './verification';

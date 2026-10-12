@@ -1,4 +1,4 @@
-import { defaultTaskSort, type ExportFormat, type TaskSort, type TaskStatus, type TaskView } from '@champ/shared';
+import { defaultTaskSort, type ExportFormat, type ExportLevel, type TaskSort, type TaskStatus, type TaskView } from '@champ/shared';
 import { withQuery } from '@/lib/api';
 import type { TaskListParams } from './queries';
 
@@ -57,6 +57,9 @@ export function buildTaskQuery(view: TaskListView, f: TaskFilterState, page?: nu
   return Object.fromEntries(Object.entries(query).filter(([, v]) => v !== undefined));
 }
 
-/** The export URL (under `/api`) for the current filters: the same query without paging. */
-export const exportPath = (view: TaskListView, f: TaskFilterState, format: ExportFormat) =>
-  withQuery('/tasks/export', { ...buildTaskQuery(view, f), format });
+/**
+ * The export URL (under `/api`) for the current filters: the same query without paging. `level=fitment` (F06)
+ * gives one row per fitment with the verification columns; the task level is the default and left out.
+ */
+export const exportPath = (view: TaskListView, f: TaskFilterState, format: ExportFormat, level: ExportLevel = 'task') =>
+  withQuery('/tasks/export', { ...buildTaskQuery(view, f), format, level: level === 'fitment' ? level : undefined });

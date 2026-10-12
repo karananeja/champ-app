@@ -10,6 +10,7 @@ import {
   readOrg,
   simulate,
   switchUser,
+  verifyInSheet,
 } from './helpers';
 
 /** F05: the workflow through the dev technician simulator, on desktop and at 360 px. */
@@ -50,8 +51,8 @@ test('full flow to Completed; the OM sees History and raw data, the OE does not'
   await expectNoHorizontalScroll(page);
   await page.screenshot({ path: testInfo.outputPath('oe-submitted.png'), fullPage: true });
 
-  await fitmentAction(page, tk, 'Verify');
-  await confirmDialog(page, 'Verify');
+  // F06: Verify opens the verification sheet; the required fields must be filled.
+  await verifyInSheet(page, tk);
   await expectStatus(page, tk, 'OE_VERIFIED');
   await expect(page.getByRole('button', { name: `Final approve ${tk}` })).toHaveCount(0); // OM only
 
@@ -68,7 +69,8 @@ test('full flow to Completed; the OM sees History and raw data, the OE does not'
   const taskStages = page.getByRole('list', { name: 'Task stages' });
   await expect(taskStages.getByRole('listitem')).toHaveCount(4);
   await expect(taskStages.locator('[data-state="done"]')).toHaveCount(4);
-  await expect(page.locator('[data-testid="event-row"], [data-testid="event-card"]').filter({ visible: true })).toHaveCount(5);
+  // F06 adds the simulator's PHOTO_ADDED and VERIFY's FITMENT_VERIFICATION_SAVED to the 5 F05 events.
+  await expect(page.locator('[data-testid="event-row"], [data-testid="event-card"]').filter({ visible: true })).toHaveCount(7);
   await expectNoHorizontalScroll(page);
   await page.screenshot({ path: testInfo.outputPath('om-history.png'), fullPage: true });
   const download = page.waitForEvent('download');
@@ -115,8 +117,7 @@ test('reopen with a reason, see it in Re-opened, then redo the fitment', async (
   await expectStatus(page, tk, 'IN_PROGRESS');
   await simulate(page, 'Submit');
   await expectStatus(page, tk, 'SUBMITTED');
-  await fitmentAction(page, tk, 'Verify');
-  await confirmDialog(page, 'Verify');
+  await verifyInSheet(page, tk);
   await expectStatus(page, tk, 'OE_VERIFIED');
   await expect(fitmentItem(page, tk).getByTestId('reopen-chip')).toHaveText('Reopened ×1');
 });

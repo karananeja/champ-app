@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| Status | **Awaiting user sign-off** |
+| Status | **Approved by user on 2026-10-12** |
 | Requirements | SRS §6.4 item 4 · source doc: OE "verify the task details entered by the OT", "Correct the images uploaded by OT", verification fields list, "OE can select the final issue … to decide if the activity performed on client asset is billable or not" · Decisions D-031, D-032, D-045 |
 | Depends on | F05 (complete) |
 

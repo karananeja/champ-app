@@ -16,10 +16,15 @@ const envSchema = z.object({
   GOOGLE_CLIENT_ID: z.preprocess(emptyToUndefined, z.string().optional()),
   GOOGLE_ALLOWED_DOMAIN: z.string().min(1).default('intellicar.in'),
   LOG_LEVEL: z.preprocess(emptyToUndefined, z.string().optional()),
+  // Photo storage (F06, D-102): `s3` (MinIO locally, S3 in production) or `memory` (tests).
+  STORAGE_DRIVER: z.preprocess(emptyToUndefined, z.enum(['s3', 'memory']).default('s3')),
   S3_ENDPOINT: z.preprocess(emptyToUndefined, z.string().optional()),
   S3_ACCESS_KEY: z.preprocess(emptyToUndefined, z.string().optional()),
   S3_SECRET_KEY: z.preprocess(emptyToUndefined, z.string().optional()),
-  S3_BUCKET: z.preprocess(emptyToUndefined, z.string().optional()),
+  S3_BUCKET: z.preprocess(emptyToUndefined, z.string().default('champ')),
+  S3_REGION: z.preprocess(emptyToUndefined, z.string().default('us-east-1')),
+  // Endpoint used to sign GET URLs, so browsers can reach them (MinIO's published port locally).
+  S3_PUBLIC_URL: z.preprocess(emptyToUndefined, z.url().default('http://localhost:9000')),
   // Geocoding (F03, D-054)
   NOMINATIM_URL: z.preprocess(emptyToUndefined, z.url().default('https://nominatim.openstreetmap.org')),
   GEOCODER_CONTACT_EMAIL: z.preprocess(emptyToUndefined, z.email().default('admin@intellicar.in')),

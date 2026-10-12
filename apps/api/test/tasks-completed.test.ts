@@ -29,7 +29,7 @@ async function world() {
     const fid = task.fitments[0]!.id;
     await step(w.techA, fid, 'START', GPS);
     await step(w.techA, fid, 'SUBMIT');
-    await step(w.oe, fid, 'VERIFY');
+    await step(w.oe, fid, 'VERIFY', w.verification);
     await step(w.om, fid, 'APPROVE');
   };
   const list = async (actor: User, query: Record<string, string>) => {
@@ -105,7 +105,7 @@ describe('Completed tasks view (CR-04)', () => {
 
     await w.step(w.techA, fid, 'START', GPS);
     await w.step(w.techA, fid, 'SUBMIT');
-    await w.step(w.oe, fid, 'VERIFY');
+    await w.step(w.oe, fid, 'VERIFY', w.verification);
     await w.step(w.om, fid, 'APPROVE');
     const again = await prisma.task.findUniqueOrThrow({ where: { id: task.id } });
     expect(again.status).toBe('COMPLETED');

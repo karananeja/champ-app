@@ -84,7 +84,7 @@ export function refreshSession(): Promise<AuthResponse | null> {
 }
 
 interface ApiOptions {
-  method?: 'GET' | 'POST' | 'PATCH' | 'DELETE';
+  method?: 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE';
   body?: unknown;
   /** A multipart body (file upload); sent as is instead of JSON. */
   form?: FormData;
@@ -132,6 +132,37 @@ export async function api<T>(path: string, options: ApiOptions = {}): Promise<T>
 
 /** Uploads a multipart form (e.g. a CSV file) and returns the JSON response. */
 export const apiUpload = <T>(path: string, form: FormData): Promise<T> => api<T>(path, { method: 'POST', form });
+
+/**
+ * Uploads a multipart form with progress (F06 photos): `fetch` can't report upload progress, so this uses
+ * XMLHttpRequest, with the same bearer token, one retry after a token refresh on 401, and the same ApiError.
+ */
+export function apiUploadWithProgress<T>(path: string, form: FormData, onProgress?: (fraction: number) => void): Promise<T> {
+  const send = () =>
+    new Promise<{ status: number; body: unknown }>((resolve, reject) => {
+      const xhr = new XMLHttpRequest();
+      xhr.open('POST', `/api${path}`);
+      if (accessToken) xhr.setRequestHeader('Authorization', `Bearer ${accessToken}`);
+      xhr.responseType = 'json';
+      xhr.upload.onprogress = (e) => {
+        if (e.lengthComputable) onProgress?.(e.loaded / e.total);
+      };
+      xhr.onload = () => resolve({ status: xhr.status, body: xhr.response as unknown });
+      xhr.onerror = () => reject(new ApiError(0, 'NETWORK_ERROR', 'Cannot reach the server. Check your connection.'));
+      xhr.send(form);
+    });
+  return (async () => {
+    let res = await send();
+    if (res.status === 401) {
+      const session = await refreshSession();
+      if (session) res = await send();
+    }
+    if (res.status >= 200 && res.status < 300) return res.body as T;
+    const error = (res.body as ApiErrorBody | null)?.error;
+    if (error) throw new ApiError(res.status, error.code, error.message, error.details);
+    throw new ApiError(res.status, 'INTERNAL_ERROR', `Request failed (${res.status})`);
+  })();
+}
 
 /** The file name from a `Content-Disposition` header, if any. */
 export function filenameFrom(disposition: string | null): string | null {

@@ -122,7 +122,7 @@ export const FITMENT_ACTION_EVENTS = {
   REOPEN: 'FITMENT_REOPENED',
 } as const satisfies Record<FitmentAction, string>;
 
-/** Every TaskEvent type (F04 and F05). */
+/** Every TaskEvent type (F04, F05 and F06). */
 export const TASK_EVENT_TYPES = [
   'TASK_CREATED',
   'TASK_UPDATED',
@@ -138,6 +138,11 @@ export const TASK_EVENT_TYPES = [
   'FITMENT_VERIFIED',
   'FITMENT_APPROVED',
   'FITMENT_REOPENED',
+  // F06: verification and photos
+  'FITMENT_VERIFICATION_SAVED',
+  'PHOTO_ADDED',
+  'PHOTO_REPLACED',
+  'PHOTO_REMOVED',
 ] as const;
 export type TaskEventType = (typeof TASK_EVENT_TYPES)[number];
 
@@ -156,6 +161,10 @@ export const TASK_EVENT_LABELS: Record<TaskEventType, string> = {
   FITMENT_VERIFIED: 'OE verified',
   FITMENT_APPROVED: 'OM approved',
   FITMENT_REOPENED: 'Reopened',
+  FITMENT_VERIFICATION_SAVED: 'Verification saved',
+  PHOTO_ADDED: 'Photo added',
+  PHOTO_REPLACED: 'Photo replaced',
+  PHOTO_REMOVED: 'Photo removed',
 };
 
 /** Roles that see the History tab and the raw event log (D-033; RO excluded, D-025). */

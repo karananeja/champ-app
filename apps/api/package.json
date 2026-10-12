@@ -19,6 +19,8 @@
     "e2e:serve": "tsx scripts/prepare-db.ts && prisma db seed && tsx src/server.ts"
   },
   "dependencies": {
+    "@aws-sdk/client-s3": "^3.1149.0",
+    "@aws-sdk/s3-request-presigner": "^3.1149.0",
     "@champ/shared": "workspace:*",
     "@prisma/adapter-pg": "^7.10.0",
     "@prisma/client": "^7.10.0",
@@ -29,8 +31,10 @@
     "exceljs": "^4.4.0",
     "express": "^5.3.0",
     "express-rate-limit": "^8.7.1",
+    "file-type": "^22.1.1",
     "google-auth-library": "^11.2.0",
     "helmet": "^8.3.0",
+    "image-size": "^2.0.4",
     "jsonwebtoken": "^9.0.3",
     "multer": "^2.4.0",
     "papaparse": "^5.7.0",

@@ -60,6 +60,13 @@ export default defineConfig({
         JWT_ACCESS_SECRET: process.env.JWT_ACCESS_SECRET || 'e2e-secret-not-for-production',
         // F05: the dev technician simulator (D-073) drives the OT steps in the workflow spec.
         ENABLE_DEV_SIMULATOR: 'true',
+        // F06: photos go to the real MinIO (docker compose) in a bucket of their own, created at API start.
+        STORAGE_DRIVER: 's3',
+        S3_BUCKET: 'champ-e2e',
+        S3_ENDPOINT: process.env.S3_ENDPOINT || 'http://localhost:9000',
+        S3_PUBLIC_URL: process.env.S3_PUBLIC_URL || 'http://localhost:9000',
+        S3_ACCESS_KEY: process.env.S3_ACCESS_KEY || 'champ',
+        S3_SECRET_KEY: process.env.S3_SECRET_KEY || 'champchamp',
       },
     },
     {

@@ -38,7 +38,7 @@ async function run(...steps: [User, string, FitmentAction, unknown?][]) {
 async function driveTo(w: Awaited<ReturnType<typeof setup>>, fid: string, status: 'IN_PROGRESS' | 'SUBMITTED' | 'OE_VERIFIED' | 'OM_APPROVED') {
   const steps: [User, string, FitmentAction, unknown?][] = [[w.techA, fid, 'START', GPS]];
   if (status !== 'IN_PROGRESS') steps.push([w.techA, fid, 'SUBMIT']);
-  if (status === 'OE_VERIFIED' || status === 'OM_APPROVED') steps.push([w.oe, fid, 'VERIFY']);
+  if (status === 'OE_VERIFIED' || status === 'OM_APPROVED') steps.push([w.oe, fid, 'VERIFY', w.verification]);
   if (status === 'OM_APPROVED') steps.push([w.om, fid, 'APPROVE']);
   return run(...steps);
 }
@@ -69,7 +69,7 @@ describe('workflow — happy path', () => {
     expect(oeView.fitments[0]!.availableActions).toEqual(['VERIFY', 'REOPEN']);
     expect((await getTask(w.om, w.task.id)).fitments[0]!.availableActions).toEqual(['REOPEN']);
 
-    res = await run([w.oe, f1, 'VERIFY']);
+    res = await run([w.oe, f1, 'VERIFY', w.verification]);
     expect(res.fitment).toMatchObject({ status: 'OE_VERIFIED', verifiedBy: { id: w.oe.id } });
     expect(res.fitment.canEditData).toBe(true); // the OE until OM approval
     expect((await getTask(w.om, w.task.id)).fitments[0]!.availableActions).toEqual(['APPROVE', 'REOPEN']);
@@ -88,6 +88,7 @@ describe('workflow — happy path', () => {
     expect(events.map((e) => [e.type, e.fromStatus, e.toStatus, e.actorId])).toEqual([
       ['FITMENT_STARTED', 'ASSIGNED', 'IN_PROGRESS', w.techA.id],
       ['FITMENT_SUBMITTED', 'IN_PROGRESS', 'SUBMITTED', w.techA.id],
+      ['FITMENT_VERIFICATION_SAVED', null, null, w.oe.id], // F06: VERIFY's inline fields
       ['FITMENT_VERIFIED', 'SUBMITTED', 'OE_VERIFIED', w.oe.id],
       ['FITMENT_APPROVED', 'OE_VERIFIED', 'OM_APPROVED', w.om.id],
     ]);
@@ -117,7 +118,7 @@ describe('workflow — refusals', () => {
     await refuse(w.om, 'APPROVE', 'This fitment is Submitted; only OE-verified fitments can be final-approved');
     await refuse(w.techA, 'START', 'This fitment is Submitted; only Assigned or Reopened fitments can be started', GPS);
     await refuse(w.techA, 'MARK_FAULTY', 'This fitment is Submitted; only Assigned, In-progress or Reopened fitments can be marked faulty', { reason: 'x' });
-    await run([w.oe, fid, 'VERIFY']);
+    await run([w.oe, fid, 'VERIFY', w.verification]);
     await refuse(w.oe, 'VERIFY', 'This fitment is OE verified; only Submitted fitments can be verified');
     await run([w.om, fid, 'APPROVE']);
     await refuse(w.om, 'REOPEN', 'This fitment is OM approved; only Submitted, OE-verified or Closed – not done fitments can be reopened', { reason: 'Too late' });
@@ -145,7 +146,7 @@ describe('workflow — refusals', () => {
     await expect403(w.techA, fid, 'VERIFY');
     await expect403(w.ro, fid, 'REOPEN', { reason: 'Nope' });
     await expect403(otherOe, fid, 'REOPEN', { reason: 'Nope' });
-    await run([w.oe, fid, 'VERIFY']);
+    await run([w.oe, fid, 'VERIFY', w.verification]);
     await expect403(w.oe, fid, 'APPROVE');
     await expect403(w.techA, fid, 'APPROVE');
     await expect403(w.ro, fid, 'APPROVE');
@@ -244,7 +245,7 @@ describe('workflow — reopen (D-027, D-074, D-075)', () => {
     expect(event.data).toEqual({ tkId: 'TK-00001', reason: 'Photos missing', attributions: [{ userId: w.techA.id, role: 'OT' }] });
 
     // The same technician redoes it.
-    await run([w.techA, fid, 'START', GPS], [w.techA, fid, 'SUBMIT'], [w.oe, fid, 'VERIFY'], [w.om, fid, 'APPROVE']);
+    await run([w.techA, fid, 'START', GPS], [w.techA, fid, 'SUBMIT'], [w.oe, fid, 'VERIFY', w.verification], [w.om, fid, 'APPROVE']);
     expect((await prisma.task.findUniqueOrThrow({ where: { id: w.task.id } })).status).toBe('COMPLETED');
   });
 

@@ -1,6 +1,7 @@
 import {
   FITMENT_ACTION_EVENTS,
   TRANSITIONS,
+  VERIFICATION_FIELD_KEYS,
   canApproveFitments,
   canPerform,
   canTransition,
@@ -21,6 +22,7 @@ import { requireActiveLookup } from '../masters/refs';
 import { countFitments, fitmentInclude, toFitmentDto } from '../tasks/dto';
 import { writeEvent } from '../tasks/events';
 import { lockTask, recomputeTaskStatus } from '../tasks/status';
+import { verifyFitmentFields } from '../verification/service';
 
 type Tx = Prisma.TransactionClient;
 
@@ -29,6 +31,11 @@ export interface TransitionOptions {
   simulated?: boolean;
   /** Whose view the response is built for (the simulator's caller); defaults to the actor. */
   viewer?: User;
+  /**
+   * Runs inside the transaction after the fitment was updated and its event written (the simulator attaches
+   * sample photos and OT remarks to a SUBMIT here, F06).
+   */
+  afterApply?: (tx: Tx, fitment: { id: string; taskId: string; tkId: string }) => Promise<void>;
 }
 
 /** Why `canPerform` refused, in words. */
@@ -42,9 +49,16 @@ const NOT_ALLOWED: Record<FitmentAction, string> = {
   REOPEN: "Only an operations manager or the task's operation executive can reopen this fitment",
 };
 
-/** The payload fields worth keeping in the event (no empty note). */
+/**
+ * The payload fields worth keeping in the event (no empty note). VERIFY's inline verification fields are left
+ * out: they get their own FITMENT_VERIFICATION_SAVED event with a readable diff (F06).
+ */
 const cleanPayload = (payload: TransitionPayload) =>
-  Object.fromEntries(Object.entries(payload).filter(([, v]) => v !== undefined && v !== null && v !== ''));
+  Object.fromEntries(
+    Object.entries(payload).filter(
+      ([k, v]) => v !== undefined && v !== null && v !== '' && !(VERIFICATION_FIELD_KEYS as string[]).includes(k),
+    ),
+  );
 
 /**
  * Moves a fitment through the workflow (spec §3) in one transaction: locks the task and the fitment row,
@@ -83,6 +97,7 @@ export async function transitionFitment(
     const toStatus = TRANSITIONS[action].to;
     const tkId = formatTkId(fitment.tkNo);
     const data: Prisma.FitmentUncheckedUpdateInput = { status: toStatus };
+    const extraEventData: Record<string, unknown> = {};
     switch (action) {
       case 'START':
         Object.assign(data, { startedAt: now, startLat: payload.lat, startLng: payload.lng });
@@ -96,9 +111,14 @@ export async function transitionFitment(
       case 'MARK_FAULTY':
         Object.assign(data, { faultyAt: now, faultReason: payload.reason });
         break;
-      case 'VERIFY':
-        Object.assign(data, { verifiedAt: now, verifiedById: actor.id });
+      case 'VERIFY': {
+        // F06: inline fields are saved first; the required fields must then be filled (D-098), and billable is
+        // snapshotted from the final issue's current flag (D-101).
+        const { billable, finalIssue } = await verifyFitmentFields(tx, actor, fitmentId, payload);
+        Object.assign(data, { verifiedAt: now, verifiedById: actor.id, billable });
+        Object.assign(extraEventData, { finalIssue, billable });
         break;
+      }
       case 'APPROVE':
         Object.assign(data, { approvedAt: now, approvedById: actor.id });
         break;
@@ -113,12 +133,19 @@ export async function transitionFitment(
           verifiedById: null,
           approvedAt: null,
           approvedById: null,
+          // F06: billable is decided again at the next verification; the verification fields are kept.
+          billable: null,
         });
         break;
     }
     await tx.fitment.update({ where: { id: fitmentId }, data });
 
-    const eventData: Record<string, unknown> = { tkId, ...cleanPayload(payload), ...(opts.simulated && { simulated: true }) };
+    const eventData: Record<string, unknown> = {
+      tkId,
+      ...cleanPayload(payload),
+      ...extraEventData,
+      ...(opts.simulated && { simulated: true }),
+    };
     const attributions = action === 'REOPEN' ? await reopenAttributions(tx, actor, fitment) : [];
     if (attributions.length) eventData.attributions = attributions;
     const replacement = action === 'MARK_FAULTY' ? await createReplacement(tx, fitment) : null;
@@ -151,6 +178,7 @@ export async function transitionFitment(
         },
       });
     }
+    if (opts.afterApply) await opts.afterApply(tx, { id: fitmentId, taskId: fitment.taskId, tkId });
     await recomputeTaskStatus(tx, fitment.taskId);
   });
 

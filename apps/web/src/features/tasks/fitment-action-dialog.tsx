@@ -16,11 +16,10 @@ import { Textarea } from '@/components/ui/textarea';
 import { ApiError } from '@/lib/api';
 import { useFitmentTransition } from './queries';
 
-/** The review actions offered on the web task page. */
-export type ReviewAction = Extract<FitmentAction, 'VERIFY' | 'APPROVE' | 'REOPEN'>;
+/** The review actions confirmed with this dialog (Verify opens the verification sheet instead, F06). */
+export type ReviewAction = Extract<FitmentAction, 'APPROVE' | 'REOPEN'>;
 
 const COPY: Record<ReviewAction, { title: string; confirm: string; done: string }> = {
-  VERIFY: { title: 'Verify', confirm: 'Verify', done: 'verified' },
   APPROVE: { title: 'Final approve', confirm: 'Final approve', done: 'final-approved' },
   REOPEN: { title: 'Reopen', confirm: 'Reopen', done: 'reopened' },
 };
@@ -28,8 +27,6 @@ const COPY: Record<ReviewAction, { title: string; confirm: string; done: string 
 function description(action: ReviewAction, fitment: FitmentDto, actor: UserDto) {
   const technician = fitment.technician?.name ?? 'the technician';
   switch (action) {
-    case 'VERIFY':
-      return `Confirms ${technician}'s work. After this the technician can no longer change the fitment; an OM gives the final approval.`;
     case 'APPROVE':
       return 'Marks the fitment OM approved. After this only an OM can change it, and every change is flagged in the history.';
     case 'REOPEN': {
@@ -41,7 +38,7 @@ function description(action: ReviewAction, fitment: FitmentDto, actor: UserDto) 
 }
 
 /**
- * Confirms a review action on one fitment. Reopen needs a reason (3–500 characters, the shared schema).
+ * Confirms a review action on one fitment (Final approve, Reopen). Reopen needs a reason (3–500 characters, the shared schema).
  * Server refusals (e.g. 409 INVALID_TRANSITION) are shown verbatim.
  */
 export function FitmentActionDialog({
