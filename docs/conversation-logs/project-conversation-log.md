@@ -180,4 +180,22 @@ Chronological log of the whole project conversation. Feature-level logs live in 
 
 **Claude:** Wrote the F07 intent (OM kanban board) and sent it for sign-off.
 
-**Status:** Waiting for F07 intent sign-off.
+**User:** "approved" (F07 intent). All four open points were accepted as proposed (D-109 – D-112).
+
+**Claude:**
+- Created branch `feature/F07-om-kanban`.
+- Wrote the F07 spec, including D-113 (board moves reuse the existing endpoints, with a shared `boardMove` map).
+- Launched an implementation agent with the same hard rules.
+
+**User:** "i have added google client id, so update the fe port to 3000"
+
+**Claude:**
+- Confirmed `GOOGLE_CLIENT_ID` is set in `.env` (value not displayed) and set the local `WEB_URL` to `http://localhost:3000`.
+- Logged CR-05 (`docs/change-requests/CR-05-web-port-3000.md`).
+- Asked the running F07 agent to make the code change as a separate CR-05 commit on its branch, to avoid conflicting edits.
+
+**Implementation agent (F07 + CR-05):** Finished F07 in 4 commits plus CR-05 as a separate commit (933b7b9). Reported 800 tests, E2E 65 passed + 4 skipped. Added D-114–D-118. Its attempted `rm -rf` of a temp folder was blocked; an empty `/private/tmp/claude-504/tr` folder may remain.
+
+**Claude verification:** Re-ran all gates (all pass) and confirmed no code references to port 5173 remain.
+
+**Status:** F07 and CR-05 ready for user acceptance.

@@ -22,11 +22,11 @@ describe('navGroupsFor', () => {
     expect(linksFor('OM').filter((l) => !l.startsWith('/tasks'))).toEqual([...top, '/masters', '/profile']);
   });
 
-  it('Tasks group (F04/F05, CR-04 Completed/All for every viewer): creators get Create/Bulk upload, only OEs get Assigned, SA/OM get Awaiting approval, OT gets nothing', () => {
+  it('Tasks group (F04/F05, CR-04 Completed/All for every viewer): creators get Create/Bulk upload, only OEs get Assigned, SA/OM get the Board (F07) and Awaiting approval, OT gets nothing', () => {
     const views = ['/tasks/completed', '/tasks/all', '/tasks/travel', '/tasks/faulty', '/tasks/reopened'];
     const tasksOf = (role: Role) => linksFor(role).filter((l) => l.startsWith('/tasks'));
-    expect(tasksOf('SUPER_ADMIN')).toEqual(['/tasks/new', '/tasks/bulk', '/tasks', '/tasks/awaiting-approval', ...views]);
-    expect(tasksOf('OM')).toEqual(['/tasks/new', '/tasks/bulk', '/tasks', '/tasks/awaiting-approval', ...views]);
+    expect(tasksOf('SUPER_ADMIN')).toEqual(['/tasks/new', '/tasks/bulk', '/tasks', '/tasks/board', '/tasks/awaiting-approval', ...views]);
+    expect(tasksOf('OM')).toEqual(['/tasks/new', '/tasks/bulk', '/tasks', '/tasks/board', '/tasks/awaiting-approval', ...views]);
     expect(tasksOf('OE')).toEqual(['/tasks/new', '/tasks/bulk', '/tasks', '/tasks/assigned', ...views]);
     expect(tasksOf('RO')).toEqual(['/tasks', ...views]);
     expect(tasksOf('OT')).toEqual([]);

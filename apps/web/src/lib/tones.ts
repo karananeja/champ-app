@@ -1,6 +1,8 @@
+import type { FitmentStatus, TaskStatus } from '@champ/shared';
+
 /**
  * Badge colours (CR-03): one tone map, with light and dark values, used by every status badge so the same
- * state always looks the same. Status → tone choices live in the badge components.
+ * state always looks the same. `STATUS_TONES` maps workflow statuses to tones (badges and board columns).
  */
 export const TONES = {
   amber: 'border-amber-200 bg-amber-50 text-amber-800 dark:border-amber-900 dark:bg-amber-950 dark:text-amber-200',
@@ -14,3 +16,17 @@ export const TONES = {
   orange: 'border-orange-200 bg-orange-50 text-orange-800 dark:border-orange-900 dark:bg-orange-950 dark:text-orange-200',
 } as const;
 export type Tone = keyof typeof TONES;
+
+/** One colour per workflow status, used for task and fitment badges across the app (F05). */
+export const STATUS_TONES: Record<FitmentStatus | TaskStatus, string> = {
+  OPEN: TONES.amber,
+  ASSIGNED: TONES.sky,
+  IN_PROGRESS: TONES.violet,
+  SUBMITTED: TONES.blue,
+  OE_VERIFIED: TONES.teal,
+  OM_APPROVED: TONES.emerald,
+  COMPLETED: TONES.emerald,
+  CLOSED_NOT_DONE: TONES.neutral,
+  MOVED_TO_FT: TONES.red,
+  REOPENED: TONES.orange,
+};

@@ -81,7 +81,7 @@ function scrollToFitment(tkId: string) {
 }
 
 /** Replacement links, the reopen count, and the close or fault reason, shown under the vehicle (F05). */
-function WorkflowInfo({ f }: { f: FitmentDto }) {
+export function WorkflowInfo({ f }: { f: FitmentDto }) {
   const link = (tkId: string) => (
     <button type="button" className="font-mono underline underline-offset-2" onClick={() => scrollToFitment(tkId)}>
       {tkId}

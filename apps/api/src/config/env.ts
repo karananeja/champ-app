@@ -12,7 +12,7 @@ const envSchema = z.object({
   DATABASE_URL: z.string().min(1),
   JWT_ACCESS_SECRET: z.string().min(8, 'JWT_ACCESS_SECRET must be at least 8 characters'),
   API_PORT: z.coerce.number().int().positive().default(4000),
-  WEB_URL: z.url().default('http://localhost:5173'),
+  WEB_URL: z.url().default('http://localhost:3000'),
   GOOGLE_CLIENT_ID: z.preprocess(emptyToUndefined, z.string().optional()),
   GOOGLE_ALLOWED_DOMAIN: z.string().min(1).default('intellicar.in'),
   LOG_LEVEL: z.preprocess(emptyToUndefined, z.string().optional()),

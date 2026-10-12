@@ -121,6 +121,16 @@ export interface E2eOrg {
   cr: { om: Account; oe: Account; ro: Account; tasks: Record<string, { completed: string; march: string }> };
   /** F06: own OM/OE accounts and, per Playwright project, one task (1 fitment, technician wfTechs[0], OE = f06.oe). */
   f06: { om: Account; oe: Account; tasks: Record<string, WorkflowTask> };
+  /** F07: a board OM per Playwright project, an OE, and per project one task per board scenario (see org.setup.ts). */
+  f07: {
+    oms: Record<string, Account>;
+    oe: Account;
+    tasks: Record<string, Record<'assign' | 'keyboard' | 'approve' | 'reopen' | 'forbidden' | 'refetch', BoardTask>>;
+  };
+}
+
+export interface BoardTask extends WorkflowTask {
+  fitmentIds: string[];
 }
 
 export interface WorkflowTask {

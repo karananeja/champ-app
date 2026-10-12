@@ -10,6 +10,7 @@ import {
   ListTodo,
   RotateCcw,
   Route,
+  SquareKanban,
   TriangleAlert,
   Upload,
   UserCheck,
@@ -18,7 +19,7 @@ import {
   type LucideIcon,
 } from 'lucide-react';
 import type { UserDto } from '@champ/shared';
-import { canApproveFitments, canCreateTask, canViewClients, canViewMasters, canViewTasks, canViewTechnicians, canViewUsers } from '@/lib/permissions';
+import { canApproveFitments, canCreateTask, canUseBoard, canViewClients, canViewMasters, canViewTasks, canViewTechnicians, canViewUsers } from '@/lib/permissions';
 
 export interface NavItem {
   to: string;
@@ -29,7 +30,7 @@ export interface NavItem {
 }
 
 /**
- * The Tasks group (F04/F05): creators get Create/Bulk upload, OEs get Assigned, SA/OM get Awaiting approval;
+ * The Tasks group (F04/F05): creators get Create/Bulk upload, OEs get Assigned, SA/OM get the Board (F07) and Awaiting approval;
  * Completed tasks, All tasks (CR-04), Faulty and Re-opened for every task viewer; Travel is a placeholder (F08).
  */
 function taskItems(user: UserDto): NavItem[] {
@@ -38,6 +39,8 @@ function taskItems(user: UserDto): NavItem[] {
     ...(creator ? [{ to: '/tasks/new', label: 'Create task', icon: FilePlus2 }] : []),
     ...(creator ? [{ to: '/tasks/bulk', label: 'Bulk upload', icon: Upload }] : []),
     { to: '/tasks', label: 'Open tasks', icon: ClipboardList, end: true },
+    // F07: the kanban board, SA/OM only.
+    ...(canUseBoard(user) ? [{ to: '/tasks/board', label: 'Board', icon: SquareKanban }] : []),
     ...(user.role === 'OE' ? [{ to: '/tasks/assigned', label: 'Assigned', icon: UserCheck }] : []),
     ...(canApproveFitments(user) ? [{ to: '/tasks/awaiting-approval', label: 'Awaiting approval', icon: BadgeCheck }] : []),
     { to: '/tasks/completed', label: 'Completed tasks', icon: CircleCheckBig },

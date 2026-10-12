@@ -26,10 +26,10 @@ pnpm install
 pnpm db:migrate             # apply migrations (and generate the Prisma client)
 pnpm db:seed                # create the first Super Admin and the master data (dummy values)
 pnpm db:seed:demo           # optional: a demo OM, OE and three sample technicians
-pnpm dev                    # API on :4000, web on :5173
+pnpm dev                    # API on :4000, web on :3000
 ```
 
-Open http://localhost:5173 and sign in with the seeded Super Admin:
+Open http://localhost:3000 and sign in with the seeded Super Admin:
 
 - Email: `admin@intellicar.in`
 - Password: `Admin@1234`
@@ -37,7 +37,7 @@ Open http://localhost:5173 and sign in with the seeded Super Admin:
 (Change them with `SEED_SUPERADMIN_EMAIL` / `SEED_SUPERADMIN_PASSWORD` in `.env` before seeding.)
 
 The web dev server proxies `/api` to the API, so the refresh cookie is same-origin. Check the API with
-`curl http://localhost:5173/api/health`.
+`curl http://localhost:3000/api/health`.
 
 ### Inviting users
 
@@ -205,6 +205,41 @@ the real MinIO with its own bucket `champ-e2e`.
 | `S3_BUCKET` | `champ` | Photo bucket (kept private) |
 | `S3_REGION` | `us-east-1` | Signing region (any value works with MinIO) |
 
+### OM kanban board (F07)
+
+**Tasks → Board** (`/tasks/board`, SA and OM only; other roles get the 403 page and `/api/board*` answers 403) shows
+**one card per fitment** (D-109): six main columns following the flow, **Open → Assigned → In progress → Submitted →
+OE verified → OM approved**, and a collapsible **Other** area with the side lanes **Reopened**, **Closed – not done**
+and **Moved to FT** (collapsed by default, with counts, and still drop targets). Each card shows the TK id, OM id,
+customer and city, activity, technician (or *Unassigned*), fitment date (IST) and badges (reopen ×N, Billable
+Yes/No once verified, Replacement of TK-…). Columns are ordered by fitment date, then TK number (D-110), load 50
+cards at a time with **Load more**, and the finished columns (OM approved, Closed – not done, Moved to FT) show
+only the **last 7 days** by their status time unless a fitment-date range is set (D-111).
+
+- **Moving cards.** Drag a card (or several ticked cards of one column; Shift-click ticks a range) onto another
+  column. Only these moves exist (`boardMove` in `packages/shared/src/board.ts`, D-113): Open → Assigned asks for
+  the technician, Assigned → Open confirms the unassign, OE verified → OM approved confirms the final approval
+  (several at once), and Submitted / OE verified / Closed – not done → Reopened asks for the reason. While dragging,
+  columns the card can't go to are greyed out; dropping there shows why (e.g. "Only the technician can start or
+  submit work") and the card snaps back. Moves call the existing endpoints (assign, bulk approve, transitions), move
+  the cards at once and roll back with the server's message if something fails.
+- **Keyboard:** Tab to a card, **Space** picks it up, the **arrow keys** step through the columns, **Space** drops,
+  **Escape** cancels; **Enter** opens the quick view.
+- **Quick view:** clicking a card opens a side sheet (full screen on phones) with the fitment summary, verification
+  summary and photos, the actions you may take (*Change technician* — reassigning lives here, D-112 — *Final
+  approve*, *Reopen*) and a link to the task.
+- **Refresh:** the board refetches every 30 seconds and when you return to the tab (paused while you drag or a
+  dialog is open), so the simulator's or an OE's changes show up without reloading. Instant updates come with F13.
+- **Filters** (customer, OE, technician, activity, fitment date range, TK/OM/OE id) live in the URL, so a filtered
+  board can be shared and reloaded.
+- **Phones:** one column at a time, chosen with the column picker (with counts) or by swiping; each card has a
+  **Move to…** menu listing only the allowed targets, which opens the same dialogs.
+
+API: `GET /api/board` (all nine columns: `{ columns: { STATUS: { count, items, hasMore } } }`) and
+`GET /api/board/:status?page=N` (Load more), both with `clientId, oeId, technicianId, activityId, from, to, q,
+pageSize` (default 50, max 100). One `groupBy` for the counts and one query per column, whatever the number of
+cards.
+
 ### Look and feel (CR-03, CR-04)
 
 - **Dashboard**: role-aware stat cards from `GET /api/tasks/summary`. SA/OM see open tasks, awaiting approval,
@@ -224,7 +259,8 @@ the real MinIO with its own bucket `champ-e2e`.
 
 Hidden unless `GOOGLE_CLIENT_ID` is set. When set, only verified Google accounts in `GOOGLE_ALLOWED_DOMAIN`
 (default `intellicar.in`) that already have an active Champ account (or a matching invite) can sign in. Add
-`http://localhost:5173` as an authorised JavaScript origin of the OAuth client.
+`http://localhost:3000` as an authorised JavaScript origin of the OAuth client (the dev server is pinned to port 3000
+with `strictPort`, CR-05, so it fails instead of moving to another port when 3000 is taken).
 
 ## Scripts
 
@@ -248,7 +284,7 @@ First E2E run on a machine: `pnpm --filter @champ/web exec playwright install ch
 
 | Service | Port | Override |
 |---|---|---|
-| Web (Vite) | 5173 | — |
+| Web (Vite) | 3000 | — (fixed; `strictPort`, CR-05) |
 | API | 4000 | `API_PORT` |
 | PostgreSQL | 5432 | `POSTGRES_PORT` (compose) + `DATABASE_URL` |
 | MinIO API / console | 9000 / 9001 | `MINIO_PORT` / `MINIO_CONSOLE_PORT` (compose) |
@@ -278,7 +314,7 @@ apps/api/src
   middleware/         authenticate, requireRole, validate, error handler
   modules/            auth, invites, users, health, masters (+ /lookups), technicians, clients, geo,
                       tasks (service, refs, status, filters, events, export, bulk + bulk-rows, summary),
-                      workflow (engine, lists, history, router, dev simulator),
+                      workflow (engine, lists, history, router, dev simulator), board (F07 kanban reads),
                       verification (draft save, VERIFY fields, photos, upload checks), dev (simulator sample photos)
 apps/api/prisma       schema, migrations, seed (seed-masters.ts: master values; seed-demo.ts: demo users)
 apps/web/src
@@ -286,11 +322,12 @@ apps/web/src
   components/         app shell, auth provider, shared widgets, site-picker, map/ (react-leaflet), date pickers,
                       empty/error states (illustration, empty-state, list-states), page-header
   assets/illustrations  unDraw SVGs (CR-03)
-  features/           auth, invites, users, dashboard, profile, masters (config-driven), technicians, clients, tasks,
-                      errors (404/403/error boundary)
+  features/           auth, invites, users, dashboard, profile, masters (config-driven), technicians, clients, tasks
+                      (board/: the F07 kanban), errors (404/403/error boundary)
   lib/                API client (in-memory access token, single-flight refresh), auth context, permissions
 packages/shared/src   roles.ts, masters.ts (kinds, permission helpers), clients.ts, tasks.ts (ids, statuses,
                       permissions, IST helpers, CSV columns), workflow.ts (state machine, actors, edit locks),
                       verification.ts (required fields, verification/photo locks, photo kinds),
+                      board.ts (board columns, allowed moves and refusals, board roles),
                       schemas.ts, dto.ts
 ```

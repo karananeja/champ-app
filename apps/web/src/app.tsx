@@ -13,6 +13,7 @@ import { AcceptInvitePage } from '@/features/invites/accept-invite-page';
 import { MasterPage } from '@/features/masters/master-page';
 import { MastersPage } from '@/features/masters/masters-page';
 import { ProfilePage } from '@/features/profile/profile-page';
+import { BoardPage } from '@/features/tasks/board/board-page';
 import { BulkUploadPage } from '@/features/tasks/bulk-upload-page';
 import { ComingSoonPage } from '@/features/tasks/coming-soon-page';
 import { FitmentListPage } from '@/features/tasks/fitment-list-page';
@@ -26,6 +27,7 @@ import { Route as RouteIcon } from 'lucide-react';
 import {
   canApproveFitments,
   canCreateTask,
+  canUseBoard,
   canEditClients,
   canViewClients,
   canViewMasters,
@@ -83,6 +85,12 @@ function TasksRoute({
   return allowed ? children : <NoAccessRedirect />;
 }
 
+/** The board (F07): SA and OM only; others get the 403 page (CR-03). */
+function BoardRoute() {
+  const { user } = useAuth();
+  return user && canUseBoard(user) ? <BoardPage /> : <ForbiddenPage />;
+}
+
 export function App() {
   return (
     <Routes>
@@ -103,6 +111,7 @@ export function App() {
           <Route path="/tasks/assigned" element={<TasksRoute oeOnly><TaskListPage key="assigned" view="assigned" /></TasksRoute>} />
           <Route path="/tasks/completed" element={<TasksRoute><TaskListPage key="completed" view="completed" /></TasksRoute>} />
           <Route path="/tasks/all" element={<TasksRoute><TaskListPage key="all" view="all" /></TasksRoute>} />
+          <Route path="/tasks/board" element={<BoardRoute />} />
           <Route path="/tasks/new" element={<TasksRoute create><TaskFormPage /></TasksRoute>} />
           <Route path="/tasks/bulk" element={<TasksRoute create><BulkUploadPage /></TasksRoute>} />
           <Route

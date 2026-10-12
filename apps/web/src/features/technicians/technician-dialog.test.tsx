@@ -27,7 +27,7 @@ const created: CreateInviteResponse = {
     revokedAt: null,
     createdAt: '2026-10-11T00:00:00.000Z',
   },
-  link: 'http://localhost:5173/accept-invite?token=tech-token',
+  link: 'http://localhost:3000/accept-invite?token=tech-token',
 };
 
 function renderDialog(actor: UserDto, target: TechnicianDto | 'new') {

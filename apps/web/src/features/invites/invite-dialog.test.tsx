@@ -33,7 +33,7 @@ const response: CreateInviteResponse = {
     revokedAt: null,
     createdAt: '2026-10-11T00:00:00.000Z',
   },
-  link: 'http://localhost:5173/accept-invite?token=one-time-token',
+  link: 'http://localhost:3000/accept-invite?token=one-time-token',
 };
 
 function renderDialog(onOpenChange = vi.fn(), actor: UserDto = oe) {
