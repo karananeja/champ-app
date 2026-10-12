@@ -247,3 +247,5 @@ Chronological log of the whole project conversation. Feature-level logs live in 
 - Added the README *Field app* section, the test report and D-134 – D-153.
 
 **Status:** F09 ready for UAT by the user.
+
+**User:** "F09 accepted". UAT sign-off recorded and `feature/F09-mobile-foundation` merged to `main`.
