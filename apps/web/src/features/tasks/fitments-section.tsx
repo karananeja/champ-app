@@ -44,6 +44,7 @@ import { FitmentActionDialog, type ReviewAction } from './fitment-action-dialog'
 import { useApproveFitments, useAssignFitments, useTaskOptions, useUpdateFitment } from './queries';
 import { TONES } from '@/lib/tones';
 import { cn } from '@/lib/utils';
+import { assigneeName, assigneeOptions } from './assignees';
 import { BillableBadge } from './verification/billable-badge';
 import { PhotoViewerDialog } from './verification/photo-viewer-dialog';
 import { VerificationSheet } from './verification/verification-sheet';
@@ -164,7 +165,7 @@ export function FitmentsSection({ task }: { task: TaskDto }) {
   const toggleAll = (on: boolean) => setSelected(on ? new Set(selectable.map((f) => f.id)) : new Set());
 
   const runAssign = (target: string | null) => {
-    const name = options.data?.technicians.find((t) => t.id === target)?.name;
+    const name = assigneeName(options.data, target);
     assign.mutate(
       { fitmentIds: toAssign, technicianId: target },
       {
@@ -286,7 +287,7 @@ export function FitmentsSection({ task }: { task: TaskDto }) {
                   className="sm:w-64"
                   value={technicianId}
                   onChange={setTechnicianId}
-                  options={(options.data?.technicians ?? []).map((t) => ({ value: t.id, label: t.name, hint: t.baseLocation ?? undefined }))}
+                  options={assigneeOptions(options.data)}
                   placeholder="Choose a technician"
                   searchPlaceholder="Search technician"
                 />

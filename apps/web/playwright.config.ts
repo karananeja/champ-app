@@ -61,6 +61,8 @@ export default defineConfig({
         // Geocoding is stubbed in the browser (page.route); this unreachable URL guarantees the API itself
         // never calls the real Nominatim during E2E.
         NOMINATIM_URL: 'http://127.0.0.1:9',
+        // F10: never call the public OSRM server; the day route falls back to straight lines.
+        OSRM_URL: 'http://127.0.0.1:9',
         JWT_ACCESS_SECRET: process.env.JWT_ACCESS_SECRET || 'e2e-secret-not-for-production',
         // F05: the dev technician simulator (D-073) drives the OT steps in the workflow spec.
         ENABLE_DEV_SIMULATOR: 'true',

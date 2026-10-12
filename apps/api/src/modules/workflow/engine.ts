@@ -23,6 +23,7 @@ import { countFitments, fitmentInclude, toFitmentDto } from '../tasks/dto';
 import { writeEvent } from '../tasks/events';
 import { lockTask, recomputeTaskStatus } from '../tasks/status';
 import { verifyFitmentFields } from '../verification/service';
+import { assertRouteOrder } from '../mobile/route';
 
 type Tx = Prisma.TransactionClient;
 
@@ -82,7 +83,7 @@ export async function transitionFitment(
     await tx.$queryRaw`SELECT "id" FROM "Fitment" WHERE "id" = ${fitmentId} FOR UPDATE`;
     const fitment = await tx.fitment.findUniqueOrThrow({
       where: { id: fitmentId },
-      include: { task: { select: { id: true, oeId: true, deletedAt: true } } },
+      include: { task: { select: { id: true, oeId: true, deletedAt: true, fitmentAt: true } } },
     });
     if (fitment.task.deletedAt) throw notFound('Fitment not found');
 
@@ -91,6 +92,8 @@ export async function transitionFitment(
     if (!canTransition(action, fitment.status)) {
       throw conflict('INVALID_TRANSITION', transitionRefusal(action, fitment.status));
     }
+    // F10 (D-156): the technician starts fitments in the stored day-route order; closing and faulty aren't restricted.
+    if (action === 'START' && fitment.technicianId) await assertRouteOrder(tx, fitment.technicianId, fitment);
     if (action === 'CLOSE_NOT_DONE') await requireActiveLookup(payload.closeReasonId ?? '', 'CLOSE_REASON', 'closeReasonId');
 
     const now = new Date();

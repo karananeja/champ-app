@@ -251,3 +251,28 @@ Chronological log of the whole project conversation. Feature-level logs live in 
 **User:** "F09 accepted". UAT sign-off recorded and `feature/F09-mobile-foundation` merged to `main`.
 
 **Claude:** Wrote the F10 intent (route planning and starting a fitment), proposing to split the original F10 into F10 and F10B, and sent it for sign-off.
+
+**User:** "ok continue" (F10 intent). Taken as approval with all five open points as proposed (D-154 – D-158), including the F10/F10B split.
+
+**Claude:** Created branch `feature/F10-route-and-start`, wrote the F10 spec, and launched two parallel agents (Backend: shared, API, web; Mobile: route and fitment screens).
+
+**Implementation agents (F10):** Backend finished in ~18 min (6 commits), Mobile in ~9 min (2 commits), both inside the 20-minute target. The Mac was kept awake with `caffeinate`.
+
+**Claude verification:**
+- All gates pass: 990 tests, E2E 69 passed + 4 skipped.
+- Smoke-tested the Route, Start, Close and Mark faulty flows on the Android emulator. Used an isolated API on :4200 with its own throwaway `_e2e` database and real OSRM routing, so the user's dev data wasn't touched.
+- Fixed dialogs whose buttons were hidden under the keyboard on Android (D-177).
+- Note: my first attempt to start the isolated API rewrote the database URL incorrectly and pointed at the dev DB name. The reset script's `_test`/`_e2e` guard refused it and nothing was changed; the second attempt verified the name before running.
+- Rebuilt the iOS app, and wrote the README, the test report and D-159 – D-177.
+
+**Status:** F10 ready for UAT by the user.
+
+**User:** "in mobile app, in login screen when entering the email/password, the input field gets hidden and not showing above the keyboard and in route display i want locate me button which takes my device location"
+
+**Claude:**
+- Logged CR-07 on the F10 branch.
+- Sign-in and home-location screens now pad above the keyboard on Android too (D-178).
+- Added *Locate me* on the route map: a fresh fix, a "you are here" dot and the map flies there; the route is unchanged (D-179). Added 3 tests; mobile 62 pass.
+- Found the emulator was running the user's own Metro and signed-in session, so stopped device testing there; the user's Metro already serves the changes.
+
+**User:** "F10 and CR-07 accepted". Both recorded and `feature/F10-route-and-start` merged to `main`.

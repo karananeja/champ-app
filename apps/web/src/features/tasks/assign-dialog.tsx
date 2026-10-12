@@ -4,12 +4,13 @@ import { SearchableSelect } from '@/components/searchable-select';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
+import { assigneeName, assigneeOptions } from './assignees';
 import { useTaskOptions } from './queries';
 
 /**
  * Asks for the technician of one or more fitments (F07: board drops Open → Assigned and the quick view's
- * "Change technician"). The technician combobox lists the active OTs from `/tasks/options`, like the task
- * page's assign bar. `onConfirm` gets the technician's id and name; the caller runs the assignment.
+ * "Change technician"). The technician combobox lists the active OTs from `/tasks/options` and the OEs the
+ * caller may assign to, labelled "(OE)" (F10, D-158), like the task page's assign bar. `onConfirm` gets the technician's id and name; the caller runs the assignment.
  */
 export function AssignDialog({
   tkIds,
@@ -29,16 +30,16 @@ export function AssignDialog({
   const options = useTaskOptions();
   const [technicianId, setTechnicianId] = useState<string | null>(currentTechnicianId);
   const [error, setError] = useState<string | null>(null);
-  const technicians = options.data?.technicians ?? [];
+  const choices = assigneeOptions(options.data);
   const label = tkIds.length === 1 ? tkIds[0] : `${tkIds.length} fitments`;
 
   const submit = () => {
-    const technician = technicians.find((t) => t.id === technicianId);
-    if (!technician) {
+    const name = assigneeName(options.data, technicianId);
+    if (!technicianId || !name) {
       setError('Choose a technician');
       return;
     }
-    onConfirm({ id: technician.id, name: technician.name });
+    onConfirm({ id: technicianId, name });
   };
 
   return (
@@ -69,7 +70,7 @@ export function AssignDialog({
                 setTechnicianId(v);
                 setError(null);
               }}
-              options={technicians.map((t) => ({ value: t.id, label: t.name, hint: t.baseLocation ?? undefined }))}
+              options={choices}
               placeholder={options.isPending ? 'Loading technicians…' : 'Choose a technician'}
               searchPlaceholder="Search technician"
             />

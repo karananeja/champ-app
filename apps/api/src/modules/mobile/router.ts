@@ -4,15 +4,21 @@ import {
   loginSchema,
   mobileDateQuerySchema,
   mobileRefreshSchema,
+  recalculateRouteSchema,
+  routeQuerySchema,
   type LoginInput,
   type MobileAuthResponse,
   type MobileDateQuery,
   type MobileRefreshInput,
+  type RecalculateRouteInput,
+  type RouteQuery,
 } from '@champ/shared';
+import type { RouteOptimizer } from '../../lib/router';
 import { authenticate, currentUser } from '../../middleware/auth';
 import { requireRole } from '../../middleware/require-role';
 import { validate } from '../../middleware/validate';
 import * as auth from '../auth/service';
+import { getDayRoute } from './route';
 import * as mobile from './service';
 
 const mobileOnly = { roles: MOBILE_ROLES };
@@ -23,8 +29,8 @@ function sendMobileSession(res: Response, session: auth.Session) {
   res.json(body);
 }
 
-/** `/mobile/*`: the field app's sign-in (OT and OE only, D-128) and its home and task list (F09). */
-export function mobileRouter(loginLimiter: RequestHandler) {
+/** `/mobile/*`: the field app's sign-in (OT and OE only, D-128), its home and task list (F09) and day route (F10). */
+export function mobileRouter(loginLimiter: RequestHandler, optimizer: RouteOptimizer) {
   const router = Router();
 
   router.post('/auth/login', loginLimiter, validate({ body: loginSchema }), async (req, res) => {
@@ -53,6 +59,21 @@ export function mobileRouter(loginLimiter: RequestHandler) {
   app.get('/fitments', validate({ query: mobileDateQuerySchema }), async (req, res) => {
     const { date } = req.query as unknown as MobileDateQuery;
     res.json(await mobile.listMyFitments(currentUser(req), date));
+  });
+
+  app.get('/fitments/:fid', async (req, res) => {
+    res.json(await mobile.getMyFitment(currentUser(req), req.params.fid as string));
+  });
+
+  app.get('/route', validate({ query: routeQuerySchema }), async (req, res) => {
+    const { date, lat, lng } = req.query as unknown as RouteQuery;
+    const gps = lat !== undefined && lng !== undefined ? { lat, lng } : undefined;
+    res.json(await getDayRoute(currentUser(req), date, { gps }, optimizer));
+  });
+
+  app.post('/route/recalculate', validate({ body: recalculateRouteSchema }), async (req, res) => {
+    const { date, lat, lng } = req.body as RecalculateRouteInput;
+    res.json(await getDayRoute(currentUser(req), date, { gps: { lat, lng }, force: true }, optimizer));
   });
 
   router.use(app);

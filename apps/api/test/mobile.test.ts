@@ -238,6 +238,14 @@ describe('GET /api/mobile/home and /api/mobile/fitments', () => {
       site: { name: 'Bengaluru depot', address: 'MG Road', lat: 12.97, lng: 77.59 },
       vehicleRegNo: null,
       activity: 'New installation',
+      // F10 additions
+      taskId: early[0]!.taskId,
+      oe: { name: w.oe.name, phone: w.oe.phone },
+      chassisNo: null,
+      assetNumber: null,
+      assetType: 'Vehicle',
+      installationType: 'GPS',
+      availableActions: [],
     });
 
     // The day before has only the 23:59 fitment.

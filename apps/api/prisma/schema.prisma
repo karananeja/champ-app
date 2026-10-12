@@ -72,6 +72,7 @@ model User {
   travelRejected              TravelTask[]        @relation("TravelRejectedBy")
   travelReopened              TravelTask[]        @relation("TravelReopenedBy")
   travelEvents                TravelTaskEvent[]   @relation("TravelEventActor")
+  dayRoutes                   DayRoute[]          @relation("DayRouteTechnician")
   travelUploads               TravelAttachment[]  @relation("TravelAttachmentUploadedBy")
   travelRemovals              TravelAttachment[]  @relation("TravelAttachmentRemovedBy")
 
@@ -644,4 +645,37 @@ model TravelAttachment {
   createdAt    DateTime   @default(now())
 
   @@index([travelTaskId, status])
+}
+
+// --- Day route (F10, D-015, D-155) ---
+
+enum RouteOrigin {
+  GPS
+  HOME
+}
+
+enum RouteEngine {
+  OSRM
+  STRAIGHT_LINE
+}
+
+/**
+ * The stored visiting order of a technician's (OT or OE) open fitments on one IST day. Reused while the set
+ * of open fitments is unchanged; recomputed on *Recalculate route* or when that set changes.
+ */
+model DayRoute {
+  id           String      @id @default(cuid())
+  technicianId String
+  technician   User        @relation("DayRouteTechnician", fields: [technicianId], references: [id])
+  date         DateTime    @db.Date // IST day
+  originLat    Float? // null: no GPS and no home location (order from the earliest stop)
+  originLng    Float?
+  originSource RouteOrigin?
+  fitmentIds   String[] // open stops in visiting order at compute time
+  legs         Json // [{ fitmentId, distanceM, durationS | null }]
+  geometry     Json? // GeoJSON LineString (OSRM) or null (fallback)
+  engine       RouteEngine
+  computedAt   DateTime    @default(now())
+
+  @@unique([technicianId, date])
 }

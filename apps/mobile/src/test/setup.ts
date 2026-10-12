@@ -18,17 +18,20 @@ jest.mock('@maplibre/maplibre-react-native', () => {
   return {
     Map: ({ children }: { children?: unknown }) => createElement(View, { testID: 'map' }, children as never),
     Camera: forwardRef(() => null),
+    GeoJSONSource: ({ children }: { children?: unknown }) => createElement(View, { testID: 'route-line' }, children as never),
+    Layer: () => null,
+    Marker: ({ children }: { children?: unknown }) => children,
   };
 });
 
 jest.mock('expo-location', () => ({
-  Accuracy: { Balanced: 3 },
+  Accuracy: { Balanced: 3, High: 4 },
   requestForegroundPermissionsAsync: jest.fn(),
   getCurrentPositionAsync: jest.fn(),
 }));
 
 jest.mock('expo-router', () => {
-  const router = { push: jest.fn(), replace: jest.fn(), back: jest.fn(), canGoBack: jest.fn(() => true) };
+  const router = { push: jest.fn(), replace: jest.fn(), back: jest.fn(), dismissTo: jest.fn(), canGoBack: jest.fn(() => true) };
   return {
     __router: router,
     useRouter: () => router,

@@ -414,6 +414,8 @@ export interface TaskOptionsResponse {
   oes: UserRef[];
   /** Active technicians (OT). */
   technicians: (TaskTechnicianRef & { baseLocation: string | null })[];
+  /** F10 (D-158): active OEs the caller may assign fitments to (SA/OM: all; OE: themselves; RO: none). */
+  assignableOes: UserRef[];
 }
 
 export interface BulkCellError {
@@ -619,6 +621,7 @@ export const ERROR_CODES = [
   'UNSUPPORTED_FILE',
   'STORAGE_UNAVAILABLE',
   'MOBILE_ROLE_NOT_ALLOWED',
+  'ROUTE_ORDER',
   'INTERNAL_ERROR',
 ] as const;
 export type ErrorCode = (typeof ERROR_CODES)[number];

@@ -89,7 +89,23 @@ describe('canPerform (who)', () => {
       expect(canPerform(action, actor('OT', 'OT-1'), ctx('ASSIGNED', null))).toBe(false);
     }
     expect(canPerform('VERIFY', actor('OT', 'OE-1'), ctx('SUBMITTED'))).toBe(false);
-    expect(canPerform('START', actor('OE', 'OT-1'), ctx('ASSIGNED'))).toBe(false);
+  });
+
+  it('an assigned OE performs the technician steps (D-158); an unassigned OE cannot', () => {
+    for (const action of ['START', 'SUBMIT', 'CLOSE_NOT_DONE', 'MARK_FAULTY'] as const) {
+      // assigned to their own task's fitment
+      expect(canPerform(action, actor('OE', 'OE-1'), ctx('ASSIGNED', 'OE-1'))).toBe(true);
+      // assigned OE of another task (assigned by an OM)
+      expect(canPerform(action, actor('OE', 'OE-2'), ctx('ASSIGNED', 'OE-2', 'OE-1'))).toBe(true);
+      // unassigned OE, even the task's OE
+      expect(canPerform(action, actor('OE', 'OE-1'), ctx('ASSIGNED', 'OT-1'))).toBe(false);
+      expect(canPerform(action, actor('OE', 'OE-2'), ctx('ASSIGNED', 'OT-1'))).toBe(false);
+      // SA/OM/RO never, even with a matching id
+      for (const role of ['SUPER_ADMIN', 'OM', 'RO'] as const) expect(canPerform(action, actor(role, 'X'), ctx('ASSIGNED', 'X'))).toBe(false);
+    }
+    // the task's OE assigned to their own fitment may also verify it
+    expect(availableActions(actor('OE', 'OE-1'), ctx('SUBMITTED', 'OE-1'))).toEqual(['VERIFY', 'REOPEN']);
+    expect(availableActions(actor('OE', 'OE-1'), ctx('ASSIGNED', 'OE-1'))).toEqual(['START', 'CLOSE_NOT_DONE', 'MARK_FAULTY']);
   });
 });
 

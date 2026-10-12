@@ -29,7 +29,7 @@ describe('HomeScreen', () => {
     expect(await screen.findByLabelText('Show tasks, 3')).toBeOnTheScreen();
     expect(screen.queryByTestId('tile-approve-visit')).toBeNull();
     await fireEvent.press(screen.getByTestId('tile-show-tasks'));
-    expect(router.push).toHaveBeenCalledWith('/tasks');
+    expect(router.push).toHaveBeenCalledWith('/route');
   });
 
   it('shows the Approve visit count for OE', async () => {

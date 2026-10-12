@@ -3,7 +3,7 @@
  * an OM, two OEs, one technician (OT) per OE, (F03) one client, (F04) a task OM/OE/RO plus one task per
  * viewport and (F05) a workflow OM/OE with two technicians and, per viewport, the tasks of the workflow spec
  * (one already OE-verified for bulk approve), CR-03/04 accounts and tasks, and (F06) a verification OM/OE with
- * one task per viewport, (F07) board OMs and tasks, and (F08) travel OM/OE/technician per viewport and an RO. Credentials go to e2e/.data/org.json.
+ * one task per viewport, (F07) board OMs and tasks, (F08) travel OM/OE/technician per viewport and an RO, and (F10) an OM/OE and a task per viewport. Credentials go to e2e/.data/org.json.
  */
 import fs from 'node:fs';
 import path from 'node:path';
@@ -292,6 +292,23 @@ setup('create the F02 test org', async ({ request }) => {
     f08.projects[project] = { om: tom, oe: toe, technician };
   }
 
+  // F10 (D-158): per viewport an OM and an OE reporting to them, and one task of that OE with two Open fitments
+  // (one the OE assigns to themselves, the other the OM assigns to the OE).
+  const f10: E2eOrg['f10'] = {};
+  for (const project of ['desktop', 'mobile-360']) {
+    const fom = { email: `f10.om.${project}.${run}@intellicar.in`, name: `Route OM ${project} ${run}`, password };
+    const fomSession = await accept((await post<CreateInviteResponse>(request, '/api/invites', { email: fom.email, role: 'OM' }, sa.accessToken)).link, fom.name);
+    const foe = { email: `f10.oe.${project}.${run}@intellicar.in`, name: `Route OE ${project} ${run}`, password };
+    const foeSession = await accept((await post<CreateInviteResponse>(request, '/api/invites', { email: foe.email, role: 'OE' }, fomSession.accessToken)).link, foe.name);
+    const task = await post<TaskDto>(
+      request,
+      '/api/tasks',
+      { ...taskBody, oeId: foeSession.user.id, technicianId: null, vehicles: { entry: 'COUNT', count: 2 }, comments: `F10 ${project}` },
+      fomSession.accessToken,
+    );
+    f10[project] = { om: fom, oe: foe, task: { id: task.id, omId: task.omId, tkIds: task.fitments.map((f) => f.tkId) } };
+  }
+
   const org: E2eOrg = {
     om,
     oeA: oes[0]!,
@@ -312,6 +329,7 @@ setup('create the F02 test org', async ({ request }) => {
     f06: { om: f06Om, oe: f06Oe, tasks: f06Tasks },
     f07: { oms: f07Oms, oe: f07Oe, tasks: f07Tasks },
     f08,
+    f10,
   };
   fs.mkdirSync(path.dirname(ORG_FILE), { recursive: true });
   fs.writeFileSync(ORG_FILE, JSON.stringify(org, null, 2));

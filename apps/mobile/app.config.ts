@@ -9,7 +9,7 @@ const IS_PROD = process.env.APP_VARIANT === 'production';
 const BUNDLE_ID = IS_PROD ? 'in.intellicar.champ' : 'in.intellicar.champ.dev';
 
 const LOCATION_PERMISSION =
-  'Champ uses your location to set your home location, the starting point for your daily route.';
+  'Champ uses your location to plan your daily route, record where you start each fitment and set your home location.';
 
 export default ({ config }: ConfigContext): ExpoConfig => ({
   ...config,

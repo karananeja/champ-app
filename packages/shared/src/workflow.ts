@@ -1,5 +1,6 @@
 import type { Role } from './roles';
 import { FITMENT_STATUS_LABELS, type FitmentStatus } from './tasks';
+import { isMobileRole } from './mobile';
 
 /**
  * The fitment workflow (F05, D-011, D-077): the single source of truth for transitions, who may perform
@@ -48,12 +49,13 @@ export interface WorkflowContext {
 
 const isManager = (actor: WorkflowActor) => actor.role === 'SUPER_ADMIN' || actor.role === 'OM';
 const isTaskOe = (actor: WorkflowActor, ctx: WorkflowContext) => actor.role === 'OE' && ctx.task.oeId === actor.id;
+/** The assigned technician: an OT, or an OE doing fitments (D-158). */
 const isAssignedTechnician = (actor: WorkflowActor, ctx: WorkflowContext) =>
-  actor.role === 'OT' && !!ctx.fitment.technicianId && ctx.fitment.technicianId === actor.id;
+  isMobileRole(actor.role) && !!ctx.fitment.technicianId && ctx.fitment.technicianId === actor.id;
 
 /**
  * Whether the actor may perform the action on this fitment (who, not when; see `canTransition`).
- * Technician steps: the assigned technician only. Verify: the task's OE. Approve: SA or OM. Reopen: SA, OM
+ * Technician steps: the assigned technician only (an OT, or an OE assigned to the fitment, D-158). Verify: the task's OE. Approve: SA or OM. Reopen: SA, OM
  * or the task's OE (D-027).
  */
 export function canPerform(action: FitmentAction, actor: WorkflowActor, ctx: WorkflowContext): boolean {

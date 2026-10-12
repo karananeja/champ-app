@@ -3,6 +3,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { render } from '@testing-library/react-native';
 import type { ReactElement } from 'react';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
+import { ToastProvider } from '../components/toast';
 import { SelectedDateProvider } from '../lib/selected-date';
 
 export const router = (jest.requireMock('expo-router') as { __router: Record<string, jest.Mock> }).__router;
@@ -49,13 +50,15 @@ export function mockFetch(route: Route): jest.Mock {
 
 export const jsonBody = (init: RequestInit): unknown => JSON.parse(String(init.body));
 
-export async function renderWithProviders(ui: ReactElement, { date }: { date?: string } = {}) {
-  const client = new QueryClient({ defaultOptions: { queries: { retry: false, gcTime: Infinity }, mutations: { retry: false, gcTime: Infinity } } });
+export async function renderWithProviders(ui: ReactElement, { date, client: given }: { date?: string; client?: QueryClient } = {}) {
+  const client = given ?? new QueryClient({ defaultOptions: { queries: { retry: false, gcTime: Infinity }, mutations: { retry: false, gcTime: Infinity } } });
   return await render(
     <SafeAreaProvider initialMetrics={{ frame: { x: 0, y: 0, width: 390, height: 844 }, insets: { top: 0, left: 0, right: 0, bottom: 0 } }}>
-      <QueryClientProvider client={client}>
-        <SelectedDateProvider initial={date}>{ui}</SelectedDateProvider>
-      </QueryClientProvider>
+      <ToastProvider>
+        <QueryClientProvider client={client}>
+          <SelectedDateProvider initial={date}>{ui}</SelectedDateProvider>
+        </QueryClientProvider>
+      </ToastProvider>
     </SafeAreaProvider>,
   );
 }
