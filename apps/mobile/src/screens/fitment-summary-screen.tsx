@@ -106,8 +106,8 @@ export function FitmentSummaryScreen() {
             <StatusBadge status={f.status} />
           </View>
           <Muted>{f.site.name}</Muted>
-          <Field label="Started" value={formatIstDateTime(f.startedAt)} testID="started-at" />
-          <Field label="Submitted" value={formatIstDateTime(f.submittedAt)} testID="submitted-at" />
+          <Field label="Started at" value={formatIstDateTime(f.startedAt)} testID="started-at" />
+          <Field label="Submitted at" value={formatIstDateTime(f.submittedAt)} testID="submitted-at" />
         </Card>
 
         <Card testID="summary-checks">

@@ -86,7 +86,7 @@ describe('FitmentScreen', () => {
     expect(transitionCalls(fetchMock)).toHaveLength(0);
   });
 
-  it('Start sends START with the fresh fix, then asks Continue or Close; Yes opens the placeholder', async () => {
+  it('Start sends START with the fresh fix, then asks Continue or Close; Yes opens the form', async () => {
     const fetchMock = serve();
     await renderWithProviders(<FitmentScreen />);
     await fireEvent.press(await screen.findByTestId('start'));
@@ -143,6 +143,23 @@ describe('FitmentScreen', () => {
     await fireEvent.press(screen.getByTestId('faulty-submit'));
     expect(await screen.findByText(FAULTY_TOAST)).toBeOnTheScreen();
     expect(jsonBody(transitionCalls(fetchMock)[0]?.[1] as RequestInit)).toEqual({ action: 'MARK_FAULTY', payload: { reason: 'Device dead on arrival' } });
+  });
+
+  it('In progress: Open form opens the form', async () => {
+    serve({ status: 'IN_PROGRESS' });
+    await renderWithProviders(<FitmentScreen />);
+    await fireEvent.press(await screen.findByTestId('open-form'));
+    expect(router.push).toHaveBeenCalledWith({ pathname: '/fitment/[id]/continue', params: { id: 'f1' } });
+    expect(screen.queryByTestId('view-summary')).toBeNull();
+  });
+
+  it('Submitted or later: View summary opens the summary', async () => {
+    mockFetch(() => ({ status: 200, body: makeFitment({ status: 'OE_VERIFIED', availableActions: [] }) }));
+    await renderWithProviders(<FitmentScreen />);
+    await fireEvent.press(await screen.findByTestId('view-summary'));
+    expect(router.push).toHaveBeenCalledWith({ pathname: '/fitment/[id]/summary', params: { id: 'f1' } });
+    expect(screen.queryByTestId('open-form')).toBeNull();
+    expect(screen.queryByTestId('start')).toBeNull();
   });
 
   it('shows a 409 ROUTE_ORDER message verbatim', async () => {

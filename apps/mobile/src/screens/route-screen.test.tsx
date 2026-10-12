@@ -50,6 +50,8 @@ describe('RouteScreen', () => {
     expect(screen.getByTestId('route-line')).toBeOnTheScreen();
     expect(screen.getByTestId('origin-GPS')).toBeOnTheScreen();
 
+    await fireEvent.press(screen.getByTestId('stop-f0'));
+    expect(router.push).toHaveBeenCalledWith({ pathname: '/fitment/[id]/summary', params: { id: 'f0' } });
     await fireEvent.press(screen.getByTestId('stop-f2'));
     expect(router.push).toHaveBeenCalledWith({ pathname: '/fitment/[id]', params: { id: 'f2' } });
     await fireEvent.press(screen.getByTestId('start-f1'));
