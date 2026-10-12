@@ -50,18 +50,22 @@ const str = (v: unknown) => (typeof v === 'string' && v ? v : null);
  * within NOTIFICATION_GROUP_WINDOW_MS, and announced to the hub with pg_notify.
  */
 export async function notifyForEvents(tx: Tx, actorRef: { id: string }, events: readonly NotifiableEvent[]) {
-  const relevant = events.filter((e) => e.fitmentId && SOURCES[e.type]);
+  // A task created with a technician assigns its fitments without FITMENT_ASSIGNED events (one TASK_CREATED).
+  const created = events.filter((e) => e.type === 'TASK_CREATED' && str(dataOf(e).technicianId));
+  const relevant = [...events.filter((e) => e.fitmentId && SOURCES[e.type]), ...created];
   if (relevant.length === 0) return;
   const actor = await tx.user.findUnique({ where: { id: actorRef.id }, select: { id: true, name: true, role: true } });
   if (!actor) return;
 
-  const [tasks, fitments] = await Promise.all([
-    tx.task.findMany({
-      where: { id: { in: [...new Set(relevant.map((e) => e.taskId))] } },
-      select: { id: true, omNo: true, oeId: true, fitmentAt: true, client: { select: { name: true } }, site: { select: { name: true } } },
-    }),
-    tx.fitment.findMany({ where: { id: { in: relevant.map((e) => e.fitmentId!) } }, select: { id: true, tkNo: true, technicianId: true } }),
-  ]);
+  // Sequential: a transaction runs on one connection.
+  const tasks = await tx.task.findMany({
+    where: { id: { in: [...new Set(relevant.map((e) => e.taskId))] } },
+    select: { id: true, omNo: true, oeId: true, fitmentAt: true, client: { select: { name: true } }, site: { select: { name: true } } },
+  });
+  const fitments = await tx.fitment.findMany({
+    where: { OR: [{ id: { in: relevant.flatMap((e) => (e.fitmentId ? [e.fitmentId] : [])) } }, { taskId: { in: created.map((e) => e.taskId) } }] },
+    select: { id: true, taskId: true, tkNo: true, technicianId: true },
+  });
   const taskById = new Map(tasks.map((t) => [t.id, t]));
   const fitmentById = new Map(fitments.map((f) => [f.id, f]));
   const managerRole = actor.role === 'OM' || actor.role === 'SUPER_ADMIN';
@@ -92,9 +96,12 @@ export async function notifyForEvents(tx: Tx, actorRef: { id: string }, events: 
     drafts.set(key, draft);
   };
 
+  for (const e of created) {
+    for (const f of fitments) if (f.taskId === e.taskId) add(str(dataOf(e).technicianId), 'FITMENT_ASSIGNED', { ...e, fitmentId: f.id });
+  }
   for (const e of relevant) {
     const task = taskById.get(e.taskId);
-    const fitment = fitmentById.get(e.fitmentId!);
+    const fitment = fitmentById.get(e.fitmentId ?? '');
     if (!task || !fitment) continue;
     const data = dataOf(e);
     switch (e.type) {
@@ -194,18 +201,16 @@ async function deliverFitment(
  * VERIFIED → the person who raised it. Never the actor; inactive users are skipped.
  */
 export async function notifyTravel(tx: Tx, actorRef: { id: string }, input: { type: 'TRAVEL_RAISED' | 'TRAVEL_VERIFIED'; travelTaskId: string }) {
-  const [actor, tt] = await Promise.all([
-    tx.user.findUnique({ where: { id: actorRef.id }, select: { id: true, name: true } }),
-    tx.travelTask.findUnique({
-      where: { id: input.travelTaskId },
-      select: {
-        ttNo: true,
-        raisedById: true,
-        purpose: true,
-        technician: { select: { name: true, manager: { select: { id: true, role: true, status: true } } } },
-      },
-    }),
-  ]);
+  const actor = await tx.user.findUnique({ where: { id: actorRef.id }, select: { id: true, name: true } });
+  const tt = await tx.travelTask.findUnique({
+    where: { id: input.travelTaskId },
+    select: {
+      ttNo: true,
+      raisedById: true,
+      purpose: true,
+      technician: { select: { name: true, manager: { select: { id: true, role: true, status: true } } } },
+    },
+  });
   if (!actor || !tt) return;
   let recipients: string[];
   if (input.type === 'TRAVEL_VERIFIED') recipients = [tt.raisedById];
