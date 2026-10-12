@@ -333,3 +333,7 @@ Chronological log of the whole project conversation. Feature-level logs live in 
 **User:** "F12 accepted". UAT sign-off recorded and `feature/F12-mobile-history-approve-visit` merged to `main`.
 
 **Claude:** Wrote the F13 intent (in-app notifications, web and mobile) and sent it for sign-off.
+
+**User:** "ok continue" (F13 intent). Taken as approval with all five open points as proposed (D-228 – D-232).
+
+**Claude:** Created branch `feature/F13-notifications`, wrote the F13 spec, and launched three parallel agents (Backend: shared, API, Socket.IO; Web: bell; Mobile: bell).
