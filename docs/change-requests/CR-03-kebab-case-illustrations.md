@@ -3,7 +3,7 @@
 | | |
 |---|---|
 | Raised | 2026-10-12 by the user, while F05 was being built |
-| Status | Approved (raised directly by the user; style choices answered by the user). In implementation together with CR-04 on branch `cr/CR-03-04-ui-refresh` |
+| Status | Implemented, awaiting user acceptance |
 | Affects | All apps (file names); web UI (illustrations, polish) |
 
 ## User request

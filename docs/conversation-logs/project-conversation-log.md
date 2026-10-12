@@ -142,4 +142,23 @@ Chronological log of the whole project conversation. Feature-level logs live in 
 
 **Claude verification:** Re-ran all gates (all pass) and reviewed the state machine and simulator gating. Found the F05 branch had been renamed to `main`, putting unaccepted F05 commits on main. Re-created `feature/F05-workflow`; moving `main` back was blocked as destructive, so the user was asked to decide.
 
-**Status:** F05 ready for UAT; CR-03 is scheduled after the F05 merge.
+**User:** "F05 accepted but where do the completed task live and why not use the calendar component from shadcn instead of native component which is breaking the ui as many fields dont have label but calendar picker does?"
+
+**Claude:**
+- Recorded the F05 UAT sign-off and merged to `main`. `main` wasn't reset because the user didn't ask.
+- Confirmed that completed tasks had no screen: Open tasks excludes them, and the API's `view=all` was unused.
+- Logged CR-04 (Completed and All tasks views; shadcn Calendar date pickers with consistent labels; D-087, D-088).
+- Committed CR-03 (D-084 – D-086).
+- Launched one implementation agent for CR-03 and CR-04 on `cr/CR-03-04-ui-refresh`, since both rework the same screens. Gave it hard rules: stay on the branch, and never impersonate real users.
+
+**Agent interruption:** The CR-03/04 agent stopped partway on an API usage limit. Step 1 (kebab-case rename) was committed; CR-04 was partly done and uncommitted.
+
+**User:** "Resume the work"
+
+**Claude:** Checked the branch state. Found app servers on ports 4000/5173, probably the user's own `pnpm dev`, and left them alone. Resumed the same agent with its context and told it not to kill those processes.
+
+**Implementation agent (CR-03/04):** Finished in 4 commits on the correct branch, with main untouched. Reported 645 tests, E2E 49 passed + 2 skipped. Added D-089–D-097. It briefly ran `git stash`, which caught this log, and popped it straight back; the content is intact.
+
+**Claude verification:** Re-ran all gates, the bundle simulator check and a kebab-case file scan; all pass. Applied the additive `completedAt` migration to the dev DB so the user can test.
+
+**Status:** CR-03 and CR-04 ready for user acceptance.

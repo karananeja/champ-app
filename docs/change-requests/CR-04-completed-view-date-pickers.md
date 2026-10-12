@@ -3,7 +3,7 @@
 | | |
 |---|---|
 | Raised | 2026-10-12 by the user, during F05 UAT |
-| Status | Approved (raised directly by the user). In implementation together with CR-03 on branch `cr/CR-03-04-ui-refresh` |
+| Status | Implemented, awaiting user acceptance |
 | Affects | F04 task views and form, F05 fitment lists (web) |
 
 ## User request
