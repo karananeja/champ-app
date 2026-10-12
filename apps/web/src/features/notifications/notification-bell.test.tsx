@@ -226,6 +226,21 @@ describe('notification socket (F13)', () => {
     expect(await screen.findByRole('button', { name: 'Notifications' })).toBeInTheDocument();
   });
 
+  it('a live count wins over a count request still in flight (its late answer is dropped)', async () => {
+    let answer!: (body: unknown) => void;
+    renderBell({ 'GET /api/notifications/unread-count': () => new Promise((resolve) => (answer = resolve)) });
+    await screen.findByRole('button', { name: 'Notifications' });
+    await waitFor(() => expect(answer).toBeDefined());
+    serverEmit(NOTIFICATION_COUNT_EVENT, { unreadCount: 5 });
+    expect(await screen.findByRole('button', { name: 'Notifications, 5 unread' })).toBeInTheDocument();
+    await act(async () => {
+      answer({ unreadCount: 1 });
+      await new Promise((resolve) => setTimeout(resolve, 50));
+    });
+    expect(screen.getByRole('button', { name: 'Notifications, 5 unread' })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Notifications, 1 unread' })).not.toBeInTheDocument();
+  });
+
   it('on UNAUTHORIZED refreshes the session once and reconnects', async () => {
     const { fetchMock } = renderBell({
       'GET /api/notifications/unread-count': { unreadCount: 0 },
