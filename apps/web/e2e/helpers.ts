@@ -131,6 +131,8 @@ export interface E2eOrg {
   f08: { projects: Record<string, { om: Account; oe: Account; technician: string }>; ro: Account };
   /** F10: per Playwright project an OM, an OE reporting to them and a task of that OE with two Open fitments. */
   f10: Record<string, { om: Account; oe: Account; task: WorkflowTask }>;
+  /** F13: per Playwright project an OM, an OE reporting to them, the OE's technician and a task with one Open fitment. */
+  f13: Record<string, { om: Account; oe: Account; technician: string; task: WorkflowTask }>;
 }
 
 export interface BoardTask extends WorkflowTask {
