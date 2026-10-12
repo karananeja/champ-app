@@ -483,6 +483,8 @@ only, any signed-in user.
 - **Dates**: every date and time is picked with the shadcn calendar pickers (`components/date-picker.tsx`; date-times
   in IST, 5-minute steps). List filters use one date-range control.
 
+- **Theme** (CR-09): System / Light / Dark — on the web in the user menu (remembered in the browser), in the app on the Profile tab (remembered on the phone). *System* follows the OS setting.
+
 ### Google sign-in
 
 Hidden unless `GOOGLE_CLIENT_ID` is set. When set, only verified Google accounts in `GOOGLE_ALLOWED_DOMAIN`

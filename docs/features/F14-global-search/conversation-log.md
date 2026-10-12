@@ -7,3 +7,5 @@
 - User asked "add icons to the tabs in mobile view". Logged as CR-08 on this branch: the app's bottom tabs now have SVG icons (D-247).
 - Two agents (D-127): Backend ~7 min (3 commits), Web ~17 min (2 commits); only the Web agent ran the full E2E, and there was no cross-agent noise. Proposed decisions became D-248 to D-252.
 - Claude's verification: reviewed the search SQL; deflaked the technician upload refusal test; full gates green (1,214 tests; E2E 73 + 4 skipped). Wrote the README, test report and decisions. Handed F14 and CR-08 to the user for UAT.
+- User asked for a theme selector and reported that checked checkboxes and the bell badge were hard to see in dark mode. Logged as CR-09 on this branch (D-253 to D-255).
+- User asked to drop the separate *Create task* entry from the sidebar and put all task views on one page with tabs, and asked why faulty tasks are read-only. Logged as CR-10 (an agent is implementing it); answered the faulty question (D-011/D-012: Moved to FT is final, the replacement carries the work).

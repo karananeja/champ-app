@@ -11,6 +11,7 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useState } from 'react';
 import { KeyboardAvoidingView, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { CheckBox } from '../components/checkbox';
 import { Dialog, OptionList } from '../components/dialog';
 import { Field, FitmentFormView } from '../components/fitment-form-view';
 import { NoConnection, StateView } from '../components/state-view';
@@ -292,10 +293,8 @@ export function ApproveVisitDetailScreen() {
                   checked && { backgroundColor: colors.brandSoft },
                 ]}
               >
-                <Text style={{ color: checked ? colors.brandSoftForeground : colors.foreground, fontSize: 16 }}>
-                  {checked ? '☑ ' : '☐ '}
-                  {o.name}
-                </Text>
+                <CheckBox checked={checked} testID={`accessory-box-${o.id}`} />
+                <Text style={{ flex: 1, color: checked ? colors.brandSoftForeground : colors.foreground, fontSize: 16 }}>{o.name}</Text>
               </Pressable>
             );
           })}
@@ -351,5 +350,5 @@ const styles = StyleSheet.create({
   select: { flexDirection: 'row', alignItems: 'center', borderWidth: 1, minHeight: 48, paddingHorizontal: 12 },
   footer: { paddingHorizontal: 16, paddingTop: 12, gap: 8, borderTopWidth: StyleSheet.hairlineWidth },
   actions: { flexDirection: 'row', gap: 8 },
-  option: { borderWidth: 1, paddingHorizontal: 12, paddingVertical: 12 },
+  option: { borderWidth: 1, paddingHorizontal: 12, paddingVertical: 12, flexDirection: 'row', alignItems: 'center', gap: 10 },
 });

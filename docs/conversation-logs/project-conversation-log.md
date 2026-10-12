@@ -369,3 +369,11 @@ Chronological log of the whole project conversation. Feature-level logs live in 
 - Wrote the README, the test report and D-248 – D-252.
 
 **Status:** F14 and CR-08 ready for UAT by the user.
+
+**User:** "add theme selector and in dark mode, the check box doesnot appear selected, and the indicator on notification icon does not seem visible"
+
+**Claude:** Logged CR-09. Theme selector (System / Light / Dark) on the web user menu and the app Profile tab, remembered per browser/phone; checked checkboxes keep their fill in dark mode (web) and the app draws a real checkbox; the bell badge and other red fills under white text use a strong red in both themes (D-253 – D-255).
+
+**User:** "separate button for create task in the side bar is unnecessary and the tasks should be present in single place with tabs separated in the page, also why is faulty task read only?"
+
+**Claude:** Logged CR-10 and launched an agent for the web Tasks page with tabs. Explained that a fitment Moved to FT is final by design (D-011, D-012): its replacement fitment carries the work, so the Faulty view is a record; offered an *Assign replacement* action there or undoing a mistaken faulty if wanted.

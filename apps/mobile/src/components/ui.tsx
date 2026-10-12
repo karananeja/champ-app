@@ -19,7 +19,7 @@ export function Button({
 }) {
   const { colors, radius } = useTheme();
   const bg =
-    variant === 'primary' ? colors.primary : variant === 'destructive' ? colors.destructive : variant === 'secondary' ? colors.muted : 'transparent';
+    variant === 'primary' ? colors.primary : variant === 'destructive' ? colors.destructiveSolid : variant === 'secondary' ? colors.muted : 'transparent';
   const fg = variant === 'primary' ? colors.primaryForeground : variant === 'destructive' ? '#ffffff' : colors.foreground;
   return (
     <Pressable

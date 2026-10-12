@@ -582,7 +582,7 @@ function Segmented<T extends string>({
             style={[
               styles.segment,
               i > 0 && { borderLeftWidth: StyleSheet.hairlineWidth, borderColor: colors.border },
-              selected && { backgroundColor: notOk ? colors.destructive : colors.primary },
+              selected && { backgroundColor: notOk ? colors.destructiveSolid : colors.primary },
               disabled && { opacity: 0.6 },
             ]}
           >
