@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| Status | **Awaiting user sign-off** |
+| Status | **Approved** 2026-10-12 ("ok continue"; open points as proposed, D-216 – D-220) |
 | Requirements | SRS §6.6.10 ("History: the day's timeline and distance (routed distance from task 1 to task n), with tabs Personal and Direct reportees") and §6.6.11 ("Approve visit: the OE approves submitted fitments") · M3, M15, M18 · Decisions D-014 (Approve visit = Submitted → OE verified), D-015 (distance = routed distance from task 1 to task n), D-029 (7 days back), D-098 (fields required to verify), D-158 (OEs doing fitments) |
 | Depends on | F06 (verification), F10 (routing), F11 (complete) |
 

@@ -315,3 +315,7 @@ Chronological log of the whole project conversation. Feature-level logs live in 
 **User:** "F11 accepted". UAT sign-off recorded and `feature/F11-mobile-csv-bulk-fill` merged to `main`.
 
 **Claude:** Wrote the F12 intent (mobile history, distance and Approve visit) and sent it for sign-off.
+
+**User:** "ok continue" (F12 intent). Taken as approval with all five open points as proposed (D-216 – D-220).
+
+**Claude:** Created branch `feature/F12-mobile-history-approve-visit`, wrote the F12 spec, and launched two parallel agents (Backend: shared, API; Mobile: History tab and Approve visit).
