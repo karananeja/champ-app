@@ -266,3 +266,11 @@ Chronological log of the whole project conversation. Feature-level logs live in 
 - Rebuilt the iOS app, and wrote the README, the test report and D-159 – D-177.
 
 **Status:** F10 ready for UAT by the user.
+
+**User:** "in mobile app, in login screen when entering the email/password, the input field gets hidden and not showing above the keyboard and in route display i want locate me button which takes my device location"
+
+**Claude:**
+- Logged CR-07 on the F10 branch.
+- Sign-in and home-location screens now pad above the keyboard on Android too (D-178).
+- Added *Locate me* on the route map: a fresh fix, a "you are here" dot and the map flies there; the route is unchanged (D-179). Added 3 tests; mobile 62 pass.
+- Found the emulator was running the user's own Metro and signed-in session, so stopped device testing there; the user's Metro already serves the changes.
