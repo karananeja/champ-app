@@ -14,6 +14,7 @@ import { requireFreshFix, tryRouteFix } from '../lib/location';
 import { formatKm, formatLeg, routeQueryKey } from '../lib/route';
 import { useSelectedDate } from '../lib/selected-date';
 import { useTheme } from '../theme/use-theme';
+import { hasSummary } from './fitment-summary-screen';
 
 export const HOME_ORIGIN_NOTICE = 'Starting from your home location';
 export const STRAIGHT_LINE_NOTICE = 'Approximate order (routing unavailable)';
@@ -51,8 +52,11 @@ export function RouteScreen() {
       setRecalcError(isNetworkError(e) ? "Can't reach the Champ server. Try again." : e instanceof Error ? e.message : 'Could not recalculate.'),
   });
 
+  // Submitted or later opens the task summary (F10B); everything else the fitment screen.
   const open = (s: RouteStopDto, start?: boolean) =>
-    router.push({ pathname: '/fitment/[id]', params: start ? { id: s.fitment.id, start: '1' } : { id: s.fitment.id } });
+    !start && hasSummary(s.fitment.status)
+      ? router.push({ pathname: '/fitment/[id]/summary', params: { id: s.fitment.id } })
+      : router.push({ pathname: '/fitment/[id]', params: start ? { id: s.fitment.id, start: '1' } : { id: s.fitment.id } });
 
   let body;
   if (query.isError && isNetworkError(query.error)) {

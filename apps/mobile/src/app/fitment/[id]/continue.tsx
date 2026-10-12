@@ -1,3 +1,3 @@
-import { FitmentContinueScreen } from '../../../screens/fitment-continue-screen';
+import { FitmentFormScreen } from '../../../screens/fitment-form-screen';
 
-export default FitmentContinueScreen;
+export default FitmentFormScreen;
