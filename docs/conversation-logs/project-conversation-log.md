@@ -278,3 +278,7 @@ Chronological log of the whole project conversation. Feature-level logs live in 
 **User:** "F10 and CR-07 accepted". Both recorded and `feature/F10-route-and-start` merged to `main`.
 
 **Claude:** Wrote the F10B intent (fitment form, photos, device scan, submit and summary) and sent it for sign-off.
+
+**User:** "ok continue" (F10B intent). Taken as approval with all five open points as proposed (D-180 – D-184).
+
+**Claude:** Created branch `feature/F10B-fitment-form`, wrote the F10B spec, and launched three parallel agents: Backend, Mobile-Form and Mobile-Capture (native camera, stamping and scanning).
