@@ -38,6 +38,10 @@ New tests: shared 9 (`normalizeIdentifier`, `parseSearchId`), api 14 (every iden
 - **Deflaked** `fitment-form.test.ts › refuses before reading the file` (failed with `write EPIPE` in F12 and twice in F14 agents' runs): an 11 MB body made the server's early refusal race the upload. It now sends a small non-image body (which would be 400 `UNSUPPORTED_FILE` if read), as the F06 photo test does. 3/3 alone, and green in the full run.
 - CR-08 (tab icons) checked on the iOS Simulator.
 
+## 4a. After CR-09 – CR-11 on this branch
+- Full E2E by the CR-11 web agent: **75 passed / 0 failed** (incl. `cr-10.spec.ts` and the extended faulty test); typecheck, lint, build pass.
+- Full unit suite by Claude, three runs in a row: **1,248 passed** (shared 449, api 410, mobile 152, web 237).
+
 ## 5. Known limitations
 - No fuzzy (typo) matching; no search by names, customers or free text; no search in the app (D-246).
 - JS and Postgres normalise whitespace slightly differently (e.g. a non-breaking space); accepted for the MVP.
@@ -55,3 +59,6 @@ New tests: shared 9 (`normalizeIdentifier`, `parseSearchId`), api 14 (every iden
 | 5 | SA settings | As SA, Settings → Search identifiers: switch *Device id* off, save; search a device id; as OM, look for Settings | Not found while off; OM has no Settings; switch it back on |
 | 6 | Deleted, tests | Delete an untouched task, search its OM id | Not found; §3 green |
 | — | **CR-08** | Open the app | Home, Route, History, Profile tabs show icons; the active one in the brand colour |
+| — | **CR-09** | Web user menu → Theme; app Profile → Theme; in dark mode tick a checkbox and look at the bell | The choice applies at once and is remembered; checked boxes are filled; the badge count is readable |
+| — | **CR-10** | Sidebar → Tasks (as OM and as OE); switch tabs; look for Create task | One Tasks item; Board first and default for OM/SA, Open for others; Create task / Bulk upload only on Open |
+| — | **CR-11** | Mark a fitment faulty (simulator); in Faulty, *Assign replacement*; on another, *Undo faulty* with a reason | Replacement assigned from the row; the undone fitment is back to Assigned and its replacement Closed – not done "Faulty marked by mistake"; the technician is notified |
