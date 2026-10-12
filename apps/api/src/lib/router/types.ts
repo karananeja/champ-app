@@ -14,10 +14,18 @@ export interface TripResult {
   geometry: RouteLineString | null;
 }
 
+/** Driving legs between consecutive points, in the given order. */
+export interface RouteResult {
+  /** One leg per consecutive pair (`points.length - 1`). */
+  legs: { distanceM: number; durationS: number | null }[];
+}
+
 /** Route optimiser (D-015). OSRM by default; tests inject an in-memory stub. */
 export interface RouteOptimizer {
   /** Throws `RouterUnavailableError` on any failure; the caller falls back to straight lines. */
   trip(origin: LatLng, stops: LatLng[]): Promise<TripResult>;
+  /** Legs through `points` in the fixed order (F12 day distance). Throws `RouterUnavailableError` like `trip`. */
+  route(points: LatLng[]): Promise<RouteResult>;
 }
 
 /** The provider failed, timed out, found no trip or got too many stops. */

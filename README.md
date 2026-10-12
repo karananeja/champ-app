@@ -349,6 +349,18 @@ are told to use the web console (D-128). It's online only (D-008).
   | `device_replacement` | Device / SIM / No |
   | `device_id`, `secondary_device_id` | Text, max 64 (upper-cased) |
   | `comments` | Text, max 1000 |
+- **History** tab (F12, D-216–D-218): the chosen day as a timeline, each fitment with its steps that day (Started,
+  Submitted, Closed – not done with the reason, Moved to FT) in IST and the drive distance from the previous one. The
+  top shows the day's total, e.g. "42.6 km · 6 fitments": the OSRM driving distance through the **start positions** of
+  the fitments started that day, in start order (no home leg; same site or < 50 m apart = 0 km); "≈ … (approx.)" when
+  routing was unavailable (straight lines). Tap a fitment → its summary. An OE also gets **Direct reportees**
+  (technicians whose manager they are) with each one's count and distance; tap → their day, read only. Distances are
+  cached per user and day (`DayDistance`) and recomputed when the starts change; the reportees list never calls OSRM.
+- **Approve visit** (OE, F12, D-014, D-219): the Home tile opens the Submitted fitments of your tasks for the date
+  (the same as its count). A fitment shows the technician's form and photos, then **Issue observed, Action taken and
+  Final issue** (required, D-098; the final issue shows Billable/Not billable), accessories and OE remarks. *Verify*
+  or *Reopen* (with a reason) use the same endpoint and rules as the web, then the next waiting fitment opens.
+  Replacing photos and the debug image stay on the web (D-220).
 - **OEs doing fitments** (D-158): on the web an OE can assign a fitment of their own task to themselves, and an SA/OM
   can assign any fitment to an OE ("Name (OE)" in the assign dialog). The OE then works it in the app like a
   technician.
@@ -392,7 +404,10 @@ through the existing `POST /api/fitments/:fid/transitions`. F10B: `PUT /api/mobi
 `GET …/bulk-fill/sample.csv`, `POST …/bulk-fill/preview` (multipart `file`; writes nothing),
 `POST …/bulk-fill/confirm` (`{rows: [{rowNumber, tkId, form}], lat?, lng?}` → `{filled, started, failed}`; 400
 `GPS_REQUIRED` when a row needs starting without a fix) and `POST /api/mobile/tasks/:taskId/submit-ready`
-(→ `{submitted, incomplete, skipped}`). `MyFitmentDto.taskFitmentCount` drives the *Bulk fill* entry. `OSRM_URL` (default `https://router.project-osrm.org`, the
+(→ `{submitted, incomplete, skipped}`). `MyFitmentDto.taskFitmentCount` drives the *Bulk fill* entry. F12 (OT/OE): `GET /api/mobile/history?date=&userId=`
+(yourself, or an OE's direct reportee; else 403), `GET /api/mobile/history/reportees?date=` (OE),
+`GET /api/mobile/approve-visit?date=` and `GET /api/mobile/approve-visit/:fid` (OE, own tasks; else 404); Verify and
+Reopen go through `POST /api/fitments/:fid/transitions` (`{action, payload}`). `OSRM_URL` (default `https://router.project-osrm.org`, the
 public demo server: fine for development only) sets the routing service; tests and E2E point it at an unreachable
 address, so they use the straight-line fallback.
 

@@ -1,12 +1,14 @@
-import { straightLineTrip } from './straight-line';
-import { RouterUnavailableError, type LatLng, type RouteOptimizer, type TripResult } from './types';
+import { straightLineRoute, straightLineTrip } from './straight-line';
+import { RouterUnavailableError, type LatLng, type RouteOptimizer, type RouteResult, type TripResult } from './types';
 
 /**
  * In-memory optimiser for tests. By default it reverses the nearest-neighbour order (so a test can tell an
  * OSRM order from the fallback) with 1.5× legs, 60 s per km and a straight geometry; `fail` makes it throw.
+ * `route` gives 1.5× straight legs (so routed and approx distances differ) and records `routeCalls`.
  */
 export class StubRouter implements RouteOptimizer {
   calls: { origin: LatLng; stops: LatLng[] }[] = [];
+  routeCalls: LatLng[][] = [];
   fail = false;
 
   async trip(origin: LatLng, stops: LatLng[]): Promise<TripResult> {
@@ -19,5 +21,12 @@ export class StubRouter implements RouteOptimizer {
       return { distanceM: Math.round(d * 1.5), durationS: Math.round((d * 1.5) / 1000) * 60 };
     });
     return { order, legs, geometry: { type: 'LineString', coordinates: points.map((p) => [p.lng, p.lat]) } };
+  }
+
+  async route(points: LatLng[]): Promise<RouteResult> {
+    this.routeCalls.push(points);
+    if (this.fail) throw new RouterUnavailableError('stub failure');
+    const legs = straightLineRoute(points).legs.map((l) => ({ distanceM: Math.round(l.distanceM * 1.5), durationS: Math.round((l.distanceM * 1.5) / 1000) * 60 }));
+    return { legs };
   }
 }
