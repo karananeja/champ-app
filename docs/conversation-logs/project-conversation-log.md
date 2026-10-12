@@ -225,3 +225,9 @@ Chronological log of the whole project conversation. Feature-level logs live in 
 **User:** "CR-06 accepted". CR-06 marked complete and merged to `main`.
 
 **Claude:** Wrote the F09 intent (mobile app foundation) and sent it for sign-off.
+
+**User:** "approved" (F09 intent). All five open points were accepted as proposed (D-128 – D-132).
+
+**Claude:**
+- Created branch `feature/F09-mobile-foundation` and wrote the F09 spec, including D-133 (cookie-less mobile sessions, MapLibre with OSM, no native builds by agents).
+- Launched two parallel implementation agents per the playbook: Backend (shared, API, web) and Mobile (`apps/mobile`).
