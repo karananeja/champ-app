@@ -3,7 +3,7 @@
  * an OM, two OEs, one technician (OT) per OE, (F03) one client, (F04) a task OM/OE/RO plus one task per
  * viewport and (F05) a workflow OM/OE with two technicians and, per viewport, the tasks of the workflow spec
  * (one already OE-verified for bulk approve), CR-03/04 accounts and tasks, and (F06) a verification OM/OE with
- * one task per viewport. Credentials go to e2e/.data/org.json.
+ * one task per viewport, and (F07) board OMs and tasks. Credentials go to e2e/.data/org.json.
  */
 import fs from 'node:fs';
 import path from 'node:path';
@@ -220,6 +220,58 @@ setup('create the F02 test org', async ({ request }) => {
     f06Tasks[project] = { id: task.id, omId: task.omId, tkIds: task.fitments.map((f) => f.tkId) };
   }
 
+  // F07: one board OM per viewport (each logs in a handful of times), an OE for the 403 check and as the tasks'
+  // OE, and per viewport one task per board scenario (filtered on the board by its OM id): Open fitments to
+  // assign (by drag and by keyboard), two OE-verified fitments to approve together, a Submitted one to reopen,
+  // an Assigned one for the refused drop and one the simulator starts while the board is open.
+  const f07Oms: E2eOrg['f07']['oms'] = {};
+  const f07OmTokens: Record<string, string> = {};
+  for (const project of ['desktop', 'mobile-360']) {
+    const account = { email: `f07.om.${project}.${run}@intellicar.in`, name: `Kanban OM ${project} ${run}`, password };
+    const session = await accept((await post<CreateInviteResponse>(request, '/api/invites', { email: account.email, role: 'OM' }, sa.accessToken)).link, account.name);
+    f07Oms[project] = account;
+    f07OmTokens[project] = session.accessToken;
+  }
+  const f07Oe = { email: `f07.oe.${run}@intellicar.in`, name: `Kanban OE ${run}`, password };
+  const f07OeSession = await accept(
+    (await post<CreateInviteResponse>(request, '/api/invites', { email: f07Oe.email, role: 'OE' }, f07OmTokens.desktop!)).link,
+    f07Oe.name,
+  );
+  const f07Tasks: E2eOrg['f07']['tasks'] = {};
+  for (const project of ['desktop', 'mobile-360']) {
+    const omToken = f07OmTokens[project]!;
+    const boardTask = async (comments: string, count: number, technician: boolean) => {
+      const task = await post<TaskDto>(
+        request,
+        '/api/tasks',
+        {
+          ...taskBody,
+          oeId: f07OeSession.user.id,
+          technicianId: technician ? wfTechs[0]!.id : undefined,
+          vehicles: { entry: 'COUNT', count },
+          comments: `F07 ${comments} ${project}`,
+        },
+        omToken,
+      );
+      return { id: task.id, omId: task.omId, tkIds: task.fitments.map((f) => f.tkId), fitmentIds: task.fitments.map((f) => f.id) };
+    };
+    const simulateAs = (fid: string, action: string) => post(request, `/api/dev/fitments/${fid}/simulate`, { action }, omToken);
+    const assign = await boardTask('assign', 1, false);
+    const keyboard = await boardTask('keyboard', 1, false);
+    const approve = await boardTask('approve', 2, true);
+    for (const fid of approve.fitmentIds) {
+      await simulateAs(fid, 'START');
+      await simulateAs(fid, 'SUBMIT');
+      await post(request, `/api/fitments/${fid}/transitions`, { action: 'VERIFY', payload: verification }, f07OeSession.accessToken);
+    }
+    const reopen = await boardTask('reopen', 1, true);
+    await simulateAs(reopen.fitmentIds[0]!, 'START');
+    await simulateAs(reopen.fitmentIds[0]!, 'SUBMIT');
+    const forbidden = await boardTask('forbidden', 1, true);
+    const refetch = await boardTask('refetch', 1, true);
+    f07Tasks[project] = { assign, keyboard, approve, reopen, forbidden, refetch };
+  }
+
   const org: E2eOrg = {
     om,
     oeA: oes[0]!,
@@ -238,6 +290,7 @@ setup('create the F02 test org', async ({ request }) => {
     workflow,
     cr: { om: crOm, oe: crOe, ro: crRo, tasks: crTasks },
     f06: { om: f06Om, oe: f06Oe, tasks: f06Tasks },
+    f07: { oms: f07Oms, oe: f07Oe, tasks: f07Tasks },
   };
   fs.mkdirSync(path.dirname(ORG_FILE), { recursive: true });
   fs.writeFileSync(ORG_FILE, JSON.stringify(org, null, 2));
