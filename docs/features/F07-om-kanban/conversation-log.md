@@ -12,3 +12,4 @@
 - Tests: shared +86, API +7 (incl. a constant query count via Prisma query logging), web +10 (real dnd-kit keyboard drags in jsdom), E2E +14 (pointer drags, a keyboard drag, the "Move to…" menu at 360 px). All gates pass; see `test-report.md`.
 - Coordinator relayed CR-05 (web dev server on port 3000) mid-feature; done as its own commit after the F07 commits (D-118).
 - 2026-10-12: Claude re-ran typecheck, lint, 800 tests, the build with the bundle check, and E2E (65 passed, 4 skipped by design); all pass. Confirmed CR-05 is a separate commit and no 5173 references remain in code. Handed to the user for UAT.
+- 2026-10-12: The user accepted F07 and CR-05 ("F07 and CR-05 accepted"). Feature complete; merged to main.

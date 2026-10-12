@@ -3,7 +3,7 @@
 | | |
 |---|---|
 | Raised | 2026-10-12 by the user |
-| Status | Implemented (commit 933b7b9 on `feature/F07-om-kanban`), awaiting user acceptance |
+| Status | ✅ Complete: accepted by the user on 2026-10-12 ("F07 and CR-05 accepted") |
 | Affects | Web dev server config, API `WEB_URL` default, `.env.example`, README, test fixtures |
 
 ## User request
