@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import {
   CLIENT_EDIT_ROLES,
+  MOBILE_ROLES,
   geoReverseQuerySchema,
   geoSearchQuerySchema,
   type GeoReverseQuery,
@@ -14,10 +15,13 @@ import { requireRole } from '../../middleware/require-role';
 import { validate } from '../../middleware/validate';
 import { reverseGeocode, searchAddress } from './service';
 
-/** `/geo/*`: address search and reverse lookup, proxied to the geocoder (D-054). SA and OM only. */
+/**
+ * `/geo/*`: address search and reverse lookup, proxied to the geocoder (D-054). SA and OM (client sites), plus
+ * OT and OE for the field app's home-location picker (F09).
+ */
 export function geoRouter(geocoder: Geocoder) {
   const router = Router();
-  router.use(authenticate, requireRole(...CLIENT_EDIT_ROLES));
+  router.use(authenticate, requireRole(...CLIENT_EDIT_ROLES, ...MOBILE_ROLES));
 
   router.get('/search', validate({ query: geoSearchQuerySchema }), async (req, res) => {
     const { q } = req.query as unknown as GeoSearchQuery;

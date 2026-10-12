@@ -4,6 +4,7 @@ import {
   type ListUsersQuery,
   type ManagersQuery,
   type Paginated,
+  type SetHomeLocationInput,
   type UpdateUserInput,
   type UserDto,
   type UserRef,
@@ -24,6 +25,16 @@ function scopeFor(actor: User): Prisma.UserWhereInput {
 
 export async function getMe(actor: User): Promise<UserDto> {
   const user = await prisma.user.findUniqueOrThrow({ where: { id: actor.id }, include: userWithManager });
+  return toUserDto(user);
+}
+
+/** `PUT /me/home-location` (F09): the caller's own home location; all parts are set together. */
+export async function setHomeLocation(actor: User, input: SetHomeLocationInput): Promise<UserDto> {
+  const user = await prisma.user.update({
+    where: { id: actor.id },
+    data: { homeLat: input.lat, homeLng: input.lng, homeAddress: input.address, homeUpdatedAt: new Date() },
+    include: userWithManager,
+  });
   return toUserDto(user);
 }
 

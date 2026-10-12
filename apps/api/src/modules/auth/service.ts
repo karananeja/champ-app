@@ -1,4 +1,4 @@
-import type { AuthResponse } from '@champ/shared';
+import { MOBILE_ROLE_NOT_ALLOWED_MESSAGE, type AuthResponse, type Role } from '@champ/shared';
 import { forbidden, unauthorized } from '../../lib/errors';
 import type { GoogleAuth, GoogleIdentity } from '../../lib/google';
 import { signAccessToken } from '../../lib/jwt';
@@ -31,12 +31,24 @@ export async function createSession(userId: string): Promise<Session> {
   };
 }
 
-export async function loginWithPassword(email: string, password: string): Promise<Session> {
+/** Restricts a sign-in or refresh to some roles (the field app, D-128). */
+export interface SessionPolicy {
+  roles?: readonly Role[];
+}
+
+function assertRoleAllowed(role: Role, policy: SessionPolicy): void {
+  if (policy.roles && !policy.roles.includes(role)) {
+    throw forbidden('MOBILE_ROLE_NOT_ALLOWED', MOBILE_ROLE_NOT_ALLOWED_MESSAGE);
+  }
+}
+
+export async function loginWithPassword(email: string, password: string, policy: SessionPolicy = {}): Promise<Session> {
   const user = await prisma.user.findUnique({ where: { email: email.toLowerCase() } });
   // Same error for unknown email and wrong password to avoid account enumeration.
   const valid = user?.passwordHash ? await verifyPassword(password, user.passwordHash) : false;
   if (!user || !valid) throw unauthorized('INVALID_CREDENTIALS', 'Invalid email or password');
   if (user.status !== 'ACTIVE') throw forbidden('ACCOUNT_INACTIVE', 'Your account is inactive');
+  assertRoleAllowed(user.role, policy);
   return createSession(user.id);
 }
 
@@ -79,7 +91,7 @@ export async function loginWithGoogle(google: GoogleAuth, idToken: string): Prom
  * Rotates a refresh token. Presenting a token that was already revoked is treated
  * as theft: every refresh token of that user is revoked.
  */
-export async function refreshSession(rawToken: string | undefined): Promise<Session> {
+export async function refreshSession(rawToken: string | undefined, policy: SessionPolicy = {}): Promise<Session> {
   if (!rawToken) throw unauthorized('REFRESH_INVALID', 'No session');
   const stored = await prisma.refreshToken.findUnique({
     where: { tokenHash: hashToken(rawToken) },
@@ -95,6 +107,11 @@ export async function refreshSession(rawToken: string | undefined): Promise<Sess
   if (stored.user.status !== 'ACTIVE') {
     await revokeAllForUser(stored.userId);
     throw unauthorized('ACCOUNT_INACTIVE', 'Your account is inactive');
+  }
+  if (policy.roles && !policy.roles.includes(stored.user.role)) {
+    // The role changed since sign-in: end this session and issue no new token.
+    await revokeRefreshToken(rawToken);
+    assertRoleAllowed(stored.user.role, policy);
   }
 
   // Conditional update guards against two concurrent rotations of the same token.
