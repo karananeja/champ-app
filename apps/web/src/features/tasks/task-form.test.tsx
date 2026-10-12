@@ -55,6 +55,7 @@ const options: TaskOptionsResponse = {
     { id: 'ot-ravi', name: 'Ravi Kumar', technicianType: 'PAYROLL', baseLocation: 'Bengaluru' },
     { id: 'ot-suresh', name: 'Suresh Patil', technicianType: 'THIRD_PARTY', baseLocation: 'Pune' },
   ],
+  assignableOes: [],
 };
 
 const om = makeUser({ id: 'om-1', role: 'OM', name: 'Maya Manager' });
