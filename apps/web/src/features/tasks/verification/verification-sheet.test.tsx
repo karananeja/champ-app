@@ -228,3 +228,46 @@ describe('verification sheet (F06)', () => {
     await waitFor(() => expect(callsTo(fetchMock, 'PUT', '/api/fitments/fit-1/verification')).toHaveLength(1));
   });
 });
+
+describe("technician's form on the verification sheet (F10B)", () => {
+  it('shows the checks with Not OK highlighted, readings, device replacement, device ids, comments and times', async () => {
+    const user = userEvent.setup();
+    renderTask(
+      oe,
+      makeFitment({
+        ...submitted,
+        startedAt: '2026-10-12T04:00:00.000Z',
+        technicianForm: {
+          vehicleRegNo: 'KA01AB1234',
+          chassisNo: null,
+          clusterReadingKm: 123456,
+          deviceReplacement: 'SIM',
+          deviceId: 'DEV-001',
+          secondaryDeviceId: null,
+          checks: { assetCondition: 'OK', accessories: 'NOT_OK', batteryCondition: 'NA', canVoltage: 'OK' },
+          comments: 'Device behind the dashboard',
+          updatedAt: '2026-10-12T05:00:00.000Z',
+        },
+      }),
+    );
+    const sheet = await openSheet(user);
+    const form = within(sheet).getByTestId('technician-form');
+    expect(within(form).getByText("Technician's form")).toBeInTheDocument();
+    expect(within(form).getByTestId('check-accessories')).toHaveTextContent('AccessoriesNot OK');
+    expect(within(form).getByTestId('check-accessories').querySelector('[data-not-ok]')).not.toBeNull();
+    expect(within(form).getByTestId('check-assetCondition').querySelector('[data-not-ok]')).toBeNull();
+    expect(within(form).getByTestId('check-batteryCondition')).toHaveTextContent('Not applicable');
+    expect(within(form).getByTestId('check-clusterMeter')).toHaveTextContent('Not answered');
+    expect(form).toHaveTextContent('Vehicle registration no.KA01AB1234');
+    expect(form).toHaveTextContent('Cluster reading (km)1,23,456 km');
+    expect(form).toHaveTextContent('Device replacementSIM');
+    expect(form).toHaveTextContent('Device idDEV-001');
+    expect(form).toHaveTextContent('Secondary device id—');
+    expect(form).toHaveTextContent('Started (IST)');
+    expect(form).toHaveTextContent('Submitted (IST)');
+    expect(within(form).getByTestId('ot-remarks')).toHaveTextContent('Device behind the dashboard');
+    // Above the OE fields: the form section precedes the verification heading in document order.
+    const verifyHeading = within(sheet).getByRole('heading', { name: 'Verification' });
+    expect(form.compareDocumentPosition(verifyHeading) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+});
