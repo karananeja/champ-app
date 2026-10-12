@@ -6,6 +6,7 @@ import { ActivityIndicator, StyleSheet, View } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { NoConnection } from '../components/state-view';
 import { ToastProvider } from '../components/toast';
+import { NotificationsProvider } from '../lib/notifications';
 import { createQueryClient } from '../lib/query-client';
 import { SelectedDateProvider } from '../lib/selected-date';
 import { SessionProvider, useSession } from '../lib/session';
@@ -20,9 +21,11 @@ export default function RootLayout() {
       <ToastProvider bindShow={(fn) => (showToast = fn)}>
         <QueryClientProvider client={queryClient}>
           <SessionProvider>
-            <SelectedDateProvider>
-              <RootNavigator />
-            </SelectedDateProvider>
+            <NotificationsProvider>
+              <SelectedDateProvider>
+                <RootNavigator />
+              </SelectedDateProvider>
+            </NotificationsProvider>
           </SessionProvider>
         </QueryClientProvider>
       </ToastProvider>
@@ -49,6 +52,7 @@ function RootNavigator() {
           <Stack.Screen name="history/[id]" />
           <Stack.Screen name="approve-visit/index" />
           <Stack.Screen name="approve-visit/[id]" />
+          <Stack.Screen name="notifications" />
         </Stack.Protected>
         <Stack.Protected guard={signedIn}>
           <Stack.Screen name="onboarding/home-location" options={{ gestureEnabled: false }} />

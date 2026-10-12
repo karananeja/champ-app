@@ -289,7 +289,7 @@ are told to use the web console (D-128). It's online only (D-008).
 - **Home location** (D-129): an OT must set one at first sign-in, by GPS (*Use my current location*), address search
   or moving the map under the centre pin; the address is filled from the pin and can be edited before *Save*. An OE
   may *Skip*. It can be changed from Profile. On the web it shows (read-only) on the Technicians page.
-- **Home**: a date chip (today and the 7 days before it, D-029), a notifications bell (live in F13), **Show tasks**
+- **Home**: a date chip (today and the 7 days before it, D-029), a notifications bell (F13), **Show tasks**
   (your fitments that day) and, for an OE, **Approve visit** (submitted fitments that day waiting for you; the screen
   comes in F12). Pull to refresh.
 - **Route** (F10): your fitments for the chosen date in the best visiting order (OSRM trip, D-015), from your current
@@ -364,6 +364,8 @@ are told to use the web console (D-128). It's online only (D-008).
 - **OEs doing fitments** (D-158): on the web an OE can assign a fitment of their own task to themselves, and an SA/OM
   can assign any fitment to an OE ("Name (OE)" in the assign dialog). The OE then works it in the app like a
   technician.
+- **Notifications** (F13): the header bell shows the unread count and opens the Notifications screen; live while the
+  app is open (toast), caught up when it returns to the foreground. See *Notifications* below.
 - **Profile**: your details, your manager (tap the phone to call), home location, app version and *Sign out*.
 - With the API unreachable the app shows **No connection** with *Retry*.
 
@@ -410,6 +412,42 @@ through the existing `POST /api/fitments/:fid/transitions`. F10B: `PUT /api/mobi
 Reopen go through `POST /api/fitments/:fid/transitions` (`{action, payload}`). `OSRM_URL` (default `https://router.project-osrm.org`, the
 public demo server: fine for development only) sets the routing service; tests and E2E point it at an unreachable
 address, so they use the straight-line fallback.
+
+### Notifications (F13)
+
+A **bell** in the web top bar (every role) and in the app header shows the unread count; opening it lists the latest
+notifications (newest first, unread highlighted, "5 min ago" then IST date/time) with *Mark all as read*. Tapping one
+marks it read and opens what it's about: on the web the task, with the fitment's verification sheet when you can
+verify it (`/tasks/:id?fitment=<id>`), or the travel task; in the app the fitment (technician) or the fitment in
+Approve visit (OE). While the page or app is open, new ones arrive live with a small toast (D-230, D-232); otherwise
+they wait for the next open (no phone push yet). Kept for 30 days (D-231).
+
+| Event | Notified (never the person who did it; inactive users skipped) |
+|---|---|
+| Assigned (also a task created with a technician) | The technician |
+| Unassigned / reassigned | The previous technician |
+| Submitted | The task's OE |
+| OE verified | The OE's manager (OM); all active OMs if the OE has none |
+| OM approved | The technician and the task's OE |
+| Reopened | The technician; also the task's OE when an OM/SA reopens (the reason is shown) |
+| Moved to FT | The task's OE, with the replacement TK id |
+| Travel task raised / verified | The technician's OE (else the OMs) / the person who raised it |
+
+A bulk action on one task (CSV bulk fill, *Submit ready*, bulk approve, assigning several) gives **one** notification
+per person, e.g. "5 fitments of OM-00012 submitted by Arjun" (same recipient, type, task and actor within 2 minutes
+while unread, D-229). The dev simulator's steps notify too, so you can try it without the app.
+
+How it works: notifications are written in the same transaction as the action (from the TaskEvents), with
+`pg_notify('champ_notifications')`, which Postgres delivers only on commit. The API process started by `server.ts` runs
+one `LISTEN` client and a Socket.IO server on the API port (path `/socket.io`; clients send the access token as
+`auth.token`; a bad token gets `connect_error` "UNAUTHORIZED" and the client refreshes and reconnects). Events:
+`notification` (`{notification, unreadCount}`) and `notifications:count` (`{unreadCount}`). The web reaches it through
+the Vite proxy (`/socket.io`, WebSocket); a production reverse proxy must forward WebSocket upgrades on `/socket.io` too.
+The app connects to the API origin directly (websocket transport).
+
+API: `GET /api/notifications?cursor=&limit=` (`{items, unreadCount, nextCursor}`), `GET /api/notifications/unread-count`,
+`POST /api/notifications/:id/read` (404 for someone else's) and `POST /api/notifications/read-all`; own notifications
+only, any signed-in user.
 
 ### Look and feel (CR-03, CR-04)
 

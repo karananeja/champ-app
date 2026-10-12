@@ -309,6 +309,30 @@ setup('create the F02 test org', async ({ request }) => {
     f10[project] = { om: fom, oe: foe, task: { id: task.id, omId: task.omId, tkIds: task.fitments.map((f) => f.tkId) } };
   }
 
+  // F13: per viewport an OM, an OE reporting to them, the OE's technician and one Open fitment of that OE.
+  const f13: E2eOrg['f13'] = {};
+  for (const project of ['desktop', 'mobile-360']) {
+    const nom = { email: `f13.om.${project}.${run}@intellicar.in`, name: `Bell OM ${project} ${run}`, password };
+    const nomSession = await accept((await post<CreateInviteResponse>(request, '/api/invites', { email: nom.email, role: 'OM' }, sa.accessToken)).link, nom.name);
+    const noe = { email: `f13.oe.${project}.${run}@intellicar.in`, name: `Bell OE ${project} ${run}`, password };
+    const noeSession = await accept((await post<CreateInviteResponse>(request, '/api/invites', { email: noe.email, role: 'OE' }, nomSession.accessToken)).link, noe.name);
+    const technician = `Nina Notify ${project} ${run}`;
+    const invite = await post<CreateInviteResponse>(
+      request,
+      '/api/technicians',
+      { name: technician, phone: '+91 90000 00013', email: `f13.ot.${project}.${run}@intellicar.in`, technicianType: 'PAYROLL', baseLocationId: location.id },
+      noeSession.accessToken,
+    );
+    await accept(invite.link, technician);
+    const task = await post<TaskDto>(
+      request,
+      '/api/tasks',
+      { ...taskBody, oeId: noeSession.user.id, technicianId: null, vehicles: { entry: 'COUNT', count: 1 }, comments: `F13 ${project}` },
+      nomSession.accessToken,
+    );
+    f13[project] = { om: nom, oe: noe, technician, task: { id: task.id, omId: task.omId, tkIds: task.fitments.map((f) => f.tkId) } };
+  }
+
   const org: E2eOrg = {
     om,
     oeA: oes[0]!,
@@ -330,6 +354,7 @@ setup('create the F02 test org', async ({ request }) => {
     f07: { oms: f07Oms, oe: f07Oe, tasks: f07Tasks },
     f08,
     f10,
+    f13,
   };
   fs.mkdirSync(path.dirname(ORG_FILE), { recursive: true });
   fs.writeFileSync(ORG_FILE, JSON.stringify(org, null, 2));

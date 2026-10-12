@@ -333,3 +333,19 @@ Chronological log of the whole project conversation. Feature-level logs live in 
 **User:** "F12 accepted". UAT sign-off recorded and `feature/F12-mobile-history-approve-visit` merged to `main`.
 
 **Claude:** Wrote the F13 intent (in-app notifications, web and mobile) and sent it for sign-off.
+
+**User:** "ok continue" (F13 intent). Taken as approval with all five open points as proposed (D-228 – D-232).
+
+**Claude:** Created branch `feature/F13-notifications`, wrote the F13 spec, and launched three parallel agents (Backend: shared, API, Socket.IO; Web: bell; Mobile: bell).
+
+**Implementation agents (F13):** Backend ~21 min (3 commits), Web ~18 min (2 commits), Mobile ~5 min (2 commits). Parallel full-suite runs on the shared test databases caused cross-agent noise; clean on rerun.
+
+**Claude verification:**
+- Fixed the app's tap routing for OEs (new `forTechnician` flag, D-241) and a flaky Socket.IO hub test.
+- All unit gates pass: 1,177 tests. E2E: one timing flake on the first full run (the reopen spec on mobile-360 passed 3/3 alone); the full rerun was green (71 passed, 4 skipped).
+- Live delivery is covered by the new E2E spec (real browser, live toast through the Vite proxy) and the hub integration test.
+- Wrote the README, the test report and D-233 – D-241.
+
+**Status:** F13 ready for UAT by the user.
+
+**User:** "F13 accepted". UAT sign-off recorded and `feature/F13-notifications` merged to `main`.

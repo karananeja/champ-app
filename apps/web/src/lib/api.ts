@@ -30,6 +30,9 @@ export function setAccessToken(token: string | null) {
   accessToken = token;
 }
 
+/** The current access token (F13: the notification socket authenticates with it). */
+export const getAccessToken = (): string | null => accessToken;
+
 /** Lets the auth provider learn about refreshes and expiries that happen inside `api()`. */
 export function setSessionListener(listener: typeof onSessionChange) {
   onSessionChange = listener;

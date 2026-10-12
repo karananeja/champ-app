@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| Status | **Awaiting user sign-off** |
+| Status | **Approved** 2026-10-12 ("ok continue"; open points as proposed, D-228 – D-232) |
 | Requirements | SRS §6.8 ("In-app notifications (web and mobile) for assignment, submission, approval, reopen and FT events"), §2 stack (Socket.IO for realtime), §4 Notification (user, type, payload, read flag) · X10, M4, M20 (push is 🔜, out of scope) · Decisions D-011 (lifecycle), D-012 (FT replacement), D-014, D-150 (the app's bell placeholder) |
 | Depends on | F05 (workflow events), F12 (complete) |
 
