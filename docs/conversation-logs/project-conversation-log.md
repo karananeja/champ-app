@@ -223,3 +223,5 @@ Chronological log of the whole project conversation. Feature-level logs live in 
 - Logged CR-06 on `cr/CR-06-faster-agent-runs`: Playwright `actionTimeout` 15 s and `navigationTimeout` 30 s (full E2E still passes: 67 passed, 4 skipped, 4.9 min). Wrote `docs/agent-playbook.md`: parallel backend/frontend agents, tight test loop, 20 min time box (D-127, proposed).
 
 **User:** "CR-06 accepted". CR-06 marked complete and merged to `main`.
+
+**Claude:** Wrote the F09 intent (mobile app foundation) and sent it for sign-off.

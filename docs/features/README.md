@@ -13,7 +13,7 @@ A feature is **Complete** only after it has been implemented, tested and signed 
 | F06 | OE verification screen (web) and image correction | F05 | ✅ Complete (UAT 2026-10-12) |
 | F07 | OM kanban board | F05 | ✅ Complete (UAT 2026-10-12) |
 | F08 | Travel tasks | F05 | ✅ Complete (UAT 2026-10-12) |
-| F09 | Mobile app foundation: login, home, header, profile, home location | F01 | Not started |
+| F09 | Mobile app foundation: login, home, header, profile, home location | F01 | Intent awaiting sign-off |
 | F10 | Mobile route planning and fitment execution (GPS, form, photos, scan, close, FT) | F05, F09 | Not started |
 | F11 | Mobile CSV bulk fill | F10 | Not started |
 | F12 | Mobile history timeline, distance, Approve visit | F10 | Not started |
