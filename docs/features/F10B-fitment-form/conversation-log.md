@@ -11,3 +11,4 @@
   - The end-to-end API flow passed on an isolated API with a throwaway `_e2e` database.
   - Didn't drive the emulator or simulator, because the user's own Metro, API and web were running. Stamping, OCR and scanning are listed for UAT.
   - Wrote the README, test report and decisions. Handed to the user for UAT.
+- 2026-10-12: User replied "F10B accepted". UAT sign-off recorded; merged `feature/F10B-fitment-form` to `main`.

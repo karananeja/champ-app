@@ -293,3 +293,5 @@ Chronological log of the whole project conversation. Feature-level logs live in 
 - Added the README, test report and D-185 – D-200.
 
 **Status:** F10B ready for UAT by the user.
+
+**User:** "F10B accepted". UAT sign-off recorded and `feature/F10B-fitment-form` merged to `main`.
