@@ -20,6 +20,7 @@ import { saveText } from '@/lib/download';
 import { cn } from '@/lib/utils';
 import { describeCellError as describe, errorRowsCsv } from './bulk-csv';
 import { downloadBulkSample, previewBulk, useImportBulk } from './queries';
+import { PageHeader } from '@/components/page-header';
 
 /** The preview columns shown in the table (every column's errors are listed under Problems). */
 const SHOWN: { column: BulkTaskColumn; label: string }[] = [
@@ -100,12 +101,15 @@ export function BulkUploadPage() {
 
   return (
     <div className="grid grid-cols-1 gap-6">
-      <div>
-        <h1 className="text-2xl font-semibold tracking-tight">Bulk upload</h1>
-        <p className="text-sm text-muted-foreground">
-          Create many tasks from one CSV: one row per task, with the number of vehicles in <code>vehicle_count</code>.
-        </p>
-      </div>
+      <PageHeader
+        icon={Upload}
+        title="Bulk upload"
+        description={
+          <>
+            Create many tasks from one CSV: one row per task, with the number of vehicles in <code>vehicle_count</code>.
+          </>
+        }
+      />
 
       <Card>
         <CardHeader>

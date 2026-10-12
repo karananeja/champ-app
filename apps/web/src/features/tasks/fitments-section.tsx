@@ -42,6 +42,8 @@ import { ApiError } from '@/lib/api';
 import { useCurrentUser } from '@/lib/auth';
 import { FitmentActionDialog, type ReviewAction } from './fitment-action-dialog';
 import { useApproveFitments, useAssignFitments, useTaskOptions, useUpdateFitment } from './queries';
+import { TONES } from '@/lib/tones';
+import { cn } from '@/lib/utils';
 
 const vehicleText = (f: FitmentDto) =>
   [f.vehicleRegNo, f.chassisNo && `Chassis ${f.chassisNo}`, f.assetNumber && `Asset ${f.assetNumber}`, f.oldDeviceId && `Old device ${f.oldDeviceId}`]
@@ -82,7 +84,7 @@ function WorkflowInfo({ f }: { f: FitmentDto }) {
       )}
       {f.reopenCount > 0 && (
         <div className="flex flex-wrap items-center gap-1">
-          <Badge variant="outline" className="gap-1 border-orange-200 bg-orange-50 text-orange-800" data-testid="reopen-chip">
+          <Badge variant="outline" className={cn('gap-1', TONES.orange)} data-testid="reopen-chip">
             <RotateCcw className="size-3" /> Reopened ×{f.reopenCount}
           </Badge>
           {f.lastReopenReason && <span className="break-words">{f.lastReopenReason}</span>}

@@ -546,3 +546,24 @@ export interface ApiErrorBody {
     details?: unknown;
   };
 }
+
+/**
+ * `GET /tasks/summary` (CR-03 dashboard): role-aware counts, each equal to the total of the list its card links
+ * to. Only the counts for the caller's role are present.
+ */
+export interface DashboardSummaryDto {
+  /** Open tasks (not completed): every task viewer. */
+  openTasks: number;
+  /** Completed tasks: every task viewer. */
+  completedTasks: number;
+  /** SA/OM: fitments awaiting final approval. */
+  awaitingApproval?: number;
+  /** SA/OM/OE (OE: own tasks): fitments reopened at least once (the Re-opened list). */
+  reopened?: number;
+  /** SA/OM/OE (OE: own tasks): fitments moved to FT (the Faulty list). */
+  faulty?: number;
+  /** OE: tasks where the caller is the OE (the Assigned list). */
+  assignedToMe?: number;
+  /** OE: fitments of the caller's tasks that are submitted and wait for the OE's verification. */
+  awaitingMyVerification?: number;
+}

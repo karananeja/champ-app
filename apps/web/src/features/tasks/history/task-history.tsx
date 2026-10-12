@@ -21,6 +21,8 @@ import { formatIst } from '@/lib/format';
 import { cn } from '@/lib/utils';
 import { downloadTaskEvents, useTaskEvents, useTaskHistory } from '../queries';
 import { eventDetails } from './event-details';
+import { EmptyState, ErrorState } from '@/components/empty-state';
+import { ListSkeleton } from '@/components/list-states';
 
 const STAGES: { key: keyof StageTimeline; title: string; hint: string }[] = [
   { key: 'first', title: 'First stage', hint: 'Open / Assigned' },
@@ -154,7 +156,7 @@ const ALL = 'ALL';
 const TASK_ONLY = 'TASK';
 
 function RawData({ taskId, omId }: { taskId: string; omId: string }) {
-  const { data, isPending, isError } = useTaskEvents(taskId);
+  const { data, isPending, isError, error, refetch } = useTaskEvents(taskId);
   const [filter, setFilter] = useState(ALL);
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
   const [downloading, setDownloading] = useState(false);
@@ -214,9 +216,11 @@ function RawData({ taskId, omId }: { taskId: string; omId: string }) {
           </Button>
         </div>
         {isPending ? (
-          <Skeleton className="h-24 w-full" />
+          <ListSkeleton rows={4} columns={6} />
         ) : isError ? (
-          <p className="text-sm text-destructive">Could not load the events.</p>
+          <ErrorState error={error} size="sm" title="Could not load the events" onRetry={() => void refetch()} />
+        ) : shown.length === 0 ? (
+          <EmptyState size="sm" illustration="no-results" title="No events" description="No event matches this filter." />
         ) : (
           <>
             <div className="hidden rounded-md border md:block">
@@ -273,7 +277,7 @@ function RawData({ taskId, omId }: { taskId: string; omId: string }) {
 
 /** The History tab (SA/OM, D-033): the task and per-fitment stage timelines, then the raw event log. */
 export function TaskHistory({ taskId, omId }: { taskId: string; omId: string }) {
-  const { data, isPending, isError } = useTaskHistory(taskId);
+  const { data, isPending, isError, error, refetch } = useTaskHistory(taskId);
   return (
     <div className="grid grid-cols-1 gap-4">
       <Card className="gap-4">
@@ -285,7 +289,7 @@ export function TaskHistory({ taskId, omId }: { taskId: string; omId: string }) 
           {isPending ? (
             <Skeleton className="h-24 w-full" />
           ) : isError ? (
-            <p className="text-sm text-destructive">Could not load the history.</p>
+            <ErrorState error={error} size="sm" title="Could not load the history" onRetry={() => void refetch()} />
           ) : (
             <>
               <StageStepper stages={data.task} label="Task stages" />

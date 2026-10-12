@@ -18,6 +18,10 @@ export class ApiError extends Error {
   }
 }
 
+/** Whether an error is a network failure (no response), or the browser is offline (CR-03 offline state). */
+export const isNetworkError = (error: unknown): boolean =>
+  (error instanceof ApiError && error.code === 'NETWORK_ERROR') || (typeof navigator !== 'undefined' && navigator.onLine === false);
+
 // The access token lives in memory only; the refresh token is an httpOnly cookie.
 let accessToken: string | null = null;
 let onSessionChange: ((session: AuthResponse | null) => void) | null = null;

@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { UserPlus } from 'lucide-react';
+import { UserPlus, Users } from 'lucide-react';
+import { PageHeader } from '@/components/page-header';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useCurrentUser } from '@/lib/auth';
@@ -15,19 +16,18 @@ export function UsersPage() {
 
   return (
     <div className="grid grid-cols-1 gap-6">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <h1 className="text-2xl font-semibold tracking-tight">Users</h1>
-          <p className="text-sm text-muted-foreground">
-            {actor.role === 'OE' ? 'You and your team.' : 'Everyone with access to Champ.'}
-          </p>
-        </div>
-        {inviter && (
-          <Button onClick={() => setInviteOpen(true)}>
-            <UserPlus /> Invite user
-          </Button>
-        )}
-      </div>
+      <PageHeader
+        icon={Users}
+        title="Users"
+        description={actor.role === 'OE' ? 'You and your team.' : 'Everyone with access to Champ.'}
+        actions={
+          inviter && (
+            <Button onClick={() => setInviteOpen(true)}>
+              <UserPlus /> Invite user
+            </Button>
+          )
+        }
+      />
 
       {inviter ? (
         <Tabs defaultValue="users">

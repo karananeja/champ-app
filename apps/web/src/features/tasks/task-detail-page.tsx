@@ -16,7 +16,6 @@ import {
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Skeleton } from '@/components/ui/skeleton';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ApiError } from '@/lib/api';
 import { useCurrentUser } from '@/lib/auth';
@@ -27,6 +26,8 @@ import { FitmentsSection } from './fitments-section';
 import { TaskHistory } from './history/task-history';
 import { useDeleteTask, useTask } from './queries';
 import { TaskStatusBadge } from '@/components/fitment-status-badge';
+import { ErrorState } from '@/components/empty-state';
+import { DetailSkeleton } from '@/components/list-states';
 
 /**
  * The dev-only technician simulator (D-073). `import.meta.env.DEV` is false in production builds, so the
@@ -52,26 +53,22 @@ function DevSimulator({ task }: { task: TaskDto }) {
  */
 export function TaskDetailPage() {
   const { id = '' } = useParams();
-  const { data: task, isPending, isError, error } = useTask(id);
-  if (isPending) {
-    return (
-      <div className="grid grid-cols-1 gap-3">
-        <Skeleton className="h-8 w-48" />
-        <Skeleton className="h-72 w-full" />
-      </div>
-    );
-  }
+  const { data: task, isPending, isError, error, refetch } = useTask(id);
+  if (isPending) return <DetailSkeleton />;
   if (isError) {
     const gone = error instanceof ApiError && error.status === 404;
     return (
-      <div className="grid grid-cols-1 gap-3 py-8 text-center text-sm">
-        <p className={gone ? 'text-muted-foreground' : 'text-destructive'}>
-          {gone ? 'This task does not exist or was deleted.' : 'Could not load the task.'}
-        </p>
-        <Link to="/tasks" className="underline">
-          Back to open tasks
-        </Link>
-      </div>
+      <ErrorState
+        error={error}
+        title={gone ? 'Task not found' : undefined}
+        description={gone ? 'This task does not exist or was deleted.' : undefined}
+        onRetry={gone ? undefined : () => void refetch()}
+        action={
+          <Button asChild variant="outline">
+            <Link to="/tasks">Back to open tasks</Link>
+          </Button>
+        }
+      />
     );
   }
   return <TaskDetail task={task} />;

@@ -60,3 +60,38 @@ describe('AcceptInvitePage password fields', () => {
     expect(toggleConfirm).toHaveAccessibleName('Hide password');
   });
 });
+
+describe('AcceptInvitePage — invite errors (CR-03)', () => {
+  afterEach(() => vi.unstubAllGlobals());
+
+  it.each([
+    ['INVITE_EXPIRED', 'This invite has expired'],
+    ['INVITE_USED', 'This invite has already been used'],
+    ['INVITE_INVALID', 'This invite link is not valid'],
+  ])('%s shows the invite-error illustration, the reason and a way to sign in', async (code, title) => {
+    mockApi({
+      'GET /api/invites/lookup': () =>
+        new Response(JSON.stringify({ error: { code, message: 'x' } }), { status: 410, headers: { 'Content-Type': 'application/json' } }),
+      'GET /api/config': { googleClientId: null },
+    });
+    const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    const { container } = render(
+      <QueryClientProvider client={client}>
+        <AuthContext.Provider value={auth}>
+          <MemoryRouter initialEntries={['/accept-invite?token=abc']}>
+            <AcceptInvitePage />
+          </MemoryRouter>
+        </AuthContext.Provider>
+      </QueryClientProvider>,
+    );
+    expect(await screen.findByRole('alert')).toHaveTextContent(title);
+    expect(container.querySelectorAll('[data-illustration="invite-error"]').length).toBeGreaterThan(0);
+    expect(screen.getByRole('link', { name: 'Go to sign in' })).toHaveAttribute('href', '/login');
+  });
+
+  it('the set-up form uses the welcome illustration', async () => {
+    renderPage();
+    expect(await screen.findByLabelText('Full name')).toBeInTheDocument();
+    expect(document.querySelectorAll('[data-illustration="welcome-aboard"]').length).toBe(2);
+  });
+});

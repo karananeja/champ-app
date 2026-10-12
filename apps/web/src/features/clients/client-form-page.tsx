@@ -23,12 +23,11 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Skeleton } from '@/components/ui/skeleton';
 import { Textarea } from '@/components/ui/textarea';
 import { ApiError } from '@/lib/api';
 import { cn } from '@/lib/utils';
 import { useLookups } from '../masters/queries';
-import { ActiveBadge } from './active-badge';
+import { ActiveBadge } from '@/components/active-badge';
 import {
   useAddSite,
   useClient as useClientQuery,
@@ -38,6 +37,8 @@ import {
   type ClientFieldsBody,
   type SiteBody,
 } from './queries';
+import { ErrorState } from '@/components/empty-state';
+import { DetailSkeleton } from '@/components/list-states';
 
 export interface SiteValues {
   /** Saved site id; undefined for a site added in this form. */
@@ -143,15 +144,8 @@ export function ClientFormPage() {
 
 function EditClientLoader({ id }: { id: string }) {
   const client = useClientQuery(id);
-  if (client.isPending) {
-    return (
-      <div className="grid grid-cols-1 gap-3">
-        <Skeleton className="h-8 w-48" />
-        <Skeleton className="h-64 w-full" />
-      </div>
-    );
-  }
-  if (client.isError) return <p className="py-8 text-center text-sm text-destructive">Could not load the client.</p>;
+  if (client.isPending) return <DetailSkeleton />;
+  if (client.isError) return <ErrorState error={client.error} onRetry={() => void client.refetch()} />;
   return <ClientForm key={client.data.id} client={client.data} />;
 }
 

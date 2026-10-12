@@ -5,6 +5,8 @@ import { StatusBadge } from '@/components/status-badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useCurrentUser } from '@/lib/auth';
 import { formatDateTime } from '@/lib/format';
+import { UserRound } from 'lucide-react';
+import { PageHeader } from '@/components/page-header';
 
 export function ProfilePage() {
   const user = useCurrentUser();
@@ -28,7 +30,7 @@ export function ProfilePage() {
 
   return (
     <div className="grid max-w-2xl grid-cols-1 gap-6">
-      <h1 className="text-2xl font-semibold tracking-tight">Profile</h1>
+      <PageHeader icon={UserRound} title="Profile" description="Your account details." />
       <Card>
         <CardHeader>
           <CardTitle>{user.name}</CardTitle>

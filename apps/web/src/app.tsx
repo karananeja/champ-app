@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import { Navigate, Route, Routes } from 'react-router-dom';
+import { Route, Routes } from 'react-router-dom';
 import { AppShell } from '@/components/layout/app-shell';
 import { NoAccessRedirect } from '@/components/no-access-redirect';
 import { ProtectedRoute } from '@/components/protected-route';
@@ -8,6 +8,7 @@ import { ClientDetailPage } from '@/features/clients/client-detail-page';
 import { ClientFormPage } from '@/features/clients/client-form-page';
 import { ClientsPage } from '@/features/clients/clients-page';
 import { DashboardPage } from '@/features/dashboard/dashboard-page';
+import { ForbiddenPage, NotFoundPage } from '@/features/errors/error-pages';
 import { AcceptInvitePage } from '@/features/invites/accept-invite-page';
 import { MasterPage } from '@/features/masters/master-page';
 import { MastersPage } from '@/features/masters/masters-page';
@@ -35,19 +36,19 @@ import {
 
 function UsersRoute() {
   const { user } = useAuth();
-  return user && canViewUsers(user) ? <UsersPage /> : <Navigate to="/" replace />;
+  return user && canViewUsers(user) ? <UsersPage /> : <ForbiddenPage />;
 }
 
 function TechniciansRoute() {
   const { user } = useAuth();
-  return user && canViewTechnicians(user) ? <TechniciansPage /> : <Navigate to="/" replace />;
+  return user && canViewTechnicians(user) ? <TechniciansPage /> : <ForbiddenPage />;
 }
 
-/** Clients pages: SA, OM, OE and RO can view; `edit` pages need SA or OM. OT is sent home. */
+/** Clients pages: SA, OM, OE and RO can view; `edit` pages need SA or OM. Others get the 403 page (CR-03). */
 function ClientsRoute({ edit = false, children }: { edit?: boolean; children: ReactNode }) {
   const { user } = useAuth();
   const allowed = user && (edit ? canEditClients(user) : canViewClients(user));
-  return allowed ? children : <Navigate to="/" replace />;
+  return allowed ? children : <ForbiddenPage />;
 }
 
 /** Masters pages: SA and OM only (D-059). Others go to the dashboard with a "no access" toast. */
@@ -118,9 +119,9 @@ export function App() {
           <Route path="/tasks/:id" element={<TasksRoute><TaskDetailPage /></TasksRoute>} />
           <Route path="/tasks/:id/edit" element={<TasksRoute create><TaskFormPage /></TasksRoute>} />
           <Route path="/profile" element={<ProfilePage />} />
+          <Route path="*" element={<NotFoundPage />} />
         </Route>
       </Route>
-      <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   );
 }

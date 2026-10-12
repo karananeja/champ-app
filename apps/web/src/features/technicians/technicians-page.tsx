@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { ChevronLeft, ChevronRight, Pencil, Search, UserPlus } from 'lucide-react';
+import { ChevronLeft, ChevronRight, HardHat, Pencil, Search, UserPlus } from 'lucide-react';
 import {
   TECHNICIAN_TYPES,
   TECHNICIAN_TYPE_LABELS,
@@ -14,7 +14,8 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Skeleton } from '@/components/ui/skeleton';
+import { ListStates } from '@/components/list-states';
+import { PageHeader } from '@/components/page-header';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { useDebounced } from '@/hooks/use-debounced';
 import { useCurrentUser } from '@/lib/auth';
@@ -45,7 +46,7 @@ export function TechniciansPage() {
   const lookups = useLookups();
   // Reporting OE filter options (an OE only sees their own technicians, so they don't get this filter).
   const oes = useUsers({ role: 'OE', status: 'ACTIVE', pageSize: 100 }, !isOe);
-  const { data, isPending, isError } = useTechnicians({
+  const { data, isPending, isError, error, refetch } = useTechnicians({
     q: q || undefined,
     type: type === ALL ? undefined : type,
     baseLocationId: baseLocationId ?? undefined,
@@ -70,19 +71,18 @@ export function TechniciansPage() {
 
   return (
     <div className="grid grid-cols-1 gap-6">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <h1 className="text-2xl font-semibold tracking-tight">Technicians</h1>
-          <p className="text-sm text-muted-foreground">
-            {isOe ? 'Technicians who report to you.' : 'Every Operations Technician, with type and base location.'}
-          </p>
-        </div>
-        {canAddTechnician(actor) && (
-          <Button onClick={() => setDialogTarget('new')}>
-            <UserPlus /> Add technician
-          </Button>
-        )}
-      </div>
+      <PageHeader
+        icon={HardHat}
+        title="Technicians"
+        description={isOe ? 'Technicians who report to you.' : 'Every Operations Technician, with type and base location.'}
+        actions={
+          canAddTechnician(actor) && (
+            <Button onClick={() => setDialogTarget('new')}>
+              <UserPlus /> Add technician
+            </Button>
+          )
+        }
+      />
 
       <div className="grid grid-cols-1 gap-2 lg:flex lg:flex-wrap">
         <div className="relative lg:min-w-56 lg:flex-1">
@@ -149,17 +149,31 @@ export function TechniciansPage() {
         </div>
       </div>
 
-      {isPending ? (
-        <div className="grid grid-cols-1 gap-2">
-          {[0, 1, 2].map((i) => (
-            <Skeleton key={i} className="h-12 w-full" />
-          ))}
-        </div>
-      ) : isError ? (
-        <p className="py-8 text-center text-sm text-destructive">Could not load technicians.</p>
-      ) : technicians.length === 0 ? (
-        <p className="py-8 text-center text-sm text-muted-foreground">No technicians found.</p>
-      ) : (
+      <ListStates
+        isPending={isPending}
+        isError={isError}
+        error={error}
+        onRetry={() => void refetch()}
+        isEmpty={technicians.length === 0}
+        filtered={!!q || type !== ALL || status !== ALL || !!baseLocationId || managerId !== ALL}
+        onClearFilters={() => {
+          setSearch('');
+          setType(ALL);
+          setStatus(ALL);
+          setBaseLocationId(null);
+          setManagerId(ALL);
+          setPage(1);
+        }}
+        empty={{
+          title: isOe ? 'No technicians report to you yet' : 'No technicians yet',
+          description: 'Technicians appear here once they accept their invite.',
+          action: canAddTechnician(actor) && (
+            <Button onClick={() => setDialogTarget('new')}>
+              <UserPlus /> Add technician
+            </Button>
+          ),
+        }}
+      >
         <>
           {/* Table on md+ */}
           <div className="hidden rounded-md border md:block">
@@ -221,7 +235,7 @@ export function TechniciansPage() {
             ))}
           </ul>
         </>
-      )}
+      </ListStates>
 
       {data && data.total > data.pageSize && (
         <div className="flex items-center justify-between text-sm text-muted-foreground">

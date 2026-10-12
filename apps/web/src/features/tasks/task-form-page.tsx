@@ -25,7 +25,6 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
-import { Skeleton } from '@/components/ui/skeleton';
 import { Textarea } from '@/components/ui/textarea';
 import { ApiError } from '@/lib/api';
 import { useCurrentUser } from '@/lib/auth';
@@ -33,6 +32,8 @@ import { useLookups } from '../masters/queries';
 import { TechnicianTypeField } from '../technicians/technician-fields';
 import { useCreateTask, useTask, useTaskOptions, useUpdateTask, type TaskBody } from './queries';
 import { VehicleEntryField } from './vehicle-entry-field';
+import { ErrorState } from '@/components/empty-state';
+import { DetailSkeleton } from '@/components/list-states';
 
 export type VehicleEntry = 'COUNT' | 'CSV';
 
@@ -213,16 +214,19 @@ export function TaskFormPage() {
   const task = useTask(id);
 
   if (lookups.isError || options.isError || task.isError) {
-    return <p className="py-8 text-center text-sm text-destructive">Could not load the task form.</p>;
-  }
-  if (!lookups.data || !options.data || (id && !task.data)) {
+    const error = task.error ?? lookups.error ?? options.error;
     return (
-      <div className="grid grid-cols-1 gap-3">
-        <Skeleton className="h-8 w-48" />
-        <Skeleton className="h-96 w-full" />
-      </div>
+      <ErrorState
+        error={error}
+        onRetry={() => {
+          void lookups.refetch();
+          void options.refetch();
+          if (id) void task.refetch();
+        }}
+      />
     );
   }
+  if (!lookups.data || !options.data || (id && !task.data)) return <DetailSkeleton />;
   if (task.data && !task.data.permissions.canEdit) {
     return (
       <div className="grid grid-cols-1 gap-3 py-8 text-center">

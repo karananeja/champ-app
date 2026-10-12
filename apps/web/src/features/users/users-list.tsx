@@ -1,12 +1,12 @@
 import { useState } from 'react';
 import { ChevronLeft, ChevronRight, Search } from 'lucide-react';
 import { ROLES, ROLE_LABELS, type Role, type UserDto, type UserStatus } from '@champ/shared';
+import { ListStates } from '@/components/list-states';
 import { RoleBadge } from '@/components/role-badge';
 import { StatusBadge } from '@/components/status-badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Skeleton } from '@/components/ui/skeleton';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { useDebounced } from '@/hooks/use-debounced';
 import { DelegationDialog } from './delegation-dialog';
@@ -25,7 +25,7 @@ export function UsersList({ actor }: { actor: UserDto }) {
   const [editId, setEditId] = useState<string | null>(null);
   const [delegationId, setDelegationId] = useState<string | null>(null);
 
-  const { data, isPending, isError } = useUsers({
+  const { data, isPending, isError, error, refetch } = useUsers({
     q: q || undefined,
     role: role === 'ALL' ? undefined : role,
     status: status === 'ALL' ? undefined : status,
@@ -102,17 +102,21 @@ export function UsersList({ actor }: { actor: UserDto }) {
         </div>
       </div>
 
-      {isPending ? (
-        <div className="grid grid-cols-1 gap-2">
-          {[0, 1, 2].map((i) => (
-            <Skeleton key={i} className="h-12 w-full" />
-          ))}
-        </div>
-      ) : isError ? (
-        <p className="py-8 text-center text-sm text-destructive">Could not load users.</p>
-      ) : users.length === 0 ? (
-        <p className="py-8 text-center text-sm text-muted-foreground">No users found.</p>
-      ) : (
+      <ListStates
+        isPending={isPending}
+        isError={isError}
+        error={error}
+        onRetry={() => void refetch()}
+        isEmpty={users.length === 0}
+        filtered={!!q || role !== 'ALL' || status !== 'ALL'}
+        onClearFilters={() => {
+          setSearch('');
+          setRole('ALL');
+          setStatus('ALL');
+          setPage(1);
+        }}
+        empty={{ title: 'No users yet', description: 'Invite your team to get started.' }}
+      >
         <>
           {/* Table on md+ */}
           <div className="hidden rounded-md border md:block">
@@ -170,7 +174,7 @@ export function UsersList({ actor }: { actor: UserDto }) {
             ))}
           </ul>
         </>
-      )}
+      </ListStates>
 
       {data && data.total > data.pageSize && (
         <div className="flex items-center justify-between text-sm text-muted-foreground">

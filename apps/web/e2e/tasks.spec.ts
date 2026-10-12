@@ -214,7 +214,8 @@ test('an RO sees tasks with no actions; the OM deletes an untouched task', async
   await omPage.getByRole('alertdialog').getByRole('button', { name: 'Delete task' }).click();
   await expect(omPage.getByRole('heading', { name: 'Open tasks' })).toBeVisible();
   await omPage.getByLabel('Search tasks').fill(task.omId);
-  await expect(omPage.getByText('No tasks found.')).toBeVisible();
+  // CR-03: an illustrated "no matches" state.
+  await expect(omPage.getByRole('heading', { name: 'No tasks match' })).toBeVisible();
   await omContext.close();
 
   // The RO's view of the deleted task is gone too.

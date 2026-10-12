@@ -78,8 +78,9 @@ function InviteError({ code }: { code: string }) {
     title: 'Could not open this invite',
     message: 'Please try again in a moment.',
   };
+  // CR-03: the invite-error illustration with the reason and a way on.
   return (
-    <AuthLayout title="Accept invite">
+    <AuthLayout title="Accept invite" illustration="invite-error" tagline="Invites work once and expire after 72 hours.">
       <div className="grid grid-cols-1 gap-4">
         <Alert variant="destructive" role="alert">
           <AlertCircle />
@@ -153,6 +154,8 @@ function AcceptInviteForm({ token, invite }: { token: string; invite: InviteLook
 
   return (
     <AuthLayout
+      illustration="welcome-aboard"
+      tagline="Welcome aboard. Set a password and you're in."
       title="Set up your account"
       description={
         <>

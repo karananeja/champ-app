@@ -1,10 +1,10 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import type { InviteDto, UserDto } from '@champ/shared';
+import { ListSkeleton, ListStates } from '@/components/list-states';
 import { RoleBadge } from '@/components/role-badge';
 import { StatusBadge } from '@/components/status-badge';
 import { Button } from '@/components/ui/button';
-import { Skeleton } from '@/components/ui/skeleton';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { ApiError, api } from '@/lib/api';
 import { formatDateTime } from '@/lib/format';
@@ -12,7 +12,7 @@ import { useInvites, usersKeys } from '../users/queries';
 
 export function InvitesList({ actor }: { actor: UserDto }) {
   const queryClient = useQueryClient();
-  const { data: invites, isPending, isError } = useInvites();
+  const { data: invites, isPending, isError, error, refetch } = useInvites();
   const revoke = useMutation({
     mutationFn: (id: string) => api<InviteDto>(`/invites/${id}/revoke`, { method: 'POST' }),
     onSuccess: (invite) => {
@@ -22,9 +22,25 @@ export function InvitesList({ actor }: { actor: UserDto }) {
     onError: (err) => toast.error(err instanceof ApiError ? err.message : 'Could not revoke the invite'),
   });
 
-  if (isPending) return <Skeleton className="h-24 w-full" />;
-  if (isError) return <p className="py-8 text-center text-sm text-destructive">Could not load invites.</p>;
-  if (invites.length === 0) return <p className="py-8 text-center text-sm text-muted-foreground">No invites yet.</p>;
+  if (isPending || isError || invites.length === 0) {
+    return (
+      <ListStates
+        isPending={isPending}
+        isError={isError}
+        error={error}
+        onRetry={() => void refetch()}
+        isEmpty
+        skeleton={<ListSkeleton rows={3} />}
+        empty={{
+          illustration: 'invite-error',
+          title: 'No invites yet',
+          description: 'Invite links you create show here until they are used, revoked or expire.',
+        }}
+      >
+        {null}
+      </ListStates>
+    );
+  }
 
   const revokeButton = (invite: InviteDto) =>
     invite.status === 'PENDING' && (actor.role === 'SUPER_ADMIN' || invite.invitedBy.id === actor.id) ? (

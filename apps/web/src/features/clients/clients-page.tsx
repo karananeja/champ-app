@@ -1,17 +1,18 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { ChevronLeft, ChevronRight, Plus, Search } from 'lucide-react';
+import { Building2, ChevronLeft, ChevronRight, Plus, Search } from 'lucide-react';
 import type { ClientListItemDto } from '@champ/shared';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Skeleton } from '@/components/ui/skeleton';
+import { ListStates } from '@/components/list-states';
+import { PageHeader } from '@/components/page-header';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { useDebounced } from '@/hooks/use-debounced';
 import { useCurrentUser } from '@/lib/auth';
 import { canEditClients } from '@/lib/permissions';
 import { cn } from '@/lib/utils';
-import { ActiveBadge } from './active-badge';
+import { ActiveBadge } from '@/components/active-badge';
 import { useClients } from './queries';
 
 const PAGE_SIZE = 20;
@@ -32,25 +33,26 @@ export function ClientsPage() {
   const [status, setStatus] = useState<StatusFilter>('all');
   const [page, setPage] = useState(1);
   const q = useDebounced(search.trim());
-  const { data, isPending, isError } = useClients({ q: q || undefined, active: ACTIVE_PARAM[status], page, pageSize: PAGE_SIZE });
+  const { data, isPending, isError, error, refetch } = useClients({ q: q || undefined, active: ACTIVE_PARAM[status], page, pageSize: PAGE_SIZE });
   const clients = data?.items ?? [];
   const totalPages = data ? Math.max(1, Math.ceil(data.total / data.pageSize)) : 1;
 
   return (
     <div className="grid grid-cols-1 gap-6">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <h1 className="text-2xl font-semibold tracking-tight">Clients</h1>
-          <p className="text-sm text-muted-foreground">Customers and the sites where fitments happen.</p>
-        </div>
-        {canEditClients(actor) && (
-          <Button asChild>
-            <Link to="/clients/new">
-              <Plus /> Add client
-            </Link>
-          </Button>
-        )}
-      </div>
+      <PageHeader
+        icon={Building2}
+        title="Clients"
+        description="Customers and the sites where fitments happen."
+        actions={
+          canEditClients(actor) && (
+            <Button asChild>
+              <Link to="/clients/new">
+                <Plus /> Add client
+              </Link>
+            </Button>
+          )
+        }
+      />
 
       <div className="grid grid-cols-1 gap-2 sm:flex">
         <div className="relative sm:flex-1">
@@ -84,17 +86,30 @@ export function ClientsPage() {
         </Select>
       </div>
 
-      {isPending ? (
-        <div className="grid grid-cols-1 gap-2">
-          {[0, 1, 2].map((i) => (
-            <Skeleton key={i} className="h-12 w-full" />
-          ))}
-        </div>
-      ) : isError ? (
-        <p className="py-8 text-center text-sm text-destructive">Could not load clients.</p>
-      ) : clients.length === 0 ? (
-        <p className="py-8 text-center text-sm text-muted-foreground">No clients found.</p>
-      ) : (
+      <ListStates
+        isPending={isPending}
+        isError={isError}
+        error={error}
+        onRetry={() => void refetch()}
+        isEmpty={clients.length === 0}
+        filtered={!!q || status !== 'all'}
+        onClearFilters={() => {
+          setSearch('');
+          setStatus('all');
+          setPage(1);
+        }}
+        empty={{
+          title: 'No clients yet',
+          description: 'Add a customer and its sites to start creating tasks.',
+          action: canEditClients(actor) && (
+            <Button asChild>
+              <Link to="/clients/new">
+                <Plus /> Add client
+              </Link>
+            </Button>
+          ),
+        }}
+      >
         <>
           {/* Table on md+ */}
           <div className="hidden rounded-md border md:block">
@@ -166,7 +181,7 @@ export function ClientsPage() {
             ))}
           </ul>
         </>
-      )}
+      </ListStates>
 
       {data && data.total > data.pageSize && (
         <div className="flex items-center justify-between text-sm text-muted-foreground">

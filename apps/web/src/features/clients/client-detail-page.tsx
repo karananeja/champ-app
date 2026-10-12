@@ -16,31 +16,37 @@ import {
 } from '@/components/ui/alert-dialog';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Skeleton } from '@/components/ui/skeleton';
 import { Switch } from '@/components/ui/switch';
 import { ApiError } from '@/lib/api';
 import { useCurrentUser } from '@/lib/auth';
 import { canEditClients } from '@/lib/permissions';
 import { cn } from '@/lib/utils';
-import { ActiveBadge } from './active-badge';
+import { ActiveBadge } from '@/components/active-badge';
 import { useClient, useUpdateClient, useUpdateSite } from './queries';
+import { ErrorState } from '@/components/empty-state';
+import { DetailSkeleton } from '@/components/list-states';
 
 type ToggleTarget = { kind: 'client'; client: ClientDto } | { kind: 'site'; site: ClientSiteDto };
 
 /** `/clients/:id`: client info, a map of all its sites and the site list. */
 export function ClientDetailPage() {
   const { id = '' } = useParams();
-  const { data: client, isPending, isError } = useClient(id);
+  const { data: client, isPending, isError, error, refetch } = useClient(id);
 
-  if (isPending) {
+  if (isPending) return <DetailSkeleton />;
+  if (isError) {
     return (
-      <div className="grid grid-cols-1 gap-3">
-        <Skeleton className="h-8 w-48" />
-        <Skeleton className="h-72 w-full" />
-      </div>
+      <ErrorState
+        error={error}
+        onRetry={() => void refetch()}
+        action={
+          <Button asChild variant="outline">
+            <Link to="/clients">Back to clients</Link>
+          </Button>
+        }
+      />
     );
   }
-  if (isError) return <p className="py-8 text-center text-sm text-destructive">Could not load the client.</p>;
   return <ClientDetail client={client} />;
 }
 

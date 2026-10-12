@@ -13,11 +13,11 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Skeleton } from '@/components/ui/skeleton';
+import { ActiveBadge } from '@/components/active-badge';
+import { ListStates } from '@/components/list-states';
 import { Switch } from '@/components/ui/switch';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { useDebounced } from '@/hooks/use-debounced';
@@ -47,11 +47,12 @@ export function MasterTable({ config, actor }: Props) {
   const [toggleTarget, setToggleTarget] = useState<MasterRow | null>(null);
   const q = useDebounced(search.trim());
 
-  const { data: rows, isPending, isError } = useMasterList(config, {
+  const { data, isPending, isError, error, refetch } = useMasterList(config, {
     q: q || undefined,
     active: ACTIVE_PARAM[status],
     ...filters,
   });
+  const rows = data ?? [];
 
   const save = useSaveMaster(config);
   const toggle = (row: MasterRow) =>
@@ -93,16 +94,7 @@ export function MasterTable({ config, actor }: Props) {
     );
   };
 
-  const statusBadge = (row: MasterRow) =>
-    row.active ? (
-      <Badge variant="outline" className="border-emerald-200 bg-emerald-50 text-emerald-700">
-        Active
-      </Badge>
-    ) : (
-      <Badge variant="outline" className="border-neutral-200 bg-neutral-100 text-neutral-600">
-        Inactive
-      </Badge>
-    );
+  const statusBadge = (row: MasterRow) => <ActiveBadge active={row.active} />;
 
   return (
     <div className="grid grid-cols-1 gap-4">
@@ -148,17 +140,28 @@ export function MasterTable({ config, actor }: Props) {
         </div>
       </div>
 
-      {isPending ? (
-        <div className="grid grid-cols-1 gap-2">
-          {[0, 1, 2].map((i) => (
-            <Skeleton key={i} className="h-12 w-full" />
-          ))}
-        </div>
-      ) : isError ? (
-        <p className="py-8 text-center text-sm text-destructive">Could not load {config.title.toLowerCase()}.</p>
-      ) : rows.length === 0 ? (
-        <p className="py-8 text-center text-sm text-muted-foreground">No {config.title.toLowerCase()} found.</p>
-      ) : (
+      <ListStates
+        isPending={isPending}
+        isError={isError}
+        error={error}
+        onRetry={() => void refetch()}
+        isEmpty={rows.length === 0}
+        filtered={!!q || status !== 'all' || Object.values(filters).some(Boolean)}
+        onClearFilters={() => {
+          setSearch('');
+          setStatus('all');
+          setFilters({});
+        }}
+        empty={{
+          title: `No ${config.title.toLowerCase()} yet`,
+          description: editable ? 'Add the first one to use it in dropdowns.' : 'Values added by an admin show here.',
+          action: editable && (
+            <Button onClick={() => setFormTarget('new')}>
+              <Plus /> Add {config.singular.toLowerCase()}
+            </Button>
+          ),
+        }}
+      >
         <>
           {/* Table on md+ */}
           <div className="hidden rounded-md border md:block">
@@ -221,7 +224,7 @@ export function MasterTable({ config, actor }: Props) {
             ))}
           </ul>
         </>
-      )}
+      </ListStates>
 
       {editable && (
         <>

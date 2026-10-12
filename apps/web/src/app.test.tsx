@@ -118,3 +118,49 @@ describe('Tasks route guards (F04)', () => {
     expect(toastError).toHaveBeenCalledWith("You don't have access to that page", { id: 'no-access' });
   });
 });
+
+describe('404, 403 and error pages (CR-03)', () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    vi.restoreAllMocks();
+  });
+
+  it('an unknown URL shows the 404 page inside the app, with a way home', async () => {
+    renderAt('/no/such/page', 'OM');
+    const page = await screen.findByTestId('not-found-page');
+    expect(within(page).getByRole('heading', { name: 'Page not found' })).toBeInTheDocument();
+    expect(page).toHaveTextContent('/no/such/page');
+    expect(page.querySelector('[data-illustration="not-found"]')).toHaveAttribute('aria-hidden', 'true');
+    expect(within(page).getByRole('link', { name: 'Go to the dashboard' })).toHaveAttribute('href', '/');
+    expect(sidebar().getByRole('link', { name: 'Dashboard' })).toBeInTheDocument();
+  });
+
+  const forbidden: [string, Role][] = [
+    ['/users', 'OT'],
+    ['/technicians', 'OT'],
+    ['/clients', 'OT'],
+    ['/clients/new', 'RO'],
+    ['/clients/c-1/edit', 'OE'],
+  ];
+  for (const [path, role] of forbidden) {
+    it(`${role} opening ${path} gets the 403 page (no redirect)`, async () => {
+      renderAt(path, role);
+      const page = await screen.findByTestId('forbidden-page');
+      expect(within(page).getByRole('heading', { name: "You don't have access" })).toBeInTheDocument();
+      expect(page.querySelector('[data-illustration="access-denied"]')).not.toBeNull();
+    });
+  }
+
+  it('a page that throws shows the error page instead of a blank screen; navigating away recovers', async () => {
+    vi.spyOn(console, 'error').mockImplementation(() => {});
+    // A malformed API response makes the task page throw while rendering.
+    renderAt('/tasks/t-1', 'OM', { 'GET /api/tasks/t-1': {} });
+    const crash = await screen.findByTestId('crash-page');
+    expect(within(crash).getByRole('heading', { name: 'Something went wrong' })).toBeInTheDocument();
+    expect(crash.querySelector('[data-illustration="server-error"]')).not.toBeNull();
+    sidebar().getByRole('link', { name: 'Profile' }).click();
+    expect(await screen.findByRole('heading', { name: 'Profile' })).toBeInTheDocument();
+    expect(screen.queryByTestId('crash-page')).not.toBeInTheDocument();
+  });
+});
+

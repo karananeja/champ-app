@@ -178,7 +178,7 @@ describe('MasterTable', () => {
     const user = userEvent.setup();
     const fetchMock = mockApi({ 'GET /api/masters/locations': { items: [] } });
     renderTable('locations', om);
-    expect(await screen.findByText('No locations found.')).toBeInTheDocument();
+    expect(await screen.findByText('No locations yet')).toBeInTheDocument();
 
     await user.click(screen.getByRole('combobox', { name: 'Filter by state' }));
     await user.click(await screen.findByRole('option', { name: 'Karnataka' }));

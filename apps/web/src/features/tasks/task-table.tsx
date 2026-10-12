@@ -1,7 +1,7 @@
-import { useState } from 'react';
+import { useState, type ComponentProps } from 'react';
 import { Link } from 'react-router-dom';
 import { toast } from 'sonner';
-import { ChevronLeft, ChevronRight, Download, Loader2, Search, X } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Download, Loader2, Plus, Search, X } from 'lucide-react';
 import {
   TASK_STATUSES,
   TASK_STATUS_LABELS,
@@ -11,12 +11,12 @@ import {
   type TaskStatus,
 } from '@champ/shared';
 import { DateRangePicker } from '@/components/date-picker';
+import { ListStates } from '@/components/list-states';
 import { SearchableSelect } from '@/components/searchable-select';
 import { Button } from '@/components/ui/button';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Skeleton } from '@/components/ui/skeleton';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { useDebounced } from '@/hooks/use-debounced';
 import { ApiError } from '@/lib/api';
@@ -26,6 +26,7 @@ import { useLookups } from '../masters/queries';
 import { downloadFile, useTaskOptions, useTasks } from './queries';
 import { EMPTY_FILTERS, buildTaskQuery, emptyFiltersFor, exportPath, hasFilters, type TaskFilterState, type TaskListView } from './task-query';
 import { TaskStatusBadge } from '@/components/fitment-status-badge';
+import { canCreateTask } from '@/lib/permissions';
 
 const PAGE_SIZE = 20;
 const ALL = 'ALL';
@@ -42,6 +43,41 @@ const SORTS: { value: TaskSort; label: string }[] = [
   { value: 'createdAt:asc', label: 'Oldest first' },
 ];
 
+const createAction = (
+  <Button asChild>
+    <Link to="/tasks/new">
+      <Plus /> Create task
+    </Link>
+  </Button>
+);
+
+/** The empty state of each view when nothing exists yet (CR-03); creators get a Create task button. */
+const EMPTY_COPY: Record<TaskListView, (creator: boolean) => ComponentProps<typeof ListStates>['empty']> = {
+  open: (creator) => ({
+    illustration: 'tasks-empty',
+    title: 'No open tasks',
+    description: 'Every task is finished, or none has been created yet.',
+    action: creator && createAction,
+  }),
+  assigned: (creator) => ({
+    illustration: 'tasks-empty',
+    title: 'No tasks assigned to you',
+    description: 'Tasks where you are the operation executive show here.',
+    action: creator && createAction,
+  }),
+  completed: () => ({
+    illustration: 'all-done',
+    title: 'No completed tasks yet',
+    description: 'A task shows here once all its fitments are final-approved, closed or moved to FT.',
+  }),
+  all: (creator) => ({
+    illustration: 'tasks-empty',
+    title: 'No tasks yet',
+    description: 'Create a task, or upload many at once from a CSV.',
+    action: creator && createAction,
+  }),
+};
+
 const fitmentsLabel = (t: TaskListItemDto) => `${t.fitments.assigned}/${t.fitments.total}`;
 
 /**
@@ -57,7 +93,7 @@ export function TaskTable({ view }: { view: TaskListView }) {
   const effective = { ...filters, q };
   const lookups = useLookups();
   const options = useTaskOptions();
-  const { data, isPending, isError } = useTasks(buildTaskQuery(view, effective, page, PAGE_SIZE));
+  const { data, isPending, isError, error, refetch } = useTasks(buildTaskQuery(view, effective, page, PAGE_SIZE));
   const tasks = data?.items ?? [];
   const totalPages = data ? Math.max(1, Math.ceil(data.total / data.pageSize)) : 1;
 
@@ -202,17 +238,20 @@ export function TaskTable({ view }: { view: TaskListView }) {
         />
       </div>
 
-      {isPending ? (
-        <div className="grid grid-cols-1 gap-2">
-          {[0, 1, 2].map((i) => (
-            <Skeleton key={i} className="h-12 w-full" />
-          ))}
-        </div>
-      ) : isError ? (
-        <p className="py-8 text-center text-sm text-destructive">Could not load tasks.</p>
-      ) : tasks.length === 0 ? (
-        <p className="py-8 text-center text-sm text-muted-foreground">No tasks found.</p>
-      ) : (
+      <ListStates
+        isPending={isPending}
+        isError={isError}
+        error={error}
+        onRetry={() => void refetch()}
+        isEmpty={tasks.length === 0}
+        filtered={hasFilters(filters)}
+        onClearFilters={() => {
+          setFilters({ ...EMPTY_FILTERS, sort: filters.sort });
+          setPage(1);
+        }}
+        noMatches={{ title: 'No tasks match', description: 'Nothing matches your search or filters. Try other words, or clear the filters.' }}
+        empty={EMPTY_COPY[view](canCreateTask(actor))}
+      >
         <>
           <div className="hidden rounded-md border md:block">
             <Table>
@@ -288,7 +327,7 @@ export function TaskTable({ view }: { view: TaskListView }) {
             ))}
           </ul>
         </>
-      )}
+      </ListStates>
 
       {data && data.total > data.pageSize && (
         <div className="flex items-center justify-between gap-2 text-sm text-muted-foreground">
