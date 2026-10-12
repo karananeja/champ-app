@@ -359,3 +359,13 @@ Chronological log of the whole project conversation. Feature-level logs live in 
 **User:** "add icons to the tabs in mobile view"
 
 **Claude:** Logged CR-08 on the F14 branch. The app's four bottom tabs now show outline icons (house, route, clock, person) above their labels, in the tab colours (D-247). Mobile tests 149 pass; checked on the iOS Simulator through the user's Metro.
+
+**Implementation agents (F14):** Backend ~7 min (3 commits), Web ~17 min (2 commits). Only the Web agent ran the full E2E (lesson from F13): no cross-agent noise.
+
+**Claude verification:**
+- Reviewed the search SQL (bound parameters, fixed column map, escaped LIKE characters).
+- Deflaked the technician upload refusal test (small non-image body instead of 11 MB; it had failed with `write EPIPE` three times across features).
+- All gates pass: 1,214 tests, E2E 73 passed + 4 skipped.
+- Wrote the README, the test report and D-248 – D-252.
+
+**Status:** F14 and CR-08 ready for UAT by the user.

@@ -413,6 +413,24 @@ Reopen go through `POST /api/fitments/:fid/transitions` (`{action, payload}`). `
 public demo server: fine for development only) sets the routing service; tests and E2E point it at an unreachable
 address, so they use the straight-line fallback.
 
+### Global search (F14)
+
+**Ctrl/⌘ K**, or the search box in the top bar (an icon on phones), for SA, OM, OE and RO. Type an id and the results
+appear grouped by task, each saying which identifier matched (highlighted); Enter or a click opens the task, the
+fitment's verification sheet (`/tasks/:id?fitment=`) or the travel task. *Show all results* opens `/search?q=` (up to 100).
+
+- **OM, OE, TK and TT ids** match exactly: prefix and case optional, with a space, hyphen or nothing after the prefix,
+  leading zeros optional (`OM-00045`, `oe 45`, `tk-112`). A bare number finds OM, OE and TK ids; TT ids need `TT`.
+- **Device id, secondary device id, old device id, chassis no., asset no. and vehicle reg. no.** match by "contains"
+  from 3 characters, ignoring case, spaces and hyphens (Postgres trigram indexes on the normalized values).
+- Ranking: exact ids first, then the identifier's order in the settings, then an exact value before a partial one,
+  then the newest task. Deleted tasks never show; travel tasks follow the travel list's visibility (D-242–D-246).
+- **Settings → Search identifiers** (SA only): switch each of the ten identifiers on or off and set the ranking order
+  (at least one stays on).
+
+API: `GET /api/search?q=&limit=` (`{q, hits, total, truncated}`; default 20, max 100), `GET /api/search/identifiers`
+and `PUT /api/search/identifiers` (`{items: [{identifier, enabled}]}`, all ten in ranking order; SA only).
+
 ### Notifications (F13)
 
 A **bell** in the web top bar (every role) and in the app header shows the unread count; opening it lists the latest

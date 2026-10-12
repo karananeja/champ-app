@@ -5,3 +5,5 @@
 - Claude drafted `intent.md` and sent it to the user for sign-off. Open points: adding reg no. and TT id, an SA on/off list, visibility, matching rules, web only.
 - User replied "ok continue". Taken as approval with all five open points as proposed (D-242 to D-246). Created branch `feature/F14-global-search` and wrote `spec.md`. Launched two agents in parallel (Backend, Web).
 - User asked "add icons to the tabs in mobile view". Logged as CR-08 on this branch: the app's bottom tabs now have SVG icons (D-247).
+- Two agents (D-127): Backend ~7 min (3 commits), Web ~17 min (2 commits); only the Web agent ran the full E2E, and there was no cross-agent noise. Proposed decisions became D-248 to D-252.
+- Claude's verification: reviewed the search SQL; deflaked the technician upload refusal test; full gates green (1,214 tests; E2E 73 + 4 skipped). Wrote the README, test report and decisions. Handed F14 and CR-08 to the user for UAT.
