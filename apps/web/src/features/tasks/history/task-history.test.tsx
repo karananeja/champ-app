@@ -129,6 +129,28 @@ describe('TaskHistory', () => {
     expect(details).toHaveTextContent('Accessories: — → OK');
   });
 
+  it('CR-11: shows "Fault undone" with the reason and the replacement', async () => {
+    const user = userEvent.setup();
+    renderHistory([
+      {
+        id: 'e10',
+        at: '2026-10-12T06:00:00.000Z',
+        actor: oe,
+        fitment: { id: 'fit-1', tkId: 'TK-00001' },
+        type: 'FITMENT_FAULT_UNDONE',
+        fromStatus: 'MOVED_TO_FT',
+        toStatus: 'ASSIGNED',
+        data: { tkId: 'TK-00001', reason: 'Device was fine', replacementTkId: 'TK-00002' },
+      },
+    ]);
+    const [row] = await screen.findAllByTestId('event-row');
+    expect(row).toHaveTextContent('Fault undone');
+    await user.click(within(row!).getByRole('button', { name: 'Details' }));
+    const details = within(row!).getByTestId('event-details');
+    expect(details).toHaveTextContent('Device was fine');
+    expect(details).toHaveTextContent('TK-00002');
+  });
+
   it('filters the raw data by fitment and downloads the CSV', async () => {
     const user = userEvent.setup();
     const click = vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => {});
