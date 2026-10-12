@@ -11,3 +11,8 @@ apps/api/src/generated/
 *.tsbuildinfo
 .env.local
 apps/web/e2e/.data/
+
+# Expo (F09): native projects are generated (CNG, D-133)
+apps/mobile/.expo/
+apps/mobile/ios/
+apps/mobile/android/

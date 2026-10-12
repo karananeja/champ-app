@@ -35,6 +35,23 @@ export default tseslint.config(
     },
   },
   {
+    // Field app (F09): React Native, so no DOM globals beyond what RN provides; hooks rules as on web.
+    files: ['apps/mobile/**/*.{ts,tsx}'],
+    languageOptions: { globals: { ...globals.browser, __DEV__: 'readonly' } },
+    plugins: { 'react-hooks': reactHooks },
+    rules: { ...reactHooks.configs.recommended.rules },
+  },
+  {
+    // Jest/Metro/Babel config files in the field app are CommonJS.
+    files: ['apps/mobile/*.config.js'],
+    languageOptions: { sourceType: 'commonjs', globals: { ...globals.node } },
+    rules: { '@typescript-eslint/no-require-imports': 'off' },
+  },
+  {
+    files: ['apps/mobile/**/*.test.{ts,tsx}', 'apps/mobile/src/test/**'],
+    languageOptions: { globals: { ...globals.jest } },
+  },
+  {
     // Generated shadcn/ui components export helpers next to components.
     files: ['apps/web/src/components/ui/**'],
     rules: { 'react-refresh/only-export-components': 'off' },
@@ -52,6 +69,22 @@ export default tseslint.config(
         { ignoreMiddleExtensions: true },
       ],
       'check-file/folder-naming-convention': ['error', { '{apps,packages}/**/': 'KEBAB_CASE' }],
+    },
+  },
+  {
+    // expo-router file names (F09): `_layout.tsx`, `+not-found.tsx`, `[id].tsx`, and `(group)` folders; the rest of
+    // each name is still kebab-case.
+    files: ['apps/mobile/src/app/**/*.{ts,tsx}'],
+    rules: {
+      'check-file/filename-naming-convention': [
+        'error',
+        { '**/*.{ts,tsx}': '@(_layout|+([a-z0-9-])|+([+])+([a-z0-9-])|\\[*([.])+([a-z0-9-])\\])' },
+        { ignoreMiddleExtensions: true },
+      ],
+      'check-file/folder-naming-convention': [
+        'error',
+        { 'apps/mobile/src/app/**/': '@(+([a-z0-9-])|\\(+([a-z0-9-])\\)|\\[+([a-z0-9-])\\])' },
+      ],
     },
   },
 );

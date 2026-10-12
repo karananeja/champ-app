@@ -92,13 +92,11 @@ describe('GET /api/geo/search', () => {
     }
   });
 
-  it('is limited to SA and OM', async () => {
+  it('is limited to SA, OM and (F09) OT and OE', async () => {
     const org = await createOrg();
     const geocoder = fakeGeocoder();
-    for (const role of ['OE', 'RO', 'OT'] as const) {
-      expect((await geoApi(geocoder).get('/api/geo/search').query({ q: 'MG Road' }).set(bearer(org[role]))).status).toBe(403);
-      expect((await geoApi(geocoder).get('/api/geo/reverse').query({ lat: 1, lng: 1 }).set(bearer(org[role]))).status).toBe(403);
-    }
+    expect((await geoApi(geocoder).get('/api/geo/search').query({ q: 'MG Road' }).set(bearer(org.RO))).status).toBe(403);
+    expect((await geoApi(geocoder).get('/api/geo/reverse').query({ lat: 1, lng: 1 }).set(bearer(org.RO))).status).toBe(403);
     expect((await geoApi(geocoder).get('/api/geo/search').query({ q: 'MG Road' })).status).toBe(401);
     expect(geocoder.search).not.toHaveBeenCalled();
   });

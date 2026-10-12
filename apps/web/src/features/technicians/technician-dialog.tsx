@@ -29,6 +29,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { ApiError } from '@/lib/api';
 import { InviteLinkView } from '../invites/invite-dialog';
 import { useManagerCandidates } from '../users/queries';
+import { HomeLocation } from './home-location';
 import { BaseLocationField, TechnicianTypeField } from './technician-fields';
 import { useCreateTechnician, useUpdateTechnician } from './queries';
 
@@ -276,6 +277,11 @@ function EditTechnicianForm({ technician, onClose }: { technician: TechnicianDto
           />
         )}
       />
+      <div className="grid grid-cols-1 gap-1 text-sm">
+        <span className="font-medium">Home location</span>
+        <HomeLocation value={technician.homeLocation} />
+        <span className="text-xs text-muted-foreground">Set by the technician in the Champ field app.</span>
+      </div>
 
       <DialogFooter>
         <Button type="button" variant="outline" onClick={onClose}>

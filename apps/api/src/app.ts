@@ -9,13 +9,14 @@ import { createGoogleAuth, type GoogleAuth } from './lib/google';
 import { logger } from './lib/logger';
 import { defaultStorage, type Storage } from './lib/storage';
 import { errorHandler, notFoundHandler } from './middleware/error';
-import { authRouter } from './modules/auth/router';
+import { authRouter, createLoginLimiter } from './modules/auth/router';
 import { boardRouter } from './modules/board/router';
 import { clientsRouter } from './modules/clients/router';
 import { geoRouter } from './modules/geo/router';
 import { healthRouter } from './modules/health/router';
 import { invitesRouter } from './modules/invites/router';
 import { lookupsRouter, mastersRouter } from './modules/masters/router';
+import { mobileRouter } from './modules/mobile/router';
 import { tasksRouter } from './modules/tasks/router';
 import { techniciansRouter } from './modules/technicians/router';
 import { travelRouter } from './modules/travel/router';
@@ -64,7 +65,10 @@ export function createApp(deps: AppDeps = {}) {
 
   const api = express.Router();
   api.use(healthRouter(google, devSimulator));
-  api.use('/auth', authRouter(google));
+  // One login limiter for web and mobile, so the 10 per 15 min limit counts across both (F09).
+  const loginLimiter = createLoginLimiter();
+  api.use('/auth', authRouter(google, loginLimiter));
+  api.use('/mobile', mobileRouter(loginLimiter));
   api.use('/invites', invitesRouter(google));
   api.use(usersRouter());
   api.use('/lookups', lookupsRouter());

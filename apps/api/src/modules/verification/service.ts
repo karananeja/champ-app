@@ -147,6 +147,14 @@ export async function applyVerification(tx: Tx, actor: User, fitment: FitmentSta
   return diff;
 }
 
+/**
+ * The OE verification queue (F06): SUBMITTED fitments of the OE's own tasks that aren't deleted. Used by the
+ * dashboard's "Awaiting my verification" count and the field app's Approve visit tile (F09).
+ */
+export function oeVerificationQueueWhere(actor: Pick<User, 'id'>): Prisma.FitmentWhereInput {
+  return { status: 'SUBMITTED', task: { oeId: actor.id, deletedAt: null } };
+}
+
 /** 403 for people who never edit verifications; 409 FITMENT_LOCKED when the status no longer allows it. */
 export function assertVerificationEditable(actor: User, fitment: { tkNo: number; status: FitmentStatus; task: { oeId: string } }, what: 'verification' | 'photos') {
   const ctx = { task: fitment.task, fitment: { technicianId: null, status: fitment.status } };

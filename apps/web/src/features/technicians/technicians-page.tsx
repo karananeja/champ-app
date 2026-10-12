@@ -22,6 +22,7 @@ import { useCurrentUser } from '@/lib/auth';
 import { canAddTechnician, canManageTechnician } from '@/lib/permissions';
 import { useLookups } from '../masters/queries';
 import { useUsers } from '../users/queries';
+import { HomeLocation } from './home-location';
 import { TechnicianDialog } from './technician-dialog';
 import { useTechnicians } from './queries';
 
@@ -184,6 +185,7 @@ export function TechniciansPage() {
                   <TableHead>Contact</TableHead>
                   <TableHead>Type</TableHead>
                   <TableHead>Base location</TableHead>
+                  <TableHead>Home location</TableHead>
                   <TableHead>Reporting OE</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead className="w-12">
@@ -203,6 +205,9 @@ export function TechniciansPage() {
                       <Badge variant="secondary">{typeLabel(tech)}</Badge>
                     </TableCell>
                     <TableCell className="whitespace-normal">{locationLabel(tech)}</TableCell>
+                    <TableCell className="max-w-64 whitespace-normal">
+                      <HomeLocation value={tech.homeLocation} />
+                    </TableCell>
                     <TableCell className="whitespace-normal">{tech.manager?.name ?? '—'}</TableCell>
                     <TableCell>
                       <StatusBadge status={tech.status} />
@@ -230,6 +235,10 @@ export function TechniciansPage() {
                   <StatusBadge status={tech.status} />
                   <span className="text-muted-foreground">{locationLabel(tech)}</span>
                   {tech.manager && <span className="text-muted-foreground">OE: {tech.manager.name}</span>}
+                </div>
+                <div className="mt-2 text-sm">
+                  <div className="text-xs font-medium text-muted-foreground">Home location</div>
+                  <HomeLocation value={tech.homeLocation} />
                 </div>
               </li>
             ))}

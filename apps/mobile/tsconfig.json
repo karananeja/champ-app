@@ -1,0 +1,12 @@
+{
+  "extends": ["expo/tsconfig.base", "../../tsconfig.base.json"],
+  "compilerOptions": {
+    "lib": ["ES2023", "DOM"],
+    "module": "ESNext",
+    "jsx": "react-jsx",
+    "allowJs": false,
+    "types": ["jest"],
+    "customConditions": ["react-native"]
+  },
+  "include": ["src", "app.config.ts", "expo-env.d.ts", ".expo/types/**/*.ts"]
+}

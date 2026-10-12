@@ -1,0 +1,48 @@
+import type { ConfigContext, ExpoConfig } from 'expo/config';
+
+/**
+ * Champ field app (F09, D-130/D-133). A development build, not Expo Go. `ios/` and `android/` are generated from
+ * this file (CNG) and are not committed. `APP_VARIANT=production` builds `in.intellicar.champ`; everything else is
+ * the dev variant `in.intellicar.champ.dev`, so both can sit side by side on one phone.
+ */
+const IS_PROD = process.env.APP_VARIANT === 'production';
+const BUNDLE_ID = IS_PROD ? 'in.intellicar.champ' : 'in.intellicar.champ.dev';
+
+const LOCATION_PERMISSION =
+  'Champ uses your location to set your home location, the starting point for your daily route.';
+
+export default ({ config }: ConfigContext): ExpoConfig => ({
+  ...config,
+  name: IS_PROD ? 'Champ' : 'Champ Dev',
+  slug: 'champ',
+  version: '0.1.0',
+  scheme: IS_PROD ? 'champ' : 'champ-dev',
+  orientation: 'portrait',
+  userInterfaceStyle: 'automatic',
+  ios: {
+    bundleIdentifier: BUNDLE_ID,
+    supportsTablet: false,
+    infoPlist: {
+      // The API runs over plain HTTP on the Mac (localhost or its LAN IP) during development.
+      NSAppTransportSecurity: { NSAllowsLocalNetworking: true },
+    },
+  },
+  android: {
+    package: BUNDLE_ID,
+  },
+  plugins: [
+    'expo-router',
+    'expo-secure-store',
+    'expo-dev-client',
+    [
+      'expo-location',
+      {
+        locationWhenInUsePermission: LOCATION_PERMISSION,
+        isIosBackgroundLocationEnabled: false,
+        isAndroidBackgroundLocationEnabled: false,
+      },
+    ],
+    '@maplibre/maplibre-react-native',
+  ],
+  experiments: { typedRoutes: true },
+});

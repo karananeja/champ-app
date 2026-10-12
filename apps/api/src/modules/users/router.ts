@@ -1,6 +1,8 @@
 import { Router } from 'express';
 import {
+  MOBILE_ROLES,
   USER_LIST_ROLES,
+  setHomeLocationSchema,
   delegationSchema,
   listUsersQuerySchema,
   managersQuerySchema,
@@ -8,6 +10,7 @@ import {
   type DelegationInput,
   type ListUsersQuery,
   type ManagersQuery,
+  type SetHomeLocationInput,
   type UpdateUserInput,
 } from '@champ/shared';
 import { authenticate, currentUser } from '../../middleware/auth';
@@ -22,6 +25,17 @@ export function usersRouter() {
   router.get('/me', authenticate, async (req, res) => {
     res.json(await users.getMe(currentUser(req)));
   });
+
+  // F09 / D-129: only the user themselves sets it, and only OT and OE have one.
+  router.put(
+    '/me/home-location',
+    authenticate,
+    requireRole(...MOBILE_ROLES),
+    validate({ body: setHomeLocationSchema }),
+    async (req, res) => {
+      res.json(await users.setHomeLocation(currentUser(req), req.body as SetHomeLocationInput));
+    },
+  );
 
   router.use('/users', usersSubRouter());
   return router;

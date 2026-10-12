@@ -17,6 +17,7 @@ export function makeUser(overrides: Partial<UserDto> = {}): UserDto {
     canManageTaskTypes: false,
     technicianType: null,
     baseLocationId: null,
+    homeLocation: null,
     createdAt: '2026-10-11T00:00:00.000Z',
     ...overrides,
   };

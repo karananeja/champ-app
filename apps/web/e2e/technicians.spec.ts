@@ -53,6 +53,8 @@ test('an OM adds a technician who accepts and appears with type and base locatio
   await expect(item).toContainText('Pune, Maharashtra');
   await expect(item).toContainText(oeA.name);
   await expect(item).toContainText('active');
+  // F09: a new technician has no home location yet (set in the field app).
+  await expect(item).toContainText('Not set');
   await expectNoHorizontalScroll(page);
   await page.screenshot({ path: testInfo.outputPath('technicians.png') });
 });

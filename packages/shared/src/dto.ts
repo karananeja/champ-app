@@ -3,6 +3,7 @@ import type { AuthProvider, InviteStatus, Role, UserStatus } from './roles';
 import type { BulkTaskColumn, FitmentStatus, TaskStatus } from './tasks';
 import type { PhotoKind, PhotoSource, PhotoStatus } from './verification';
 import type { FitmentAction, TaskEventType } from './workflow';
+import type { HomeLocationDto } from './mobile';
 import type { TravelAction, TravelAttachmentStatus, TravelEventType, TravelSource, TravelStatus } from './travel';
 
 export interface UserRef {
@@ -31,6 +32,8 @@ export interface UserDto {
   technicianType: TechnicianType | null;
   /** Technicians (OT) only. */
   baseLocationId: string | null;
+  /** OT and OE only (D-129); null when not set or for other roles. */
+  homeLocation: HomeLocationDto | null;
   createdAt: string;
 }
 
@@ -615,6 +618,7 @@ export const ERROR_CODES = [
   'FILE_TOO_LARGE',
   'UNSUPPORTED_FILE',
   'STORAGE_UNAVAILABLE',
+  'MOBILE_ROLE_NOT_ALLOWED',
   'INTERNAL_ERROR',
 ] as const;
 export type ErrorCode = (typeof ERROR_CODES)[number];

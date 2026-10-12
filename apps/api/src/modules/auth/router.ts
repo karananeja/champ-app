@@ -1,4 +1,4 @@
-import { Router, type Request, type Response } from 'express';
+import { Router, type Request, type RequestHandler, type Response } from 'express';
 import { ipKeyGenerator, rateLimit } from 'express-rate-limit';
 import { googleLoginSchema, loginSchema, type ApiErrorBody, type AuthResponse } from '@champ/shared';
 import { REFRESH_COOKIE, clearRefreshCookie, setRefreshCookie } from '../../lib/cookies';
@@ -18,11 +18,12 @@ function readRefreshCookie(req: Request): string | undefined {
   return typeof value === 'string' ? value : undefined;
 }
 
-export function authRouter(google: GoogleAuth) {
-  const router = Router();
-
-  // 10 attempts per 15 minutes per IP + email.
-  const loginLimiter = rateLimit({
+/**
+ * 10 password logins per 15 minutes per IP + email. One instance is shared by `/auth/login` and
+ * `/mobile/auth/login` (F09), so the limit counts across web and mobile.
+ */
+export function createLoginLimiter(): RequestHandler {
+  return rateLimit({
     windowMs: 15 * 60 * 1000,
     limit: 10,
     standardHeaders: 'draft-8',
@@ -38,6 +39,10 @@ export function authRouter(google: GoogleAuth) {
       res.status(429).json(body);
     },
   });
+}
+
+export function authRouter(google: GoogleAuth, loginLimiter: RequestHandler = createLoginLimiter()) {
+  const router = Router();
 
   router.post('/login', loginLimiter, validate({ body: loginSchema }), async (req, res) => {
     const { email, password } = req.body as { email: string; password: string };

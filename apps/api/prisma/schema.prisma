@@ -44,6 +44,11 @@ model User {
   technicianType              TechnicianType? // required for role OT (service layer), null otherwise
   baseLocationId              String? // required for role OT (service layer), null otherwise
   baseLocation                Location?           @relation("UserBaseLocation", fields: [baseLocationId], references: [id])
+  // --- Home location (F09, D-129): OT and OE only, set by the user themselves; all four set together or none ---
+  homeLat                     Float?
+  homeLng                     Float?
+  homeAddress                 String? // 3..300
+  homeUpdatedAt               DateTime?
   createdAt                   DateTime            @default(now())
   updatedAt                   DateTime            @updatedAt
   invitesSent                 Invite[]            @relation("InvitedBy")

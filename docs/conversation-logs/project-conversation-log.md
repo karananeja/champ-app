@@ -225,3 +225,27 @@ Chronological log of the whole project conversation. Feature-level logs live in 
 **User:** "CR-06 accepted". CR-06 marked complete and merged to `main`.
 
 **Claude:** Wrote the F09 intent (mobile app foundation) and sent it for sign-off.
+
+**User:** "approved" (F09 intent). All five open points were accepted as proposed (D-128 – D-132).
+
+**Claude:**
+- Created branch `feature/F09-mobile-foundation` and wrote the F09 spec, including D-133 (cookie-less mobile sessions, MapLibre with OSM, no native builds by agents).
+- Launched two parallel implementation agents per the playbook: Backend (shared, API, web) and Mobile (`apps/mobile`).
+
+**User:** "how long have the agents been running?"
+
+**Claude:** About 77 minutes, but the macOS power log showed the Mac asleep (lid closed on battery) from 11:48 to ~12:52, which froze both agents. The backend agent finished in ~18 min of active time. Suggested keeping the Mac awake while agents run.
+
+**User:** "ok, continue once the mobile agent finishes"
+
+**Implementation agents (F09):** Backend finished in 4 commits (shared 383, API 329, web 192 tests; E2E 67 passed). Mobile finished in 3 commits (Expo SDK 57; 38 Jest tests; expo-doctor and export clean). Active time ~18 and ~22 min.
+
+**Claude verification:**
+- Re-ran all gates (all pass). Did the first native builds on the iOS Simulator and the Android emulator.
+- Found and fixed a blank screen on every cold launch (D-153, with a regression test).
+- Smoke-tested the app on Android with a throwaway OT, deactivated afterwards. The user's Champ dev servers had stopped (port 3000 now serves another project), so Claude ran the Champ API on :4000 only for the smoke test and stopped it afterwards.
+- Added the README *Field app* section, the test report and D-134 – D-153.
+
+**Status:** F09 ready for UAT by the user.
+
+**User:** "F09 accepted". UAT sign-off recorded and `feature/F09-mobile-foundation` merged to `main`.

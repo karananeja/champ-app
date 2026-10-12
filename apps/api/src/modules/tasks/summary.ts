@@ -1,6 +1,7 @@
 import type { DashboardSummaryDto } from '@champ/shared';
 import { prisma, type User } from '../../lib/prisma';
 import { travelWhere } from '../travel/filters';
+import { oeVerificationQueueWhere } from '../verification/service';
 import { workflowWhere } from '../workflow/lists';
 import { taskWhere } from './filters';
 
@@ -22,7 +23,7 @@ export async function getTaskSummary(actor: User): Promise<DashboardSummaryDto> 
     manager || oe ? prisma.fitment.count({ where: workflowWhere(actor, 'reopened') }) : undefined,
     manager || oe ? prisma.fitment.count({ where: workflowWhere(actor, 'faulty') }) : undefined,
     oe ? tasks('assigned') : undefined,
-    oe ? prisma.fitment.count({ where: { status: 'SUBMITTED', task: { oeId: actor.id, deletedAt: null } } }) : undefined,
+    oe ? prisma.fitment.count({ where: oeVerificationQueueWhere(actor) }) : undefined,
     // F08: Raised TTs, through the travel list's own scope (OM: all; OE: their technicians').
     actor.role === 'OM' || oe ? prisma.travelTask.count({ where: travelWhere(actor, { status: 'RAISED' }) }) : undefined,
   ]);
