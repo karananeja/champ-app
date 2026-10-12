@@ -313,3 +313,5 @@ Chronological log of the whole project conversation. Feature-level logs live in 
 **Status:** F11 ready for UAT by the user.
 
 **User:** "F11 accepted". UAT sign-off recorded and `feature/F11-mobile-csv-bulk-fill` merged to `main`.
+
+**Claude:** Wrote the F12 intent (mobile history, distance and Approve visit) and sent it for sign-off.
