@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| Status | **Awaiting user sign-off** |
+| Status | **Approved by user on 2026-10-12** |
 | Requirements | SRS §6.4 item 6 · source doc: "OM should have kanban view of tasks so that they can move around the tasks based on the need or the tasks move automatically when the necessary actions are performed" · Decisions D-011, D-077 |
 | Depends on | F05, F06 (complete) |
 
