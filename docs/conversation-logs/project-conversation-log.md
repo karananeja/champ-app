@@ -176,4 +176,8 @@ Chronological log of the whole project conversation. Feature-level logs live in 
 
 **Claude verification:** Re-ran all gates (all pass). Fixed upload routes buffering files before the role check (D-108) and added a test.
 
-**Status:** F06 ready for UAT by the user.
+**User:** "F06 accepted". UAT sign-off recorded and `feature/F06-oe-verification` merged to `main`.
+
+**Claude:** Wrote the F07 intent (OM kanban board) and sent it for sign-off.
+
+**Status:** Waiting for F07 intent sign-off.
