@@ -1,5 +1,5 @@
 import { vi } from 'vitest';
-import type { FitmentDto, LookupsResponse, TaskDto, UserDto } from '@champ/shared';
+import type { FitmentDto, FitmentPhotoDto, LookupsResponse, TaskDto, UserDto } from '@champ/shared';
 
 export function makeUser(overrides: Partial<UserDto> = {}): UserDto {
   return {
@@ -37,10 +37,13 @@ export const lookupsFixture: LookupsResponse = {
     { id: 'loc-pune', city: 'Pune', stateId: 'st-mh', stateName: 'Maharashtra', regionId: 'rg-west', regionName: 'West' },
   ],
   issuesReported: [],
-  issuesObserved: [],
-  actionsTaken: [],
-  finalIssues: [],
-  accessories: [],
+  issuesObserved: [opt('io-wiring', 'Loose wiring'), opt('io-antenna', 'Antenna damaged')],
+  actionsTaken: [opt('at-rewired', 'Rewired power supply')],
+  finalIssues: [
+    { ...opt('fi-wiring', 'Wiring issue'), billable: true },
+    { ...opt('fi-device', 'Device fault'), billable: false },
+  ],
+  accessories: [opt('acc-relay', 'Relay'), opt('acc-buzzer', 'Buzzer')],
   closeReasons: [],
   shiftTypes: [],
   taskTypes: [],
@@ -116,6 +119,20 @@ export function makeFitment(overrides: Partial<FitmentDto> = {}): FitmentDto {
     reopenCount: 0,
     lastReopenReason: null,
     lastReopenedAt: null,
+    verification: {
+      issueObserved: null,
+      actionTaken: null,
+      accessories: [],
+      oeRemarks: null,
+      otRemarks: null,
+      finalIssue: null,
+      billable: null,
+      updatedAt: null,
+      updatedBy: null,
+    },
+    photoCounts: { active: 0, byKind: {} },
+    canEditVerification: false,
+    canManagePhotos: false,
     ...overrides,
   };
 }
@@ -157,6 +174,34 @@ export function makeTask(overrides: Partial<TaskDto> = {}): TaskDto {
     updatedAt: '2026-10-11T00:00:00.000Z',
     completedAt: null,
     permissions: { canEdit: false, canAssign: false, canDelete: false, canViewHistory: false },
+    ...overrides,
+  };
+}
+
+// --- Photos (F06) ---
+
+export function makePhoto(overrides: Partial<FitmentPhotoDto> = {}): FitmentPhotoDto {
+  return {
+    id: 'ph-1',
+    fitmentId: 'fit-1',
+    kind: 'BEFORE',
+    status: 'ACTIVE',
+    url: 'http://localhost:9000/champ/fitments/fit-1/ph-1.jpg?sig=1',
+    contentType: 'image/jpeg',
+    sizeBytes: 40_000,
+    width: 800,
+    height: 600,
+    originalName: 'before.jpg',
+    takenAt: '2026-10-12T05:10:00.000Z',
+    lat: 12.97,
+    lng: 77.59,
+    source: 'SIMULATOR',
+    uploadedBy: { id: 'ot-1', name: 'Ravi Kumar' },
+    createdAt: '2026-10-12T05:10:00.000Z',
+    replacedById: null,
+    changeReason: null,
+    changedBy: null,
+    changedAt: null,
     ...overrides,
   };
 }

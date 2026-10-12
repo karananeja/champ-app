@@ -19,7 +19,7 @@ test('an RO finds completed tasks under Completed tasks and filters All tasks by
   await expect(taskItem(page, completed)).toBeVisible();
   const download = page.waitForEvent('download');
   await page.getByRole('button', { name: 'Download' }).click();
-  await page.getByRole('menuitem', { name: 'CSV' }).click();
+  await page.getByRole('menuitem', { name: 'CSV', exact: true }).click(); // exact: F06 adds "Fitments (CSV)"
   expect((await download).suggestedFilename()).toMatch(/^champ-tasks-\d{8}-\d{4}\.csv$/);
   await expectNoHorizontalScroll(page);
   await page.screenshot({ path: testInfo.outputPath('completed-tasks.png'), fullPage: true });

@@ -2,7 +2,8 @@
  * Builds a small org for the F02 specs through the API (one SA login, so the login rate limit is not hit):
  * an OM, two OEs, one technician (OT) per OE, (F03) one client, (F04) a task OM/OE/RO plus one task per
  * viewport and (F05) a workflow OM/OE with two technicians and, per viewport, the tasks of the workflow spec
- * (one already OE-verified for bulk approve). Credentials go to e2e/.data/org.json.
+ * (one already OE-verified for bulk approve), CR-03/04 accounts and tasks, and (F06) a verification OM/OE with
+ * one task per viewport. Credentials go to e2e/.data/org.json.
  */
 import fs from 'node:fs';
 import path from 'node:path';
@@ -95,6 +96,12 @@ setup('create the F02 test org', async ({ request }) => {
   await accept(roInvite.link, ro.name);
 
   const byCode = (list: { id: string; code: string | null }[], code: string) => list.find((i) => i.code === code)!.id;
+  // F06: VERIFY needs the required verification fields (D-098); a billable final issue.
+  const verification = {
+    issueObservedId: lookups.issuesObserved[0]!.id,
+    actionTakenId: lookups.actionsTaken[0]!.id,
+    finalIssueId: lookups.finalIssues.find((f) => f.billable)!.id,
+  };
   const vehicle = byCode(lookups.assetTypes, 'VEHICLE');
   const taskBody = {
     clientId: createdClient.id,
@@ -157,7 +164,7 @@ setup('create the F02 test org', async ({ request }) => {
     for (const f of bulk.fitments) {
       await post(request, `/api/dev/fitments/${f.id}/simulate`, { action: 'START' }, wfOmSession.accessToken);
       await post(request, `/api/dev/fitments/${f.id}/simulate`, { action: 'SUBMIT' }, wfOmSession.accessToken);
-      await post(request, `/api/fitments/${f.id}/transitions`, { action: 'VERIFY' }, wfOeSession.accessToken);
+      await post(request, `/api/fitments/${f.id}/transitions`, { action: 'VERIFY', payload: verification }, wfOeSession.accessToken);
     }
     const ref = (t: TaskDto) => ({ id: t.id, omId: t.omId, tkIds: t.fitments.map((f) => f.tkId) });
     workflow[project] = { flow: ref(flow), reopen: ref(reopen), faulty: ref(faulty), bulk: ref(bulk) };
@@ -188,10 +195,29 @@ setup('create the F02 test org', async ({ request }) => {
     const fid = completed.fitments[0]!.id;
     await post(request, `/api/dev/fitments/${fid}/simulate`, { action: 'START' }, crOmSession.accessToken);
     await post(request, `/api/dev/fitments/${fid}/simulate`, { action: 'SUBMIT' }, crOmSession.accessToken);
-    await post(request, `/api/fitments/${fid}/transitions`, { action: 'VERIFY' }, crOeSession.accessToken);
+    await post(request, `/api/fitments/${fid}/transitions`, { action: 'VERIFY', payload: verification }, crOeSession.accessToken);
     await post(request, `/api/fitments/${fid}/transitions`, { action: 'APPROVE' }, crOmSession.accessToken);
     const march = await crTask(`CR-04 march ${project}`, { requestedAt: '2027-03-14T04:30:00.000Z', fitmentAt: '2027-03-15T04:30:00.000Z' });
     crTasks[project] = { completed: completed.omId, march: march.omId };
+  }
+
+  // F06: own OM and OE accounts, and per viewport one task with a fitment for technician wfTechs[0].
+  const f06Om = { email: `f06.om.${run}@intellicar.in`, name: `Gita Verify OM ${run}`, password };
+  const f06OmSession = await accept((await post<CreateInviteResponse>(request, '/api/invites', { email: f06Om.email, role: 'OM' }, sa.accessToken)).link, f06Om.name);
+  const f06Oe = { email: `f06.oe.${run}@intellicar.in`, name: `Hari Verify OE ${run}`, password };
+  const f06OeSession = await accept(
+    (await post<CreateInviteResponse>(request, '/api/invites', { email: f06Oe.email, role: 'OE' }, f06OmSession.accessToken)).link,
+    f06Oe.name,
+  );
+  const f06Tasks: E2eOrg['f06']['tasks'] = {};
+  for (const project of ['desktop', 'mobile-360']) {
+    const task = await post<TaskDto>(
+      request,
+      '/api/tasks',
+      { ...taskBody, oeId: f06OeSession.user.id, technicianId: wfTechs[0]!.id, vehicles: { entry: 'COUNT', count: 1 }, comments: `F06 ${project}` },
+      f06OmSession.accessToken,
+    );
+    f06Tasks[project] = { id: task.id, omId: task.omId, tkIds: task.fitments.map((f) => f.tkId) };
   }
 
   const org: E2eOrg = {
@@ -211,6 +237,7 @@ setup('create the F02 test org', async ({ request }) => {
     wfTechs: wfTechs.map((t) => t.name),
     workflow,
     cr: { om: crOm, oe: crOe, ro: crRo, tasks: crTasks },
+    f06: { om: f06Om, oe: f06Oe, tasks: f06Tasks },
   };
   fs.mkdirSync(path.dirname(ORG_FILE), { recursive: true });
   fs.writeFileSync(ORG_FILE, JSON.stringify(org, null, 2));

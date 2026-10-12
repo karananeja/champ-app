@@ -84,7 +84,7 @@ test('an OM creates a task for 3 vehicles without a technician, then assigns fit
   ] as const) {
     const download = page.waitForEvent('download');
     await page.getByRole('button', { name: 'Download' }).click();
-    await page.getByRole('menuitem', { name: item }).click();
+    await page.getByRole('menuitem', { name: item, exact: true }).click(); // exact: F06 adds "Fitments (CSV)"
     expect((await download).suggestedFilename()).toMatch(new RegExp(`^champ-tasks-\\d{8}-\\d{4}\\.${extension}$`));
   }
 });

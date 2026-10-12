@@ -33,6 +33,8 @@ const item: TaskListItemDto = {
   fitmentAt: '2026-10-21T05:00:00.000Z',
   createdAt: '2026-10-11T00:00:00.000Z',
   completedAt: null,
+  verifiedCount: 0,
+  billableCount: 0,
 };
 
 const page: Paginated<TaskListItemDto> = { items: [item], total: 1, page: 1, pageSize: 20 };
@@ -210,6 +212,40 @@ describe('TaskTable', () => {
     await waitFor(() => expect(click).toHaveBeenCalled());
     const exportCall = fetchMock.mock.calls.map(([url]) => url as string).find((u) => u.startsWith('/api/tasks/export'));
     expect(exportCall).toBe('/api/tasks/export?view=completed&sort=completedAt%3Aasc&format=csv');
+  });
+
+  it('F06: Completed/All show the Billable column; Download → Fitments (CSV) asks for level=fitment', async () => {
+    const user = userEvent.setup();
+    const click = vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => {});
+    const done = { ...item, status: 'COMPLETED' as const, completedAt: '2026-10-22T05:00:00.000Z', verifiedCount: 5, billableCount: 3 };
+    const fetchMock = mockApi({
+      ...routes,
+      'GET /api/tasks': { ...page, items: [done, { ...item, id: 'task-2', omId: 'OM-00002' }] },
+      'GET /api/tasks/export': () =>
+        new Response(new Blob(['csv']), { headers: { 'Content-Disposition': 'attachment; filename=champ-fitments-20261012-1030.csv' } }),
+    });
+    renderTable(makeUser({ role: 'OM' }), 'all');
+    const table = await screen.findByRole('table');
+    expect(within(table).getByRole('columnheader', { name: 'Billable' })).toBeInTheDocument();
+    const rows = await within(table).findAllByTestId('task-row');
+    expect(within(rows[0]!).getByTestId('task-billable')).toHaveTextContent('3 / 5');
+    expect(within(rows[1]!).getByTestId('task-billable')).toHaveTextContent('—');
+
+    await user.click(screen.getByRole('button', { name: 'Download' }));
+    expect(await screen.findByRole('menuitem', { name: 'Fitments (Excel)' })).toBeInTheDocument();
+    await user.click(screen.getByRole('menuitem', { name: 'Fitments (CSV)' }));
+    await waitFor(() => expect(click).toHaveBeenCalled());
+    const exportCall = fetchMock.mock.calls.map(([url]) => url as string).find((u) => u.startsWith('/api/tasks/export'));
+    expect(exportCall).toBe('/api/tasks/export?view=all&sort=fitmentAt%3Aasc&format=csv&level=fitment');
+    expect((click.mock.contexts[0] as HTMLAnchorElement).download).toBe('champ-fitments-20261012-1030.csv');
+  });
+
+  it('F06: Open tasks have no Billable column', async () => {
+    mockApi(routes);
+    renderTable(makeUser({ role: 'OM' }), 'open');
+    const table = await screen.findByRole('table');
+    await within(table).findAllByTestId('task-row');
+    expect(within(table).queryByRole('columnheader', { name: 'Billable' })).not.toBeInTheDocument();
   });
 
   it('All tasks (CR-04): view=all with a status filter that includes Completed', async () => {

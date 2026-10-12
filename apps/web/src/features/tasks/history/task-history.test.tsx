@@ -130,4 +130,13 @@ describe('TaskHistory', () => {
     ]);
     expect(eventDetails(null)).toEqual([]);
   });
+
+  it('eventDetails (F06): photo ids and kinds are lists, verification diffs are before/after', () => {
+    expect(eventDetails({ photoIds: ['a', 'b'], kinds: ['BEFORE', 'AFTER'], finalIssue: [null, 'Wiring issue'], billable: [true, false] })).toEqual([
+      { key: 'photoIds', value: 'a, b' },
+      { key: 'kinds', value: 'BEFORE, AFTER' },
+      { key: 'finalIssue', before: '—', after: 'Wiring issue' },
+      { key: 'billable', before: 'true', after: 'false' },
+    ]);
+  });
 });

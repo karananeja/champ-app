@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { toast } from 'sonner';
-import { CheckCheck, Loader2, MoreHorizontal, Pencil, RotateCcw } from 'lucide-react';
+import { CheckCheck, ClipboardCheck, Images, Loader2, MoreHorizontal, Pencil, RotateCcw } from 'lucide-react';
 import {
   FITMENT_ACTION_LABELS,
   FITMENT_STATUS_LABELS,
@@ -44,14 +44,34 @@ import { FitmentActionDialog, type ReviewAction } from './fitment-action-dialog'
 import { useApproveFitments, useAssignFitments, useTaskOptions, useUpdateFitment } from './queries';
 import { TONES } from '@/lib/tones';
 import { cn } from '@/lib/utils';
+import { BillableBadge } from './verification/billable-badge';
+import { PhotoViewerDialog } from './verification/photo-viewer-dialog';
+import { VerificationSheet } from './verification/verification-sheet';
 
 const vehicleText = (f: FitmentDto) =>
   [f.vehicleRegNo, f.chassisNo && `Chassis ${f.chassisNo}`, f.assetNumber && `Asset ${f.assetNumber}`, f.oldDeviceId && `Old device ${f.oldDeviceId}`]
     .filter(Boolean)
     .join(' · ') || '—';
 
-/** The review actions (Verify, Final approve, Reopen) the server says the caller may take on this fitment. */
-const reviewActions = (f: FitmentDto) => f.availableActions.filter((a): a is ReviewAction => REVIEW_ACTIONS.includes(a));
+/** The review actions (Final approve, Reopen) the server says the caller may take; Verify opens the sheet (F06). */
+const reviewActions = (f: FitmentDto) =>
+  f.availableActions.filter((a): a is ReviewAction => a !== 'VERIFY' && REVIEW_ACTIONS.includes(a));
+
+/** Statuses whose verification is worth opening (being verified, verified or approved). */
+const VERIFICATION_STATUSES: readonly FitmentDto['status'][] = ['SUBMITTED', 'OE_VERIFIED', 'OM_APPROVED'];
+
+/**
+ * The verification button of a fitment (F06): "Verify" when the caller may verify it, else "Edit verification"
+ * or "View verification" by the server's flags; null when there is nothing to verify yet.
+ */
+function verificationLabel(f: FitmentDto): string | null {
+  if (f.availableActions.includes('VERIFY')) return FITMENT_ACTION_LABELS.VERIFY;
+  if (!VERIFICATION_STATUSES.includes(f.status)) return null;
+  return f.canEditVerification ? 'Edit verification' : 'View verification';
+}
+
+/** "Photos (5)" when there are photos or the caller may add one. */
+const showPhotos = (f: FitmentDto) => f.photoCounts.active > 0 || f.canManagePhotos;
 
 /** Scrolls to the visible row or card of a fitment (replacement links). */
 function scrollToFitment(tkId: string) {
@@ -82,6 +102,12 @@ function WorkflowInfo({ f }: { f: FitmentDto }) {
           {f.closeComments && ` — ${f.closeComments}`}
         </div>
       )}
+      {(f.status === 'OE_VERIFIED' || f.status === 'OM_APPROVED') && f.verification.finalIssue && (
+        <div className="flex flex-wrap items-center gap-1" data-testid="fitment-verification">
+          <span className="break-words">Final issue: {f.verification.finalIssue.name}</span>
+          <BillableBadge billable={f.verification.billable} />
+        </div>
+      )}
       {f.reopenCount > 0 && (
         <div className="flex flex-wrap items-center gap-1">
           <Badge variant="outline" className={cn('gap-1', TONES.orange)} data-testid="reopen-chip">
@@ -95,8 +121,8 @@ function WorkflowInfo({ f }: { f: FitmentDto }) {
 }
 
 /**
- * The fitments of a task: status badges, per-row review actions (Verify, Final approve, Reopen) from the
- * server's `availableActions`, checkboxes for bulk assign/unassign (Open/Assigned/Reopened) and bulk final
+ * The fitments of a task: status badges, per-row review actions (Verify opens the verification sheet, F06;
+ * Final approve, Reopen) from the server's `availableActions`, Photos and the verification summary, checkboxes for bulk assign/unassign (Open/Assigned/Reopened) and bulk final
  * approve (OE-verified, OM/SA), and the vehicle editor under the edit locks. Rows become cards with an
  * actions menu on phones.
  */
@@ -107,12 +133,17 @@ export function FitmentsSection({ task }: { task: TaskDto }) {
   const approvable = (f: FitmentDto) => f.availableActions.includes('APPROVE');
   const selectable = task.fitments.filter((f) => assignable(f) || approvable(f));
   const editable = (f: FitmentDto) => f.canEditData;
-  const hasActionsColumn = task.fitments.some((f) => reviewActions(f).length > 0 || editable(f));
+  const hasActionsColumn = task.fitments.some((f) => reviewActions(f).length > 0 || editable(f) || verificationLabel(f) || showPhotos(f));
 
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [technicianId, setTechnicianId] = useState<string | null>(null);
   const [editing, setEditing] = useState<FitmentDto | null>(null);
   const [acting, setActing] = useState<{ fitment: FitmentDto; action: ReviewAction } | null>(null);
+  // F06: open the verification sheet or the photo viewer by id, so they follow refreshed fitment data.
+  const [verifyingId, setVerifyingId] = useState<string | null>(null);
+  const [photosId, setPhotosId] = useState<string | null>(null);
+  const verifying = task.fitments.find((f) => f.id === verifyingId);
+  const viewingPhotos = task.fitments.find((f) => f.id === photosId);
   const [confirmApprove, setConfirmApprove] = useState(false);
   const options = useTaskOptions();
   const assign = useAssignFitments(task.id);
@@ -170,6 +201,21 @@ export function FitmentsSection({ task }: { task: TaskDto }) {
 
   const actionButtons = (f: FitmentDto) => (
     <div className="flex flex-wrap justify-end gap-1">
+      {showPhotos(f) && (
+        <Button size="sm" variant="outline" onClick={() => setPhotosId(f.id)} aria-label={`Photos ${f.tkId}`}>
+          <Images /> Photos ({f.photoCounts.active})
+        </Button>
+      )}
+      {verificationLabel(f) && (
+        <Button
+          size="sm"
+          variant={f.availableActions.includes('VERIFY') ? 'default' : 'outline'}
+          onClick={() => setVerifyingId(f.id)}
+          aria-label={`${verificationLabel(f)} ${f.tkId}`}
+        >
+          {!f.availableActions.includes('VERIFY') && <ClipboardCheck />} {verificationLabel(f)}
+        </Button>
+      )}
       {reviewActions(f).map((action) => (
         <Button
           key={action}
@@ -191,7 +237,8 @@ export function FitmentsSection({ task }: { task: TaskDto }) {
 
   const actionsMenu = (f: FitmentDto) => {
     const actions = reviewActions(f);
-    if (!actions.length && !editable(f)) return null;
+    const verification = verificationLabel(f);
+    if (!actions.length && !editable(f) && !verification && !showPhotos(f)) return null;
     return (
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
@@ -200,6 +247,8 @@ export function FitmentsSection({ task }: { task: TaskDto }) {
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end">
+          {verification && <DropdownMenuItem onSelect={() => setVerifyingId(f.id)}>{verification}</DropdownMenuItem>}
+          {showPhotos(f) && <DropdownMenuItem onSelect={() => setPhotosId(f.id)}>Photos ({f.photoCounts.active})</DropdownMenuItem>}
           {actions.map((action) => (
             <DropdownMenuItem key={action} onSelect={() => setActing({ fitment: f, action })}>
               {FITMENT_ACTION_LABELS[action]}
@@ -327,6 +376,8 @@ export function FitmentsSection({ task }: { task: TaskDto }) {
       </CardContent>
       {editing && <VehicleDialog taskId={task.id} fitment={editing} onClose={() => setEditing(null)} />}
       {acting && <FitmentActionDialog fitment={acting.fitment} action={acting.action} actor={actor} onClose={() => setActing(null)} />}
+      {verifying && <VerificationSheet key={verifying.id} fitment={verifying} onClose={() => setVerifyingId(null)} />}
+      {viewingPhotos && <PhotoViewerDialog fitment={viewingPhotos} onClose={() => setPhotosId(null)} />}
       <AlertDialog open={confirmApprove} onOpenChange={setConfirmApprove}>
         <AlertDialogContent>
           <AlertDialogHeader>

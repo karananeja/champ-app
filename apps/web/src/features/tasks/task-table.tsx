@@ -6,6 +6,7 @@ import {
   TASK_STATUSES,
   TASK_STATUS_LABELS,
   type ExportFormat,
+  type ExportLevel,
   type TaskListItemDto,
   type TaskSort,
   type TaskStatus,
@@ -14,7 +15,14 @@ import { DateRangePicker } from '@/components/date-picker';
 import { ListStates } from '@/components/list-states';
 import { SearchableSelect } from '@/components/searchable-select';
 import { Button } from '@/components/ui/button';
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -80,6 +88,9 @@ const EMPTY_COPY: Record<TaskListView, (creator: boolean) => ComponentProps<type
 
 const fitmentsLabel = (t: TaskListItemDto) => `${t.fitments.assigned}/${t.fitments.total}`;
 
+/** F06: billable of the verified fitments, "3 / 5"; "—" while none is verified. */
+const billableText = (t: TaskListItemDto) => (t.verifiedCount ? `${t.billableCount} / ${t.verifiedCount}` : '—');
+
 /**
  * The task list shared by Open tasks, Assigned, Completed tasks and All tasks (CR-04): filters, id search, sorting, paging and a Download menu
  * (CSV / Excel with the current filters). A table on md+ and cards on phones.
@@ -89,6 +100,8 @@ export function TaskTable({ view }: { view: TaskListView }) {
   const [filters, setFilters] = useState<TaskFilterState>(() => emptyFiltersFor(view));
   const [page, setPage] = useState(1);
   const [downloading, setDownloading] = useState<ExportFormat | null>(null);
+  // F06: the Billable column, for finished work (Completed and All tasks).
+  const showBillable = view === 'completed' || view === 'all';
   const q = useDebounced(filters.q);
   const effective = { ...filters, q };
   const lookups = useLookups();
@@ -110,10 +123,10 @@ export function TaskTable({ view }: { view: TaskListView }) {
   // An OE has the Assigned view for their own tasks, so the OE filter is for SA/OM/RO.
   const showOeFilter = actor.role !== 'OE';
 
-  const download = async (format: ExportFormat) => {
+  const download = async (format: ExportFormat, level: ExportLevel = 'task') => {
     setDownloading(format);
     try {
-      await downloadFile(exportPath(view, effective, format), `champ-tasks.${format}`);
+      await downloadFile(exportPath(view, effective, format, level), `champ-${level === 'fitment' ? 'fitments' : 'tasks'}.${format}`);
     } catch (err) {
       toast.error(err instanceof ApiError ? err.message : 'Could not download the tasks');
     } finally {
@@ -153,8 +166,13 @@ export function TaskTable({ view }: { view: TaskListView }) {
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
+              <DropdownMenuLabel className="text-xs text-muted-foreground">One row per task</DropdownMenuLabel>
               <DropdownMenuItem onSelect={() => void download('csv')}>CSV</DropdownMenuItem>
               <DropdownMenuItem onSelect={() => void download('xlsx')}>Excel (.xlsx)</DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuLabel className="text-xs text-muted-foreground">One row per fitment</DropdownMenuLabel>
+              <DropdownMenuItem onSelect={() => void download('csv', 'fitment')}>Fitments (CSV)</DropdownMenuItem>
+              <DropdownMenuItem onSelect={() => void download('xlsx', 'fitment')}>Fitments (Excel)</DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
         </div>
@@ -263,6 +281,7 @@ export function TaskTable({ view }: { view: TaskListView }) {
                   <TableHead>OE</TableHead>
                   <TableHead>Assigned / vehicles</TableHead>
                   <TableHead>Fitment (IST)</TableHead>
+                  {showBillable && <TableHead title="Billable of the verified fitments">Billable</TableHead>}
                   <TableHead>Status</TableHead>
                 </TableRow>
               </TableHeader>
@@ -291,6 +310,7 @@ export function TaskTable({ view }: { view: TaskListView }) {
                       {t.fitments.open > 0 && <div className="text-xs text-muted-foreground">{t.fitments.open} open</div>}
                     </TableCell>
                     <TableCell>{formatIst(t.fitmentAt)}</TableCell>
+                    {showBillable && <TableCell data-testid="task-billable">{billableText(t)}</TableCell>}
                     <TableCell>
                       <TaskStatusBadge status={t.status} />
                     </TableCell>
@@ -321,6 +341,11 @@ export function TaskTable({ view }: { view: TaskListView }) {
                       Assigned <span data-testid="task-fitments">{fitmentsLabel(t)}</span>
                     </span>
                     <span className="text-muted-foreground">{formatIst(t.fitmentAt)}</span>
+                    {showBillable && (
+                      <span>
+                        Billable <span data-testid="task-billable">{billableText(t)}</span>
+                      </span>
+                    )}
                   </div>
                 </Link>
               </li>

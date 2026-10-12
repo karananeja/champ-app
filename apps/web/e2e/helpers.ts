@@ -119,6 +119,8 @@ export interface E2eOrg {
    * Open task with its fitment on 15 Mar 2027 (IST).
    */
   cr: { om: Account; oe: Account; ro: Account; tasks: Record<string, { completed: string; march: string }> };
+  /** F06: own OM/OE accounts and, per Playwright project, one task (1 fitment, technician wfTechs[0], OE = f06.oe). */
+  f06: { om: Account; oe: Account; tasks: Record<string, WorkflowTask> };
 }
 
 export interface WorkflowTask {
@@ -228,6 +230,28 @@ export async function fitmentAction(page: Page, tkId: string, action: 'Verify' |
     await page.getByRole('button', { name: `Actions for ${tkId}` }).click();
     await page.getByRole('menuitem', { name: action, exact: true }).click();
   }
+}
+
+/**
+ * F06: opens the verification sheet of a fitment (the Verify button), fills the required fields with seeded
+ * masters (and the given final issue), checks the live billable badge and verifies.
+ */
+export async function verifyInSheet(page: Page, tkId: string, finalIssue = 'Wiring issue', billable = 'Yes') {
+  await fitmentAction(page, tkId, 'Verify');
+  const sheet = page.getByTestId('verification-sheet');
+  await expect(sheet.getByRole('heading', { name: `Verify ${tkId}` })).toBeVisible();
+  await fillVerification(page, finalIssue);
+  await expect(sheet.getByTestId('billable-badge')).toHaveText(`Billable: ${billable}`);
+  await sheet.getByRole('button', { name: 'Verify', exact: true }).click();
+  await expect(sheet).toBeHidden();
+}
+
+/** F06: fills the three required verification fields in the open sheet. */
+export async function fillVerification(page: Page, finalIssue = 'Wiring issue') {
+  const sheet = page.getByTestId('verification-sheet');
+  await pickSearchable(page, sheet.getByRole('combobox', { name: /^Issue observed at site/ }), 'Loose', 'Loose wiring');
+  await pickSearchable(page, sheet.getByRole('combobox', { name: /^Action taken/ }), 'Rewired', 'Rewired power supply');
+  await pickSearchable(page, sheet.getByRole('combobox', { name: /^Final issue/ }), finalIssue, finalIssue);
 }
 
 /** Opens the dev simulator panel on a task page and runs a technician step (Start work or Submit). */
