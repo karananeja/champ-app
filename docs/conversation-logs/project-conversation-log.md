@@ -251,3 +251,7 @@ Chronological log of the whole project conversation. Feature-level logs live in 
 **User:** "F09 accepted". UAT sign-off recorded and `feature/F09-mobile-foundation` merged to `main`.
 
 **Claude:** Wrote the F10 intent (route planning and starting a fitment), proposing to split the original F10 into F10 and F10B, and sent it for sign-off.
+
+**User:** "ok continue" (F10 intent). Taken as approval with all five open points as proposed (D-154 – D-158), including the F10/F10B split.
+
+**Claude:** Created branch `feature/F10-route-and-start`, wrote the F10 spec, and launched two parallel agents (Backend: shared, API, web; Mobile: route and fitment screens).

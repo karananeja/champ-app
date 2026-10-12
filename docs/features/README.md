@@ -14,7 +14,7 @@ A feature is **Complete** only after it has been implemented, tested and signed 
 | F07 | OM kanban board | F05 | ✅ Complete (UAT 2026-10-12) |
 | F08 | Travel tasks | F05 | ✅ Complete (UAT 2026-10-12) |
 | F09 | Mobile app foundation: login, home, header, profile, home location | F01 | ✅ Complete (UAT 2026-10-12) |
-| F10 | Mobile route planning and fitment execution (GPS, form, photos, scan, close, FT) | F05, F09 | Intent awaiting sign-off (proposed split: F10 route and start, F10B form and submit) |
+| F10 | Mobile route planning and fitment execution (GPS, form, photos, scan, close, FT) | F05, F09 | In progress (F10 route and start; F10B form and submit next) |
 | F11 | Mobile CSV bulk fill | F10 | Not started |
 | F12 | Mobile history timeline, distance, Approve visit | F10 | Not started |
 | F13 | In-app notifications (web and mobile) | F05 | Not started |
