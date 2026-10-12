@@ -3,6 +3,9 @@ import {
   type Role,
   APPROVER_ROLES,
   PHOTO_MANAGER_ROLES,
+  TASK_VIEW_ROLES,
+  fitmentLookupQuerySchema,
+  type FitmentLookupQuery,
   WORKFLOW_VIEW_ROLES,
   approveFitmentsSchema,
   photoListQuerySchema,
@@ -27,6 +30,7 @@ import { approveMany, transitionFitment } from './engine';
 import { listWorkflowFitments, type WorkflowList } from './lists';
 import { listPhotos, removePhoto, replacePhoto, uploadDebugPhoto } from '../verification/photos';
 import { saveVerification } from '../verification/service';
+import { lookupFitments } from '../travel/fitment-lookup';
 import { uploadPhoto } from '../verification/upload';
 
 const query = (req: Request) => req.query as unknown as WorkflowListQuery;
@@ -49,6 +53,11 @@ export function fitmentsRouter(storage: Storage) {
   list('awaiting-approval', APPROVER_ROLES);
   list('reopened', WORKFLOW_VIEW_ROLES);
   list('faulty', WORKFLOW_VIEW_ROLES);
+
+  // F08: the related-task combobox of the travel form (SA, OM, OE, RO).
+  router.get('/lookup', requireRole(...TASK_VIEW_ROLES), validate({ query: fitmentLookupQuerySchema }), async (req, res) => {
+    res.json(await lookupFitments((req.query as unknown as FitmentLookupQuery).q));
+  });
 
   router.post('/approve', requireRole(...APPROVER_ROLES), validate({ body: approveFitmentsSchema }), async (req, res) => {
     res.json(await approveMany(currentUser(req), (req.body as ApproveFitmentsInput).fitmentIds));

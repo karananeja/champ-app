@@ -7,3 +7,4 @@ export * from './dto';
 export * from './workflow';
 export * from './verification';
 export * from './board';
+export * from './travel';

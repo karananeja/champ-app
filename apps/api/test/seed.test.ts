@@ -64,12 +64,13 @@ describe('master data seed', () => {
 });
 
 describe('task id counters (F04)', () => {
-  it('creates the OM, OE and TK counters once and keeps their values on a re-run', async () => {
+  it('creates the OM, OE, TK and (F08) TT counters once and keeps their values on a re-run', async () => {
     await ensureCounters(prisma);
     expect(await prisma.counter.findMany({ orderBy: { name: 'asc' } })).toEqual([
       { name: 'OE', value: 0 },
       { name: 'OM', value: 0 },
       { name: 'TK', value: 0 },
+      { name: 'TT', value: 0 },
     ]);
     const first = await prisma.$transaction((tx) => nextNumber(tx, 'TK', 3));
     expect(first).toBe(1);

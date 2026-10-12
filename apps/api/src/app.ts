@@ -18,6 +18,7 @@ import { invitesRouter } from './modules/invites/router';
 import { lookupsRouter, mastersRouter } from './modules/masters/router';
 import { tasksRouter } from './modules/tasks/router';
 import { techniciansRouter } from './modules/technicians/router';
+import { travelRouter } from './modules/travel/router';
 import { usersRouter } from './modules/users/router';
 import { fitmentsRouter } from './modules/workflow/router';
 import { devSimulatorRouter } from './modules/workflow/simulator';
@@ -29,7 +30,7 @@ export interface AppDeps {
   geocoder?: Geocoder;
   /** Mount the dev technician simulator (D-073); defaults to `ENABLE_DEV_SIMULATOR`, never in production. */
   devSimulator?: boolean;
-  /** Photo storage (F06); defaults to the process-wide driver chosen by `STORAGE_DRIVER`. */
+  /** Photo and receipt storage (F06, F08); defaults to the process-wide driver chosen by `STORAGE_DRIVER`. */
   storage?: Storage;
 }
 
@@ -74,6 +75,7 @@ export function createApp(deps: AppDeps = {}) {
   api.use('/tasks', tasksRouter());
   api.use('/fitments', fitmentsRouter(storage));
   api.use('/board', boardRouter());
+  api.use('/travel-tasks', travelRouter(storage));
   if (devSimulator) api.use('/dev', devSimulatorRouter(storage));
   api.use(notFoundHandler);
 

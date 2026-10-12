@@ -3,6 +3,7 @@ import type { AuthProvider, InviteStatus, Role, UserStatus } from './roles';
 import type { BulkTaskColumn, FitmentStatus, TaskStatus } from './tasks';
 import type { PhotoKind, PhotoSource, PhotoStatus } from './verification';
 import type { FitmentAction, TaskEventType } from './workflow';
+import type { TravelAction, TravelAttachmentStatus, TravelEventType, TravelSource, TravelStatus } from './travel';
 
 export interface UserRef {
   id: string;
@@ -608,6 +609,7 @@ export const ERROR_CODES = [
   'GEOCODER_UNAVAILABLE',
   'TASK_STARTED',
   'FITMENT_LOCKED',
+  'TRAVEL_LOCKED',
   'INVALID_TRANSITION',
   'VERIFICATION_INCOMPLETE',
   'FILE_TOO_LARGE',
@@ -644,6 +646,8 @@ export interface DashboardSummaryDto {
   assignedToMe?: number;
   /** OE: fitments of the caller's tasks that are submitted and wait for the OE's verification. */
   awaitingMyVerification?: number;
+  /** F08 — OM: every Raised travel task; OE: Raised travel tasks of their technicians. */
+  travelToVerify?: number;
 }
 
 // --- Board (F07) ---
@@ -680,4 +684,97 @@ export interface BoardColumnDto {
 /** `GET /board`: the first page of every column (all 9 statuses). */
 export interface BoardResponse {
   columns: Record<FitmentStatus, BoardColumnDto>;
+}
+
+// --- Travel tasks (F08) ---
+
+/** `GET /travel-tasks/options`: technicians the caller may raise a TT for. */
+export interface TravelOptionsResponse {
+  technicians: { id: string; name: string; technicianType: TechnicianType | null; baseLocation: string | null }[];
+}
+
+/** A row of `GET /fitments/lookup` (the related-task combobox). */
+export interface FitmentLookupItemDto {
+  id: string;
+  /** `TK-00001` */
+  tkId: string;
+  /** `OM-00001` */
+  omId: string;
+  client: string;
+  status: FitmentStatus;
+  technician: string | null;
+}
+
+/** A row of `GET /travel-tasks`. */
+export interface TravelTaskListItemDto {
+  id: string;
+  /** `TT-00001` */
+  ttId: string;
+  status: TravelStatus;
+  source: TravelSource;
+  /** IST calendar day, `YYYY-MM-DD`. */
+  travelDate: string;
+  technician: TaskTechnicianRef;
+  /** The technician's reporting OE (now). */
+  oe: UserRef | null;
+  location: { id: string; city: string };
+  client: { id: string; name: string } | null;
+  purpose: string;
+  distanceKm: number | null;
+  relatedFitment: { id: string; tkId: string } | null;
+  attachmentCount: number;
+  raisedBy: UserRef;
+  createdAt: string;
+}
+
+/** A receipt of a TT; `url` is a presigned GET URL (10 minutes), for images and PDFs alike. */
+export interface TravelAttachmentDto {
+  id: string;
+  status: TravelAttachmentStatus;
+  url: string;
+  contentType: string;
+  sizeBytes: number;
+  width: number | null;
+  height: number | null;
+  originalName: string | null;
+  uploadedBy: UserRef;
+  createdAt: string;
+}
+
+/** A history row. `data` holds a diff `{ field: [before, after] }` (readable names), a reason or attachment details. */
+export interface TravelEventDto {
+  id: string;
+  at: string;
+  actor: UserRef;
+  type: TravelEventType;
+  fromStatus: TravelStatus | null;
+  toStatus: TravelStatus | null;
+  data: unknown;
+}
+
+/** `GET /travel-tasks/:id`: the full record, active receipts, history and what the caller may do. */
+export interface TravelTaskDto extends Omit<TravelTaskListItemDto, 'relatedFitment' | 'location' | 'client'> {
+  location: { id: string; city: string; active: boolean };
+  client: { id: string; name: string; active: boolean } | null;
+  relatedFitment: { id: string; tkId: string; taskId: string; omId: string; client: string } | null;
+  verifiedAt: string | null;
+  verifiedBy: UserRef | null;
+  rejectedAt: string | null;
+  rejectedBy: UserRef | null;
+  rejectionReason: string | null;
+  reopenedAt: string | null;
+  reopenedBy: UserRef | null;
+  reopenReason: string | null;
+  updatedAt: string;
+  attachments: TravelAttachmentDto[];
+  events: TravelEventDto[];
+  canEdit: boolean;
+  canVerify: boolean;
+  canManageAttachments: boolean;
+  availableActions: TravelAction[];
+}
+
+/** `POST /travel-tasks/:id/attachments`. */
+export interface TravelAttachmentUploadResponse {
+  attachment: TravelAttachmentDto;
 }

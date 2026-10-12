@@ -10,6 +10,7 @@ import {
   formatOmId,
   istFileStamp,
   toCsv,
+  type ExportFormat,
   type ExportTasksQuery,
 } from '@champ/shared';
 import type { Prisma } from '../../generated/prisma/client';
@@ -96,7 +97,9 @@ export interface ExportFile {
   body: Buffer;
 }
 
-type Column<R> = { header: string; width: number; value: (row: R) => string | number };
+/** One export column: its header, Excel width and cell value. */
+export type ExportColumn<R> = { header: string; width: number; value: (row: R) => string | number };
+type Column<R> = ExportColumn<R>;
 
 // --- Fitment level (F06): one row per fitment with the verification, ready for the billing report (F15) ---
 
@@ -168,7 +171,8 @@ export async function exportTasks(actor: User, query: ExportTasksQuery): Promise
   return writeFile(COLUMNS, tasks, query.format, `champ-tasks-${stamp}`, 'Tasks');
 }
 
-async function writeFile<R>(columns: Column<R>[], items: R[], format: ExportTasksQuery['format'], base: string, sheetName: string): Promise<ExportFile> {
+/** Writes rows as CSV (UTF-8 BOM) or Excel (bold, frozen header), every text cell through `safeText`. */
+export async function writeFile<R>(columns: Column<R>[], items: R[], format: ExportFormat, base: string, sheetName: string): Promise<ExportFile> {
   const header = columns.map((c) => c.header);
   const rows = items.map((item) => columns.map((c) => safeText(c.value(item))));
   if (format === 'xlsx') {

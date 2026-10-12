@@ -61,6 +61,14 @@ model User {
   fitmentsVerificationUpdated Fitment[]           @relation("FitmentVerificationUpdatedBy")
   photosUploaded              FitmentPhoto[]      @relation("PhotoUploadedBy")
   photosChanged               FitmentPhoto[]      @relation("PhotoChangedBy")
+  travelTasks                 TravelTask[]        @relation("TravelTechnician")
+  travelRaised                TravelTask[]        @relation("TravelRaisedBy")
+  travelVerified              TravelTask[]        @relation("TravelVerifiedBy")
+  travelRejected              TravelTask[]        @relation("TravelRejectedBy")
+  travelReopened              TravelTask[]        @relation("TravelReopenedBy")
+  travelEvents                TravelTaskEvent[]   @relation("TravelEventActor")
+  travelUploads               TravelAttachment[]  @relation("TravelAttachmentUploadedBy")
+  travelRemovals              TravelAttachment[]  @relation("TravelAttachmentRemovedBy")
 
   @@index([managerId])
   @@index([role, baseLocationId])
@@ -201,6 +209,7 @@ model Location {
   invites     Invite[]     @relation("InviteBaseLocation")
   clientSites ClientSite[]
   tasks       Task[]
+  travelTasks TravelTask[]
 
   @@unique([stateId, cityKey])
   @@index([regionId])
@@ -228,6 +237,7 @@ model Client {
   updatedAt    DateTime     @updatedAt
   sites        ClientSite[]
   tasks        Task[]
+  travelTasks  TravelTask[]
 }
 
 /**
@@ -258,7 +268,7 @@ model ClientSite {
 // --- Tasks (F04) ---
 
 /**
- * Human id counters: 'OM', 'OE', 'TK' (D-065). Incremented inside the creating transaction.
+ * Human id counters: 'OM', 'OE', 'TK' (D-065) and 'TT' (F08). Incremented inside the creating transaction.
  */
 model Counter {
   name  String @id
@@ -414,6 +424,7 @@ model Fitment {
   updatedAt               DateTime            @updatedAt
   events                  TaskEvent[]
   reopenAttributions      ReopenAttribution[]
+  travelTasks             TravelTask[]
 
   @@unique([taskId, seq])
   @@index([technicianId, status])
@@ -528,4 +539,104 @@ model TaskEvent {
   attributions ReopenAttribution[]
 
   @@index([taskId, createdAt])
+}
+
+// --- Travel tasks (F08) ---
+
+enum TravelStatus {
+  RAISED
+  VERIFIED
+  REJECTED
+}
+
+enum TravelSource {
+  WEB
+  MOBILE
+}
+
+/**
+ * A technician's trip outside a planned fitment (TT-00001), verified by their OE or an OM for reimbursement
+ * (D-119–D-122). Never deleted.
+ */
+model TravelTask {
+  id               String             @id @default(cuid())
+  ttNo             Int                @unique // TT-00001 (Counter 'TT')
+  technicianId     String // User with role OT
+  technician       User               @relation("TravelTechnician", fields: [technicianId], references: [id])
+  locationId       String
+  location         Location           @relation(fields: [locationId], references: [id])
+  clientId         String? // optional (D-119)
+  client           Client?            @relation(fields: [clientId], references: [id])
+  purpose          String // 3..1000
+  travelDate       DateTime           @db.Date // IST calendar day, not in the future
+  relatedFitmentId String?
+  relatedFitment   Fitment?           @relation(fields: [relatedFitmentId], references: [id])
+  distanceKm       Decimal?           @db.Decimal(7, 1) // 0 < x <= 5000
+  status           TravelStatus       @default(RAISED)
+  source           TravelSource
+  raisedById       String
+  raisedBy         User               @relation("TravelRaisedBy", fields: [raisedById], references: [id])
+  verifiedAt       DateTime?
+  verifiedById     String?
+  verifiedBy       User?              @relation("TravelVerifiedBy", fields: [verifiedById], references: [id])
+  rejectedAt       DateTime?
+  rejectedById     String?
+  rejectedBy       User?              @relation("TravelRejectedBy", fields: [rejectedById], references: [id])
+  rejectionReason  String?
+  reopenedAt       DateTime?
+  reopenedById     String?
+  reopenedBy       User?              @relation("TravelReopenedBy", fields: [reopenedById], references: [id])
+  reopenReason     String?
+  createdAt        DateTime           @default(now())
+  updatedAt        DateTime           @updatedAt
+  events           TravelTaskEvent[]
+  attachments      TravelAttachment[]
+
+  @@index([technicianId, status])
+  @@index([travelDate])
+  @@index([status])
+}
+
+/**
+ * Audit trail of a travel task: TT_RAISED, TT_UPDATED, TT_VERIFIED, TT_REJECTED, TT_RESUBMITTED, TT_REOPENED,
+ * TT_ATTACHMENT_ADDED, TT_ATTACHMENT_REMOVED (TRAVEL_EVENT_TYPES in @champ/shared).
+ */
+model TravelTaskEvent {
+  id           String     @id @default(cuid())
+  travelTaskId String
+  travelTask   TravelTask @relation(fields: [travelTaskId], references: [id])
+  actorId      String
+  actor        User       @relation("TravelEventActor", fields: [actorId], references: [id])
+  type         String
+  fromStatus   String?
+  toStatus     String?
+  data         Json? // a diff { field: [before, after] } with readable names, a reason, attachment ids
+  createdAt    DateTime   @default(now())
+
+  @@index([travelTaskId, createdAt])
+}
+
+/**
+ * A receipt (image or PDF) of a travel task in object storage. Never deleted: removal sets REMOVED (as D-100).
+ */
+model TravelAttachment {
+  id           String     @id @default(cuid())
+  travelTaskId String
+  travelTask   TravelTask @relation(fields: [travelTaskId], references: [id])
+  objectKey    String     @unique // travel/{travelTaskId}/{id}.{ext}
+  contentType  String // image/jpeg|png|webp or application/pdf
+  sizeBytes    Int
+  width        Int?
+  height       Int?
+  originalName String?
+  uploadedById String
+  uploadedBy   User       @relation("TravelAttachmentUploadedBy", fields: [uploadedById], references: [id])
+  status       String     @default("ACTIVE") // ACTIVE | REMOVED
+  removedById  String?
+  removedBy    User?      @relation("TravelAttachmentRemovedBy", fields: [removedById], references: [id])
+  removedAt    DateTime?
+  removeReason String?
+  createdAt    DateTime   @default(now())
+
+  @@index([travelTaskId, status])
 }

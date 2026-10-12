@@ -1,7 +1,7 @@
 import type { Prisma, PrismaClient } from '../generated/prisma/client';
 
-/** Human id counters (D-065): OM-00001, OE-00001 and TK-00001. */
-export const COUNTER_NAMES = ['OM', 'OE', 'TK'] as const;
+/** Human id counters (D-065): OM-00001, OE-00001, TK-00001 and (F08) TT-00001. */
+export const COUNTER_NAMES = ['OM', 'OE', 'TK', 'TT'] as const;
 export type CounterName = (typeof COUNTER_NAMES)[number];
 
 /**
