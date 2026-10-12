@@ -163,6 +163,21 @@ bundle has no trace of it.
 |---|---|---|
 | `ENABLE_DEV_SIMULATOR` | unset → on in development, off otherwise (`true` in `.env.example`) | Mounts the technician simulator API; ignored (always off) when `NODE_ENV=production` |
 
+### Look and feel (CR-03, CR-04)
+
+- **Dashboard**: role-aware stat cards from `GET /api/tasks/summary`. SA/OM see open tasks, awaiting approval,
+  re-opened, faulty and completed. OEs see their own tasks, fitments waiting for their verification, open tasks,
+  re-opened and faulty. RO sees open and completed tasks. Each card opens the list it counts.
+- **Illustrations**: unDraw SVGs (free, no attribution) are bundled in `apps/web/src/assets/illustrations` and
+  recoloured by the theme in `index.css`. Empty lists, "no matches", errors and offline states, 403/404 pages,
+  invite errors, sign-in and the dashboard use them through `EmptyState` / `ErrorState` / `ListStates`.
+- **Theme**: the brand primary is indigo and is defined once in `apps/web/src/index.css` (light and dark tokens). Dark
+  mode follows the OS setting.
+- **Pages you can't open**: Users, Technicians and Clients show a 403 page. Masters and task pages still redirect to
+  the dashboard with a toast (CR-01). Unknown URLs show a 404 page.
+- **Dates**: every date and time is picked with the shadcn calendar pickers (`components/date-picker.tsx`; date-times
+  in IST, 5-minute steps). List filters use one date-range control.
+
 ### Google sign-in
 
 Hidden unless `GOOGLE_CLIENT_ID` is set. When set, only verified Google accounts in `GOOGLE_ALLOWED_DOMAIN`
@@ -220,13 +235,16 @@ apps/api/src
                       counters (transactional OM/OE/TK ids)
   middleware/         authenticate, requireRole, validate, error handler
   modules/            auth, invites, users, health, masters (+ /lookups), technicians, clients, geo,
-                      tasks (service, refs, status, filters, events, export, bulk + bulk-rows),
+                      tasks (service, refs, status, filters, events, export, bulk + bulk-rows, summary),
                       workflow (engine, lists, history, router, dev simulator)
 apps/api/prisma       schema, migrations, seed (seed-masters.ts: master values; seed-demo.ts: demo users)
 apps/web/src
   components/ui       shadcn/ui components (generated)
-  components/         app shell, auth provider, shared widgets, site-picker, map/ (react-leaflet)
-  features/           auth, invites, users, dashboard, profile, masters (config-driven), technicians, clients, tasks
+  components/         app shell, auth provider, shared widgets, site-picker, map/ (react-leaflet), date pickers,
+                      empty/error states (illustration, empty-state, list-states), page-header
+  assets/illustrations  unDraw SVGs (CR-03)
+  features/           auth, invites, users, dashboard, profile, masters (config-driven), technicians, clients, tasks,
+                      errors (404/403/error boundary)
   lib/                API client (in-memory access token, single-flight refresh), auth context, permissions
 packages/shared/src   roles.ts, masters.ts (kinds, permission helpers), clients.ts, tasks.ts (ids, statuses,
                       permissions, IST helpers, CSV columns), workflow.ts (state machine, actors, edit locks),
