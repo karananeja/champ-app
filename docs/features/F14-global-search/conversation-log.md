@@ -14,3 +14,4 @@
 - User: "yes, let it open board for OM and SA". Relayed to the CR-10 agent: the Tasks item opens /tasks/board for OM and SA, /tasks for others; /tasks stays the Open tab.
 - CR-10 done (agent ~21 min; E2E 75/75). CR-11 done (backend ~9 min, web ~13 min). Claude fixed the live-count race in both bells (D-263) and deflaked the app notification test; full unit suite green 3× (1,248 tests).
 - User asked when the analytics dashboard is planned: F15 (Reports and analytics), next after F14 is accepted.
+- 2026-10-12: User replied "F14 accepted". UAT sign-off recorded; CR-08 – CR-11 (on the same branch) taken as accepted with it; merged `feature/F14-global-search` to `main`.

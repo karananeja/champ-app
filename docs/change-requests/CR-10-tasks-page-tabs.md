@@ -3,7 +3,7 @@
 | | |
 |---|---|
 | Raised | 2026-10-12 by the user, during F14 (with three follow-ups the same day) |
-| Status | Ready for UAT |
+| Status | ✅ Complete: merged with F14 on 2026-10-12 (user replied "F14 accepted"; taken as accepted with F14) |
 | Branch | `feature/F14-global-search` (accepted together with F14) |
 | Affects | Web: sidebar, all task-list pages, E2E navigation helper |
 
