@@ -11,3 +11,4 @@
   - Web `/tasks/travel` (URL filters, table/cards, CSV/Excel), the raise/edit/resubmit dialog, the detail sheet (receipts in the F06 lightbox, PDF chips, history, actions) and the dashboard card for OM and OE. The F04 placeholder page was removed.
   - Tests: shared +43, API +15, web +18, E2E +2 (desktop and 360 px). All gates pass (see `test-report.md`).
   - Decisions not in the spec: D-123 to D-126.
+- 2026-10-12: Claude re-ran typecheck, lint, 876 tests, the build with the bundle check, and E2E (67 passed, 4 skipped by design); all pass. Reviewed the travel router guards. Handed to the user for UAT.
