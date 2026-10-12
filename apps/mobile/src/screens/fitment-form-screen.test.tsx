@@ -1,16 +1,18 @@
+import type * as ReactModule from 'react';
+import type * as RNModule from 'react-native';
 import { EMPTY_FITMENT_FORM, type FitmentFormDto, type FitmentPhotoDto, type MyFitmentDto, type RequiredPhotoKind } from '@champ/shared';
-import { fireEvent, screen, waitFor } from '@testing-library/react-native';
+import { act, fireEvent, screen, waitFor } from '@testing-library/react-native';
 import { useLocalSearchParams } from 'expo-router';
 import { makeFitment } from '../test/route-fixtures';
 import { jsonBody, mockFetch, renderWithProviders, router, type Route } from '../test/utils';
-import { FitmentFormScreen, NOT_SAVED_RETRYING } from './fitment-form-screen';
+import { FitmentFormScreen, NOT_SAVED_RETRYING, SAVE_RETRY_MS } from './fitment-form-screen';
 
 // The capture agent's components (§6.1) are mocked: these tests don't depend on their internals.
 jest.mock(
   '../components/photo-slot',
   () => {
-    const { createElement } = jest.requireActual<typeof import('react')>('react');
-    const { Pressable, Text } = jest.requireActual<typeof import('react-native')>('react-native');
+    const { createElement } = jest.requireActual<typeof ReactModule>('react');
+    const { Pressable, Text } = jest.requireActual<typeof RNModule>('react-native');
     return {
       PhotoSlot: (p: { kind: string; label: string; required: boolean; photo: { id: string } | null; disabled?: boolean; testID?: string; onUploaded: (photo: unknown) => void }) =>
         createElement(
@@ -25,8 +27,8 @@ jest.mock(
 jest.mock(
   '../components/scan-field',
   () => {
-    const { createElement } = jest.requireActual<typeof import('react')>('react');
-    const { TextInput } = jest.requireActual<typeof import('react-native')>('react-native');
+    const { createElement } = jest.requireActual<typeof ReactModule>('react');
+    const { TextInput } = jest.requireActual<typeof RNModule>('react-native');
     return {
       ScanField: (p: { label: string; value: string; onChange: (v: string) => void; onBlur?: () => void; disabled?: boolean; testID?: string }) =>
         createElement(TextInput, { testID: p.testID, accessibilityLabel: p.label, value: p.value, onChangeText: p.onChange, onBlur: p.onBlur, editable: !p.disabled }),
@@ -150,6 +152,28 @@ describe('FitmentFormScreen', () => {
     await fireEvent.press(await screen.findByTestId('check-accessories-OK'));
     expect(await screen.findByText(NOT_SAVED_RETRYING)).toBeOnTheScreen();
     expect(screen.getByTestId('save-status')).toHaveTextContent('Not saved');
+  });
+
+  it('retries a failed save every 5 s until it is saved', async () => {
+    jest.useFakeTimers();
+    try {
+      let fail = true;
+      const fetchMock = mockFetch((url) => {
+        if (url.pathname === '/api/mobile/fitments/f1') return { status: 200, body: makeFitment({ status: 'IN_PROGRESS' }) };
+        if (url.pathname === '/api/mobile/fitments/f1/form') return fail ? 'network' : { status: 200, body: makeFitment({ status: 'IN_PROGRESS' }) };
+        return { status: 404 };
+      });
+      await renderWithProviders(<FitmentFormScreen />);
+      await fireEvent.press(await screen.findByTestId('check-accessories-OK'));
+      expect(await screen.findByText(NOT_SAVED_RETRYING)).toBeOnTheScreen();
+      fail = false;
+      await act(() => jest.advanceTimersByTimeAsync(SAVE_RETRY_MS));
+      await waitFor(() => expect(screen.getByTestId('save-status')).toHaveTextContent('Saved'));
+      expect(puts(fetchMock)).toEqual([{ checks: { accessories: 'OK' } }, { checks: { accessories: 'OK' } }]);
+      expect(screen.queryByText(NOT_SAVED_RETRYING)).toBeNull();
+    } finally {
+      jest.useRealTimers();
+    }
   });
 
   it('Submit with things missing lists them and sends nothing; an item closes the list', async () => {

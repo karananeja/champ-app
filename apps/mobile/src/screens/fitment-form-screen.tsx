@@ -219,6 +219,10 @@ export function FitmentFormScreen() {
     setPhotos(active);
   }
 
+  const recordY = useCallback((s: Section, y: number) => {
+    sectionY.current[s] = y;
+  }, []);
+
   const queue = useSaveQueue(id, (saved) => queryClient.setQueryData(fitmentQueryKey(id), saved));
 
   const header = (
@@ -357,12 +361,8 @@ export function FitmentFormScreen() {
     if (y !== undefined) scroll.current?.scrollTo({ y: Math.max(0, y - 8), animated: true });
   };
 
-  const at = (s: Section) => (e: { nativeEvent: { layout: { y: number } } }) => {
-    sectionY.current[s] = e.nativeEvent.layout.y;
-  };
-
   const slot = (kind: RequiredPhotoKind, label: string) => (
-    <View key={kind} onLayout={at(kind)}>
+    <Anchor key={kind} id={kind} onY={recordY}>
       <PhotoSlot
         fitmentId={id}
         tkId={f.tkId}
@@ -374,7 +374,7 @@ export function FitmentFormScreen() {
         disabled={!editable}
         testID={`photo-${kind}`}
       />
-    </View>
+    </Anchor>
   );
 
   const showPlacement = draft.deviceReplacement === 'DEVICE' || draft.deviceReplacement === 'SIM';
@@ -396,7 +396,7 @@ export function FitmentFormScreen() {
           {slot('ASSET', PHOTO_SLOT_LABELS.ASSET)}
           {f.isVehicle ? slot('CLUSTER', PHOTO_SLOT_LABELS.CLUSTER) : null}
 
-          <View onLayout={at('checks')}>
+          <Anchor id="checks" onY={recordY}>
             <Card>
               <SectionTitle>Checks</SectionTitle>
               {FITMENT_CHECKS.map((c) => (
@@ -412,9 +412,9 @@ export function FitmentFormScreen() {
                 </View>
               ))}
             </Card>
-          </View>
+          </Anchor>
 
-          <View onLayout={at('vehicle')}>
+          <Anchor id="vehicle" onY={recordY}>
             <Card>
               <SectionTitle>Vehicle</SectionTitle>
               <TextField
@@ -448,9 +448,9 @@ export function FitmentFormScreen() {
                 error={errors.clusterReadingKm}
               />
             </Card>
-          </View>
+          </Anchor>
 
-          <View onLayout={at('replacement')}>
+          <Anchor id="replacement" onY={recordY}>
             <Card>
               <SectionTitle>Device replacement</SectionTitle>
               <Segmented
@@ -461,9 +461,9 @@ export function FitmentFormScreen() {
                 testIDPrefix="replacement"
               />
             </Card>
-          </View>
+          </Anchor>
 
-          <View onLayout={at('device')}>
+          <Anchor id="device" onY={recordY}>
             <Card>
               <SectionTitle>Device</SectionTitle>
               <ScanField
@@ -486,12 +486,12 @@ export function FitmentFormScreen() {
                 testID="field-secondaryDeviceId"
               />
             </Card>
-          </View>
+          </Anchor>
 
           {showPlacement ? slot('PLACEMENT', placementLabel(draft.deviceReplacement)) : null}
           {slot('AFTER', PHOTO_SLOT_LABELS.AFTER)}
 
-          <View onLayout={at('comments')}>
+          <Anchor id="comments" onY={recordY}>
             <TextField
               label="Comments"
               testID="field-comments"
@@ -502,7 +502,7 @@ export function FitmentFormScreen() {
               editable={editable}
               error={errors.comments}
             />
-          </View>
+          </Anchor>
         </ScrollView>
 
         <View style={[styles.footer, { paddingBottom: insets.bottom + 12, borderColor: colors.border, backgroundColor: colors.background }]}>
@@ -536,6 +536,11 @@ export function FitmentFormScreen() {
       </Dialog>
     </View>
   );
+}
+
+/** Wraps a form section and reports its y, so the missing list can scroll to it. */
+function Anchor({ id, onY, children }: { id: Section; onY: (s: Section, y: number) => void; children: ReactNode }) {
+  return <View onLayout={(e) => onY(id, e.nativeEvent.layout.y)}>{children}</View>;
 }
 
 function SectionTitle({ children }: { children: ReactNode }) {
