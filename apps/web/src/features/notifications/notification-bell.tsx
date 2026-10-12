@@ -48,7 +48,7 @@ export function NotificationBell() {
           <Bell />
           {unread > 0 && (
             <span
-              className="absolute top-1 right-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-destructive px-1 text-[10px] leading-none font-semibold text-white"
+              className="absolute top-0.5 right-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-red-600 px-1 text-[10px] leading-none font-semibold text-white ring-2 ring-background"
               aria-hidden="true"
               data-testid="notification-badge"
             >

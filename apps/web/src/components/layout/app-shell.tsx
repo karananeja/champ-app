@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
-import { LogOut, Menu, UserRound, WifiOff } from 'lucide-react';
+import { LogOut, Menu, Monitor, Moon, Sun, UserRound, WifiOff } from 'lucide-react';
 import { ROLE_LABELS } from '@champ/shared';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
@@ -9,6 +9,8 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuLabel,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
@@ -16,6 +18,7 @@ import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTr
 import { useOnline } from '@/hooks/use-online';
 import { useAuth, useCurrentUser } from '@/lib/auth';
 import { initials } from '@/lib/format';
+import { setThemePreference, useTheme, type ThemePreference } from '@/lib/theme';
 import { cn } from '@/lib/utils';
 import { ErrorBoundary } from '@/features/errors/error-pages';
 import { NotificationBell } from '@/features/notifications/notification-bell';
@@ -79,7 +82,14 @@ function OfflineBanner() {
   );
 }
 
+const THEME_OPTIONS: { value: ThemePreference; label: string; icon: typeof Sun }[] = [
+  { value: 'system', label: 'System', icon: Monitor },
+  { value: 'light', label: 'Light', icon: Sun },
+  { value: 'dark', label: 'Dark', icon: Moon },
+];
+
 function UserMenu() {
+  const { preference } = useTheme();
   const user = useCurrentUser();
   const { logout } = useAuth();
   const navigate = useNavigate();
@@ -102,6 +112,17 @@ function UserMenu() {
         <DropdownMenuItem onSelect={() => navigate('/profile')}>
           <UserRound /> Profile
         </DropdownMenuItem>
+        <DropdownMenuSeparator />
+        {/* CR-09: theme choice, remembered in this browser. */}
+        <DropdownMenuLabel className="text-xs font-normal text-muted-foreground">Theme</DropdownMenuLabel>
+        <DropdownMenuRadioGroup value={preference} onValueChange={(v) => setThemePreference(v as ThemePreference)}>
+          {THEME_OPTIONS.map(({ value, label, icon: Icon }) => (
+            <DropdownMenuRadioItem key={value} value={value} data-testid={`theme-${value}`}>
+              <Icon /> {label}
+            </DropdownMenuRadioItem>
+          ))}
+        </DropdownMenuRadioGroup>
+        <DropdownMenuSeparator />
         <DropdownMenuItem
           onSelect={async () => {
             await logout();
