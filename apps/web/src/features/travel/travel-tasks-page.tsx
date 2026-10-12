@@ -209,6 +209,7 @@ export function TravelTasksPage() {
       <PageHeader
         icon={Route}
         title="Travel tasks"
+        level={2}
         description={actor.role === 'OE' ? "Trips of your technicians, for verification and reimbursement." : 'Technicians’ trips outside planned fitments, for verification and reimbursement.'}
         actions={
           <>

@@ -13,10 +13,44 @@ export async function login(page: Page, email: string, password: string) {
   await page.getByRole('button', { name: 'Sign in' }).click();
 }
 
-/** Uses the sidebar on desktop and the hamburger sheet on small screens. */
+/**
+ * CR-10: the task views are tabs of the Tasks page (and Create task / Bulk upload are buttons in its header). Maps
+ * the old menu labels to the tab or header link to click after opening Tasks from the menu.
+ */
+const TASK_VIEWS: Record<string, { tab?: string; button?: string }> = {
+  'Open tasks': { tab: 'Open' },
+  Assigned: { tab: 'Assigned' },
+  'Awaiting approval': { tab: 'Awaiting approval' },
+  'Re-opened': { tab: 'Re-opened' },
+  'Faulty tasks': { tab: 'Faulty' },
+  'Completed tasks': { tab: 'Completed' },
+  'All tasks': { tab: 'All' },
+  'Travel tasks': { tab: 'Travel' },
+  Board: { tab: 'Board' },
+  'Create task': { button: 'Create task' },
+  'Bulk upload': { button: 'Bulk upload' },
+};
+
+/** CR-10: the tab bar of the Tasks page. */
+export const taskTabs = (page: Page): Locator => page.getByRole('navigation', { name: 'Task views' });
+
+/**
+ * Uses the sidebar on desktop and the hamburger sheet on small screens. Task views (old menu labels such as
+ * 'Faulty tasks' or 'Create task') open Tasks from the menu, then the tab or header button (CR-10).
+ */
 export async function navigate(page: Page, label: string) {
+  const view = TASK_VIEWS[label];
+  if (!view) return navigateMenu(page, label);
+  await navigateMenu(page, 'Tasks');
+  await expect(taskTabs(page)).toBeVisible();
+  // Create task / Bulk upload are header buttons of the Open tab.
+  await taskTabs(page).getByRole('link', { name: view.tab ?? 'Open', exact: true }).click();
+  if (view.button) await page.getByRole('main').getByRole('link', { name: view.button, exact: true }).click();
+}
+
+async function navigateMenu(page: Page, label: string) {
   const hamburger = page.getByRole('button', { name: 'Open menu' });
-  const link = page.getByRole('navigation', { name: 'Main' }).getByRole('link', { name: label });
+  const link = page.getByRole('navigation', { name: 'Main' }).getByRole('link', { name: label, exact: true });
   // Let a closing dialog or dropdown menu finish: it returns focus to its trigger at the end of its exit
   // animation, which would dismiss a menu sheet opened in the meantime.
   await expect(
@@ -63,9 +97,10 @@ export async function expectNoHorizontalScroll(page: Page) {
   // Also catch content that is clipped by an overflowing child rather than scrolling the page.
   const { overflow, culprits } = await page.evaluate(() => {
     const width = document.documentElement.clientWidth;
-    // Map tiles and panes extend past the map, but the map container clips them (overflow: hidden).
+    // Map tiles and panes extend past the map, but the map container clips them (overflow: hidden). Strips marked
+    // `data-scroll-x` (CR-10: the task tab bar) scroll sideways inside themselves on purpose.
     const visible = Array.from(document.querySelectorAll('body *')).filter(
-      (el) => el.getClientRects().length > 0 && !el.closest('.leaflet-container'),
+      (el) => el.getClientRects().length > 0 && !el.closest('.leaflet-container') && !el.closest('[data-scroll-x] > *'),
     );
     const widest = Math.max(...visible.map((el) => el.getBoundingClientRect().right));
     const culprits = visible

@@ -122,7 +122,7 @@ test('reopen with a reason, see it in Re-opened, then redo the fitment', async (
   await expect(fitmentItem(page, tk).getByTestId('reopen-chip')).toHaveText('Reopened ×1');
 });
 
-test('mark faulty, assign the replacement, and see both in the Faulty view', async ({ page }, testInfo) => {
+test('mark faulty, assign the replacement from the Faulty view, then undo the fault marking', async ({ page }, testInfo) => {
   const { wfOe, workflow, wfTechs } = readOrg();
   const { id, omId, tkIds } = workflow[testInfo.project.name]!.faulty;
   const tk = tkIds[0]!;
@@ -146,20 +146,35 @@ test('mark faulty, assign the replacement, and see both in the Faulty view', asy
   await expect(page.getByTestId('task-status')).toHaveText('Open');
   await expect(fitmentItem(page, tk)).toContainText(`Replaced by ${replacementTk} (Open)`);
 
-  await page.getByRole('checkbox', { name: `Select ${replacementTk}` }).click();
-  await pickSearchable(page, page.getByRole('combobox', { name: 'Technician to assign', exact: true }), wfTechs[1]!, wfTechs[1]!);
-  await page.getByRole('button', { name: 'Assign', exact: true }).click();
-  await expectStatus(page, replacementTk, 'ASSIGNED');
-  await expectNoHorizontalScroll(page);
-
+  // CR-11 (D-256): assign the replacement from the Faulty view.
   await navigate(page, 'Faulty tasks');
   await expect(page.getByRole('heading', { name: 'Faulty tasks' })).toBeVisible();
   const row = listItem(page, tk);
   await expect(row).toHaveCount(1);
   await expect(row).toContainText('Device does not power on');
   await expect(row.getByTestId('replacement')).toContainText(replacementTk);
+  await expect(row.getByTestId('replacement')).toContainText('Not assigned');
+  await row.getByRole('button', { name: `Assign replacement ${replacementTk}` }).click();
+  const assignDialog = page.getByRole('dialog');
+  await pickSearchable(page, assignDialog.getByRole('combobox', { name: 'Technician' }), wfTechs[1]!, wfTechs[1]!);
+  await confirmDialog(page, 'Assign');
   await expect(row.getByTestId('replacement')).toContainText('Assigned');
   await expect(row.getByTestId('replacement')).toContainText(wfTechs[1]!);
+  await expectNoHorizontalScroll(page);
+  await page.screenshot({ path: testInfo.outputPath('faulty.png'), fullPage: true });
+
+  // CR-11 (D-257): undo the fault marking; the fitment leaves the view, back to Assigned, the replacement closed.
+  await row.getByRole('button', { name: `Undo faulty ${tk}` }).click();
+  const undoDialog = page.getByRole('dialog');
+  await expect(undoDialog).toContainText(`its replacement ${replacementTk} will be closed as "Faulty marked by mistake"`);
+  await undoDialog.getByLabel('Reason for undoing').fill('Device was fine, loose cable');
+  await confirmDialog(page, 'Undo faulty');
+  await expect(row).toHaveCount(0);
+
+  await openTask(page, id, omId);
+  await expectStatus(page, tk, 'ASSIGNED');
+  await expectStatus(page, replacementTk, 'CLOSED_NOT_DONE');
+  await expect(fitmentItem(page, replacementTk)).toContainText('Not done: Faulty marked by mistake');
   await expectNoHorizontalScroll(page);
   await page.screenshot({ path: testInfo.outputPath('faulty.png'), fullPage: true });
 });

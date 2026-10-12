@@ -7,6 +7,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Button, Card, Muted } from '../components/ui';
 import { formatDay } from '../lib/format';
 import { useSession } from '../lib/session';
+import { THEME_PREFERENCES, setThemePreference, useThemePreference, type ThemePreference } from '../theme/theme-preference';
 import { useTheme } from '../theme/use-theme';
 
 /** M17: read-only profile, home location with Change, app version and Sign out. */
@@ -63,6 +64,10 @@ export function ProfileScreen() {
             onPress={() => router.push({ pathname: '/onboarding/home-location', params: { mode: 'edit' } })}
           />
         </Card>
+        <Card testID="theme">
+          <Muted>Theme</Muted>
+          <ThemePicker />
+        </Card>
         <Muted style={styles.version}>{`Champ v${Constants.expoConfig?.version ?? 'dev'}`}</Muted>
         <Button
           title="Sign out"
@@ -76,6 +81,38 @@ export function ProfileScreen() {
         />
       </ScrollView>
     </SafeAreaView>
+  );
+}
+
+const THEME_LABELS: Record<ThemePreference, string> = { system: 'System', light: 'Light', dark: 'Dark' };
+
+/** CR-09: System / Light / Dark, remembered on this phone. */
+function ThemePicker() {
+  const { colors, radius } = useTheme();
+  const preference = useThemePreference();
+  return (
+    <View accessibilityRole="radiogroup" style={[styles.segmented, { borderColor: colors.border, borderRadius: radius }]}>
+      {THEME_PREFERENCES.map((p, i) => {
+        const selected = p === preference;
+        return (
+          <Pressable
+            key={p}
+            testID={`theme-${p}`}
+            accessibilityRole="radio"
+            accessibilityLabel={THEME_LABELS[p]}
+            accessibilityState={{ selected }}
+            onPress={() => setThemePreference(p)}
+            style={[
+              styles.segment,
+              i > 0 && { borderLeftWidth: StyleSheet.hairlineWidth, borderColor: colors.border },
+              selected && { backgroundColor: colors.primary },
+            ]}
+          >
+            <Text style={{ color: selected ? colors.primaryForeground : colors.foreground, fontWeight: '600' }}>{THEME_LABELS[p]}</Text>
+          </Pressable>
+        );
+      })}
+    </View>
   );
 }
 
@@ -93,4 +130,6 @@ const styles = StyleSheet.create({
   content: { padding: 16, gap: 12 },
   name: { fontSize: 24, fontWeight: '700' },
   version: { textAlign: 'center' },
+  segmented: { flexDirection: 'row', borderWidth: 1, overflow: 'hidden' },
+  segment: { flex: 1, minHeight: 44, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 6 },
 });

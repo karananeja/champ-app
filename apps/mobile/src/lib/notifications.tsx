@@ -85,14 +85,19 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
         })
         .catch(() => {});
     });
+    // A live count is newer than any count request still in flight: cancel it, or its late answer would overwrite this one.
+    const setLiveCount = (n: number) => {
+      void client.cancelQueries({ queryKey: unreadCountKey });
+      client.setQueryData(unreadCountKey, n);
+    };
     socket.on(NOTIFICATION_EVENT, (p: { notification: NotificationDto; unreadCount: number }) => {
-      client.setQueryData(unreadCountKey, p.unreadCount);
+      setLiveCount(p.unreadCount);
       prependToList(client, p.notification);
       toast(p.notification.title);
       for (const queryKey of LIVE_STALE_KEYS) void client.invalidateQueries({ queryKey: [...queryKey] });
     });
     socket.on(NOTIFICATION_COUNT_EVENT, (p: { unreadCount: number }) => {
-      client.setQueryData(unreadCountKey, p.unreadCount);
+      setLiveCount(p.unreadCount);
       void client.invalidateQueries({ queryKey: notificationListKey });
     });
     const sub = AppState.addEventListener('change', (state) => {
@@ -119,8 +124,12 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
 export function notificationHref(n: NotificationDto): Href {
   if (n.target.kind === 'FITMENT' && n.target.fitmentId) {
     const id = n.target.fitmentId;
-    // The technician opens the fitment; the task's OE (submitted, approved, reopened by an OM) opens it in Approve visit.
-    if (n.forTechnician && (n.type === 'FITMENT_ASSIGNED' || n.type === 'FITMENT_APPROVED' || n.type === 'FITMENT_REOPENED')) {
+    // The technician opens the fitment (also when a fault marking was undone, CR-11); the task's OE (submitted,
+    // approved, reopened by an OM) opens it in Approve visit.
+    if (
+      n.forTechnician &&
+      (n.type === 'FITMENT_ASSIGNED' || n.type === 'FITMENT_APPROVED' || n.type === 'FITMENT_REOPENED' || n.type === 'FITMENT_FAULT_UNDONE')
+    ) {
       return { pathname: '/fitment/[id]', params: { id } };
     }
     if (!n.forTechnician && (n.type === 'FITMENT_SUBMITTED' || n.type === 'FITMENT_APPROVED' || n.type === 'FITMENT_REOPENED')) {

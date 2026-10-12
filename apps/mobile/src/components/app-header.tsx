@@ -43,7 +43,7 @@ export function AppHeader({ title }: { title: string }) {
           <Path d="M10.3 21a1.94 1.94 0 0 0 3.4 0" />
         </Svg>
         {unread ? (
-          <View testID="bell-badge" style={[styles.badge, { backgroundColor: colors.destructive }]}>
+          <View testID="bell-badge" style={[styles.badge, { backgroundColor: colors.destructiveSolid, borderColor: colors.background }]}>
             <Text style={styles.badgeText}>{unread > 9 ? '9+' : unread}</Text>
           </View>
         ) : null}
@@ -110,7 +110,7 @@ const styles = StyleSheet.create({
   title: { flex: 1, fontSize: 20, fontWeight: '700' },
   chip: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 999 },
   bell: { padding: 6 },
-  badge: { position: 'absolute', top: 0, right: 0, minWidth: 16, height: 16, borderRadius: 8, paddingHorizontal: 3, alignItems: 'center', justifyContent: 'center' },
+  badge: { position: 'absolute', top: -1, right: -1, minWidth: 18, height: 18, borderRadius: 9, borderWidth: 2, paddingHorizontal: 3, alignItems: 'center', justifyContent: 'center' },
   badgeText: { color: '#ffffff', fontSize: 10, fontWeight: '700' },
   backdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'center', padding: 24 },
   sheet: { borderRadius: 14, paddingVertical: 12, maxHeight: '80%' },

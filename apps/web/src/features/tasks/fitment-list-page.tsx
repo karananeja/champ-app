@@ -1,8 +1,8 @@
 import { useState, type ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 import { toast } from 'sonner';
-import { BadgeCheck, CheckCheck, ChevronLeft, ChevronRight, Loader2, RotateCcw, TriangleAlert, X, type LucideIcon } from 'lucide-react';
-import type { WorkflowFitmentItemDto } from '@champ/shared';
+import { BadgeCheck, CheckCheck, ChevronLeft, ChevronRight, Loader2, RotateCcw, TriangleAlert, Undo2, UserPlus, X, type LucideIcon } from 'lucide-react';
+import { FITMENT_ACTION_LABELS, type WorkflowFitmentItemDto } from '@champ/shared';
 import { DateRangePicker } from '@/components/date-picker';
 import type { IllustrationName } from '@/components/illustration';
 import { ListStates } from '@/components/list-states';
@@ -27,7 +27,17 @@ import { ApiError } from '@/lib/api';
 import { useCurrentUser } from '@/lib/auth';
 import { formatIst } from '@/lib/format';
 import { useLookups } from '../masters/queries';
-import { useApproveFitments, useTaskOptions, useWorkflowList, type TaskListParams, type WorkflowListName } from './queries';
+import { AssignDialog } from './assign-dialog';
+import { FitmentActionDialog } from './fitment-action-dialog';
+import {
+  useApproveFitments,
+  useAssignFitments,
+  useInvalidateTasks,
+  useTaskOptions,
+  useWorkflowList,
+  type TaskListParams,
+  type WorkflowListName,
+} from './queries';
 import { TONES } from '@/lib/tones';
 
 const PAGE_SIZE = 20;
@@ -51,6 +61,8 @@ interface ListConfig {
   currentFilter?: boolean;
   /** Awaiting approval only: multi-select with bulk final approve. */
   bulkApprove?: boolean;
+  /** Faulty only (CR-11): Assign replacement and Undo faulty per row, by the server's flags. */
+  rowActions?: boolean;
 }
 
 const who = (u: { name: string } | null) => u?.name ?? '—';
@@ -124,6 +136,7 @@ const LISTS: Record<WorkflowListName, ListConfig> = {
     illustration: 'all-done',
     dateFilter: 'Moved to FT date',
     empty: 'No fitment has been moved to FT.',
+    rowActions: true,
     columns: [
       ...COMMON.filter((c) => c.header !== 'OE'),
       { header: 'Fault reason', cell: (i) => <span className="break-words">{i.faultReason ?? '—'}</span> },
@@ -175,7 +188,7 @@ function buildWorkflowQuery(f: Filters, page: number, pageSize = PAGE_SIZE): Tas
 /**
  * `/tasks/awaiting-approval`, `/tasks/reopened` and `/tasks/faulty` (F05): fitment lists with customer, OE,
  * technician and date filters, links to the task, paging, a table on md+ and cards on phones. Awaiting
- * approval adds multi-select with bulk final approve.
+ * approval adds multi-select with bulk final approve; Faulty adds Assign replacement and Undo faulty per row (CR-11).
  */
 export function FitmentListPage({ list }: { list: WorkflowListName }) {
   const config = LISTS[list];
@@ -222,13 +235,33 @@ export function FitmentListPage({ list }: { list: WorkflowListName }) {
       },
     );
 
+  const [assigning, setAssigning] = useState<WorkflowFitmentItemDto | null>(null);
+  const [undoing, setUndoing] = useState<WorkflowFitmentItemDto | null>(null);
+  const canUndo = (i: WorkflowFitmentItemDto) => i.availableActions.includes('UNDO_FAULTY');
+  const hasRowActions = !!config.rowActions && items.some((i) => i.canAssignReplacement || canUndo(i));
+
+  const rowActions = (i: WorkflowFitmentItemDto) => (
+    <div className="flex flex-wrap gap-1 md:justify-end">
+      {i.canAssignReplacement && i.replacement && (
+        <Button size="sm" variant="outline" aria-label={`Assign replacement ${i.replacement.tkId}`} onClick={() => setAssigning(i)}>
+          <UserPlus /> Assign replacement
+        </Button>
+      )}
+      {canUndo(i) && (
+        <Button size="sm" variant="outline" aria-label={`${FITMENT_ACTION_LABELS.UNDO_FAULTY} ${i.tkId}`} onClick={() => setUndoing(i)}>
+          <Undo2 /> {FITMENT_ACTION_LABELS.UNDO_FAULTY}
+        </Button>
+      )}
+    </div>
+  );
+
   const checkbox = (i: WorkflowFitmentItemDto) => (
     <Checkbox aria-label={`Select ${i.tkId}`} checked={selected.has(i.id)} onCheckedChange={(v) => toggle(i.id, v === true)} />
   );
 
   return (
     <div className="grid grid-cols-1 gap-6">
-      <PageHeader icon={config.icon} title={config.title} description={config.description} />
+      <PageHeader icon={config.icon} title={config.title} description={config.description} level={2} />
 
       <div className="grid grid-cols-2 gap-2 lg:grid-cols-4">
         <SearchableSelect
@@ -334,6 +367,11 @@ export function FitmentListPage({ list }: { list: WorkflowListName }) {
                   {config.columns.map((c) => (
                     <TableHead key={c.header}>{c.header}</TableHead>
                   ))}
+                  {hasRowActions && (
+                    <TableHead className="text-right">
+                      <span className="sr-only">Actions</span>
+                    </TableHead>
+                  )}
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -346,6 +384,7 @@ export function FitmentListPage({ list }: { list: WorkflowListName }) {
                         {c.cell(i)}
                       </TableCell>
                     ))}
+                    {hasRowActions && <TableCell className="whitespace-normal">{rowActions(i)}</TableCell>}
                   </TableRow>
                 ))}
               </TableBody>
@@ -370,6 +409,7 @@ export function FitmentListPage({ list }: { list: WorkflowListName }) {
                         </div>
                       ))}
                   </dl>
+                  {hasRowActions && (i.canAssignReplacement || canUndo(i)) && <div className="mt-3">{rowActions(i)}</div>}
                 </div>
               </li>
             ))}
@@ -391,6 +431,16 @@ export function FitmentListPage({ list }: { list: WorkflowListName }) {
             </Button>
           </div>
         </div>
+      )}
+
+      {assigning && <ReplacementAssignDialog item={assigning} onClose={() => setAssigning(null)} />}
+      {undoing && (
+        <FitmentActionDialog
+          fitment={{ id: undoing.id, tkId: undoing.tkId, status: undoing.status, technician: undoing.technician, replacement: undoing.replacement }}
+          action="UNDO_FAULTY"
+          actor={actor}
+          onClose={() => setUndoing(null)}
+        />
       )}
 
       <AlertDialog open={confirm} onOpenChange={setConfirm}>
@@ -416,5 +466,37 @@ export function FitmentListPage({ list }: { list: WorkflowListName }) {
         </AlertDialogContent>
       </AlertDialog>
     </div>
+  );
+}
+
+/**
+ * Assign replacement (CR-11, D-256): the assign dialog for a Faulty row's replacement, posting to its task's
+ * `/tasks/:id/assign` like the task page; the lists refetch afterwards so the row shows the technician.
+ */
+function ReplacementAssignDialog({ item, onClose }: { item: WorkflowFitmentItemDto; onClose: () => void }) {
+  const replacement = item.replacement!;
+  const assign = useAssignFitments(item.task.id);
+  const refresh = useInvalidateTasks();
+  return (
+    <AssignDialog
+      tkIds={[replacement.tkId]}
+      currentTechnicianId={replacement.technician?.id ?? null}
+      title={`Assign replacement ${replacement.tkId}`}
+      pending={assign.isPending}
+      onConfirm={(technician) =>
+        assign.mutate(
+          { fitmentIds: [replacement.id], technicianId: technician.id },
+          {
+            onSuccess: () => {
+              toast.success(`${replacement.tkId} assigned to ${technician.name}`);
+              refresh();
+              onClose();
+            },
+            onError: (err) => toast.error(err instanceof ApiError ? err.message : `Could not assign ${replacement.tkId}`),
+          },
+        )
+      }
+      onClose={onClose}
+    />
   );
 }

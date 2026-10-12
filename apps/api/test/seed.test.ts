@@ -37,6 +37,7 @@ describe('master data seed', () => {
     expect(system.map((i) => `${i.kind}:${i.code}`)).toEqual([
       'ASSET_TYPE:VEHICLE',
       'ASSET_TYPE:BATTERY',
+      'CLOSE_REASON:FAULT_UNDONE',
       'SHIFT_TYPE:DAY',
       'SHIFT_TYPE:NIGHT',
       'SHIFT_TYPE:EARLY_MORNING',

@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| Status | **Awaiting user sign-off** |
+| Status | **Approved** 2026-10-12 ("ok continue"; open points as proposed, D-242 – D-246) |
 | Requirements | SRS §6.7 ("Global search over the configured identifiers: device id, technician/OE/OM task id, asset number, secondary device id, chassis no., old device id. The identifier list is maintained by SA.") · X7 (fixed list for MVP, admin-managed later) · F02 intent (search identifiers deferred to F14) |
 | Depends on | F04 (tasks), F10B (device ids from the technician's form), F13 (complete) |
 

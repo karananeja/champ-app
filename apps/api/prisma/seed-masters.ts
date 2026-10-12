@@ -3,7 +3,7 @@
  * natural key, so a second run creates nothing. Existing non-system rows are left untouched (edits and
  * deactivations survive a re-seed). Values other than the built-ins are dummy data (D-017).
  */
-import { toMakeModelKey, toNameKey, type LookupKind } from '@champ/shared';
+import { FAULT_UNDONE_CLOSE_REASON, toMakeModelKey, toNameKey, type LookupKind } from '@champ/shared';
 import type { PrismaClient } from '../src/generated/prisma/client';
 
 interface SeedItem {
@@ -81,7 +81,8 @@ export const LOOKUP_SEED: Record<LookupKind, SeedItem[]> = {
     { name: 'Customer tampering', billable: true },
   ],
   ACCESSORY: plain('Relay', 'Buzzer', 'SOS button', 'CAN cable', 'Fuel sensor', 'Temperature sensor'),
-  CLOSE_REASON: plain('Client not available', 'Device has some issue'),
+  // CR-11: the built-in reason of a replacement closed by an undo faulty (also inserted by its migration).
+  CLOSE_REASON: [...plain('Client not available', 'Device has some issue'), builtIn(FAULT_UNDONE_CLOSE_REASON.name, FAULT_UNDONE_CLOSE_REASON.code, 1000)],
   SHIFT_TYPE: [builtIn('Day', 'DAY', 1), builtIn('Night', 'NIGHT', 2), builtIn('Early morning', 'EARLY_MORNING', 3)],
   TASK_TYPE: [builtIn('OT', 'OT', 1), builtIn('TT', 'TT', 2), builtIn('FT', 'FT', 3)],
 };

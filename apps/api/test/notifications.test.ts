@@ -146,6 +146,20 @@ describe('notifications — recipients (D-228)', () => {
     expect(await prisma.notification.count()).toBe(0);
   });
 
+  it('undo faulty: the fitment\'s technician, with the reason; never the actor (CR-11)', async () => {
+    const w = await setup(2);
+    const [f1] = w.fids as [string, string];
+    await run([w.techA, f1, 'MARK_FAULTY', { reason: 'Battery dead' }]);
+    await clear();
+    await run([w.oe, f1, 'UNDO_FAULTY', { reason: 'Tapped by mistake' }]);
+    expect(await inbox(w.techA)).toMatchObject([
+      { type: 'FITMENT_FAULT_UNDONE', title: `TK-00001 is back with you · fault marking undone by ${w.oe.name}`, body: 'Tapped by mistake', fitmentIds: [f1] },
+    ]);
+    expect(await prisma.notification.count()).toBe(1);
+    const res = await api().get('/api/notifications').set(bearer(w.techA));
+    expect(res.body.items[0]).toMatchObject({ type: 'FITMENT_FAULT_UNDONE', forTechnician: true, target: { kind: 'FITMENT', fitmentId: f1 } });
+  });
+
   it('other events notify nobody', async () => {
     const w = await setup(1);
     await clear();

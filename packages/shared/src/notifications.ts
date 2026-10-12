@@ -13,6 +13,8 @@ export const NOTIFICATION_TYPES = [
   'FITMENT_APPROVED',
   'FITMENT_REOPENED',
   'FITMENT_MOVED_TO_FT',
+  // CR-11: to the fitment's technician
+  'FITMENT_FAULT_UNDONE',
   'TRAVEL_RAISED',
   'TRAVEL_VERIFIED',
 ] as const;

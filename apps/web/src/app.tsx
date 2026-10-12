@@ -13,12 +13,15 @@ import { AcceptInvitePage } from '@/features/invites/accept-invite-page';
 import { MasterPage } from '@/features/masters/master-page';
 import { MastersPage } from '@/features/masters/masters-page';
 import { ProfilePage } from '@/features/profile/profile-page';
+import { SearchPage } from '@/features/search/search-page';
+import { SearchSettingsPage } from '@/features/search/search-settings-page';
 import { BoardPage } from '@/features/tasks/board/board-page';
 import { BulkUploadPage } from '@/features/tasks/bulk-upload-page';
 import { FitmentListPage } from '@/features/tasks/fitment-list-page';
 import { TaskDetailPage } from '@/features/tasks/task-detail-page';
 import { TaskFormPage } from '@/features/tasks/task-form-page';
 import { TaskListPage } from '@/features/tasks/task-list-page';
+import { TasksLayout } from '@/features/tasks/tasks-layout';
 import { TechniciansPage } from '@/features/technicians/technicians-page';
 import { TravelTasksPage } from '@/features/travel/travel-tasks-page';
 import { UsersPage } from '@/features/users/users-page';
@@ -28,6 +31,7 @@ import {
   canCreateTask,
   canUseBoard,
   canEditClients,
+  canManageSearchSettings,
   canViewClients,
   canViewMasters,
   canViewTasks,
@@ -84,6 +88,12 @@ function TasksRoute({
   return allowed ? children : <NoAccessRedirect />;
 }
 
+/** Search identifier settings (F14): SA only; others get the 403 page. */
+function SearchSettingsRoute() {
+  const { user } = useAuth();
+  return user && canManageSearchSettings(user) ? <SearchSettingsPage /> : <ForbiddenPage />;
+}
+
 /** The board (F07): SA and OM only; others get the 403 page (CR-03). */
 function BoardRoute() {
   const { user } = useAuth();
@@ -106,19 +116,24 @@ export function App() {
           <Route path="/clients/:id/edit" element={<ClientsRoute edit><ClientFormPage /></ClientsRoute>} />
           <Route path="/masters" element={<MastersRoute><MastersPage /></MastersRoute>} />
           <Route path="/masters/:slug" element={<MastersRoute><MasterPage /></MastersRoute>} />
-          <Route path="/tasks" element={<TasksRoute><TaskListPage key="open" view="open" /></TasksRoute>} />
-          <Route path="/tasks/assigned" element={<TasksRoute oeOnly><TaskListPage key="assigned" view="assigned" /></TasksRoute>} />
-          <Route path="/tasks/completed" element={<TasksRoute><TaskListPage key="completed" view="completed" /></TasksRoute>} />
-          <Route path="/tasks/all" element={<TasksRoute><TaskListPage key="all" view="all" /></TasksRoute>} />
-          <Route path="/tasks/board" element={<BoardRoute />} />
+          {/* CR-10: the task views are tabs of one Tasks page (header, creator buttons, tab bar). */}
+          <Route element={<TasksLayout />}>
+            <Route path="/tasks" element={<TasksRoute><TaskListPage key="open" view="open" /></TasksRoute>} />
+            <Route path="/tasks/assigned" element={<TasksRoute oeOnly><TaskListPage key="assigned" view="assigned" /></TasksRoute>} />
+            <Route path="/tasks/completed" element={<TasksRoute><TaskListPage key="completed" view="completed" /></TasksRoute>} />
+            <Route path="/tasks/all" element={<TasksRoute><TaskListPage key="all" view="all" /></TasksRoute>} />
+            <Route path="/tasks/board" element={<BoardRoute />} />
+            <Route path="/tasks/travel" element={<TasksRoute><TravelTasksPage /></TasksRoute>} />
+            <Route path="/tasks/awaiting-approval" element={<TasksRoute approver><FitmentListPage key="awaiting-approval" list="awaiting-approval" /></TasksRoute>} />
+            <Route path="/tasks/faulty" element={<TasksRoute><FitmentListPage key="faulty" list="faulty" /></TasksRoute>} />
+            <Route path="/tasks/reopened" element={<TasksRoute><FitmentListPage key="reopened" list="reopened" /></TasksRoute>} />
+          </Route>
           <Route path="/tasks/new" element={<TasksRoute create><TaskFormPage /></TasksRoute>} />
           <Route path="/tasks/bulk" element={<TasksRoute create><BulkUploadPage /></TasksRoute>} />
-          <Route path="/tasks/travel" element={<TasksRoute><TravelTasksPage /></TasksRoute>} />
-          <Route path="/tasks/awaiting-approval" element={<TasksRoute approver><FitmentListPage key="awaiting-approval" list="awaiting-approval" /></TasksRoute>} />
-          <Route path="/tasks/faulty" element={<TasksRoute><FitmentListPage key="faulty" list="faulty" /></TasksRoute>} />
-          <Route path="/tasks/reopened" element={<TasksRoute><FitmentListPage key="reopened" list="reopened" /></TasksRoute>} />
           <Route path="/tasks/:id" element={<TasksRoute><TaskDetailPage /></TasksRoute>} />
           <Route path="/tasks/:id/edit" element={<TasksRoute create><TaskFormPage /></TasksRoute>} />
+          <Route path="/search" element={<TasksRoute><SearchPage /></TasksRoute>} />
+          <Route path="/settings/search" element={<SearchSettingsRoute />} />
           <Route path="/profile" element={<ProfilePage />} />
           <Route path="*" element={<NotFoundPage />} />
         </Route>

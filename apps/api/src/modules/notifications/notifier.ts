@@ -29,6 +29,7 @@ const SOURCES: Partial<Record<TaskEventType, true>> = {
   FITMENT_APPROVED: true,
   FITMENT_REOPENED: true,
   FITMENT_MARKED_FAULTY: true,
+  FITMENT_FAULT_UNDONE: true,
 };
 
 interface Draft {
@@ -132,6 +133,10 @@ export async function notifyForEvents(tx: Tx, actorRef: { id: string }, events: 
       case 'FITMENT_MARKED_FAULTY':
         add(task.oeId, 'FITMENT_MOVED_TO_FT', e, { replacement: str(data.replacementTkId) ?? undefined });
         break;
+      case 'FITMENT_FAULT_UNDONE':
+        // CR-11: the work is back with the technician.
+        add(fitment.technicianId, 'FITMENT_FAULT_UNDONE', e, { reason: str(data.reason) ?? undefined });
+        break;
     }
   }
   if (drafts.size === 0) return;
@@ -157,6 +162,7 @@ function bodyFor(draft: Draft, task: { client: { name: string }; site: { name: s
     case 'FITMENT_ASSIGNED':
       return taskContext(context, true);
     case 'FITMENT_REOPENED':
+    case 'FITMENT_FAULT_UNDONE':
       return draft.reason ?? previousBody;
     case 'FITMENT_MOVED_TO_FT': {
       const ids = [...new Set([...(previousBody?.match(TK_PATTERN) ?? []), ...draft.replacements])];

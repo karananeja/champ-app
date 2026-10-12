@@ -42,6 +42,15 @@ export const useNotificationList = (enabled: boolean) =>
 
 const setCount = (client: QueryClient, unreadCount: number) => client.setQueryData<CountData>(notificationKeys.count, { unreadCount });
 
+/**
+ * A count from the server's live events is newer than any count request still in flight: cancel that request
+ * first, or its late answer would overwrite this one (CR-11; the app does the same).
+ */
+export function setLiveCount(client: QueryClient, unreadCount: number) {
+  void client.cancelQueries({ queryKey: notificationKeys.count });
+  setCount(client, unreadCount);
+}
+
 const mapItems = (client: QueryClient, fn: (items: NotificationDto[], pageIndex: number) => NotificationDto[]) =>
   client.setQueryData<ListData>(notificationKeys.list, (data) =>
     data && { ...data, pages: data.pages.map((page, i) => ({ ...page, items: fn(page.items, i) })) },
@@ -53,7 +62,7 @@ export function receiveNotification(client: QueryClient, notification: Notificat
     const rest = items.filter((n) => n.id !== notification.id);
     return i === 0 ? [notification, ...rest] : rest;
   });
-  setCount(client, unreadCount);
+  setLiveCount(client, unreadCount);
 }
 
 export function useMarkRead() {
@@ -146,7 +155,7 @@ export function useNotificationSocket() {
       });
     });
     socket.on(NOTIFICATION_COUNT_EVENT, ({ unreadCount }: CountData) => {
-      setCount(client, unreadCount);
+      setLiveCount(client, unreadCount);
       void client.invalidateQueries({ queryKey: notificationKeys.list });
     });
 

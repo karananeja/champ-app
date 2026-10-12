@@ -102,6 +102,17 @@ Logistics* in New Delhi), with hard-coded coordinates.
 
 ### Tasks (F04)
 
+**Faulty fitments (CR-11):** in *Faulty*, a row whose replacement hasn't started offers **Assign replacement**; the
+task's OE, an OM or SA can also **Undo faulty** (with a reason) there or on the task page: the fitment goes back to
+Assigned with the same technician (form and photos kept), and the unstarted replacement is closed as "Faulty marked by
+mistake". Refused once the replacement has started (`POST /api/fitments/:fid/transitions {action: 'UNDO_FAULTY', payload: {reason}}`).
+
+**Navigation (CR-10):** the sidebar has a single **Tasks** item: it opens the Board for SA and OM and the Open list
+for everyone else. The task views are tabs at the top of the Tasks page: Board (SA/OM), Open, Assigned (OE),
+Awaiting approval (SA/OM), Re-opened, Faulty, Completed, All, Travel. Each keeps its own URL (e.g. `/tasks/faulty`,
+`/tasks/travel?tt=…`); on phones the tab bar scrolls sideways. **Create task** and **Bulk upload** are at the top right
+of the Open tab (task creators).
+
 The **Tasks** menu (SA, OM, OE and RO; not OT) holds *Create task*, *Bulk upload* (creators only), *Open tasks*,
 *Assigned* (OEs: tasks where they are the operation executive), *Awaiting approval* (SA/OM), *Completed tasks*
 (latest completion first) and *All tasks* (every status; CR-04), *Faulty tasks* and *Re-opened* (F05, below) and
@@ -282,7 +293,7 @@ as photos under `travel/{travelTaskId}/{attachmentId}.{ext}`.
 ### Field app (F09)
 
 The field app (`apps/mobile`, "Champ Dev" while developing) is for **technicians (OT) and OEs** only; SA, OM and RO
-are told to use the web console (D-128). It's online only (D-008).
+are told to use the web console (D-128). It's online only (D-008). Bottom tabs: Home, Route, History and Profile, each with an icon (CR-08).
 
 - **Sign in** with the same email and password as the web. The session survives app restarts: the refresh token is
   kept in the phone's secure storage and the access token in memory (D-133). *Sign out* is on the Profile tab.
@@ -413,6 +424,24 @@ Reopen go through `POST /api/fitments/:fid/transitions` (`{action, payload}`). `
 public demo server: fine for development only) sets the routing service; tests and E2E point it at an unreachable
 address, so they use the straight-line fallback.
 
+### Global search (F14)
+
+**Ctrl/⌘ K**, or the search box in the top bar (an icon on phones), for SA, OM, OE and RO. Type an id and the results
+appear grouped by task, each saying which identifier matched (highlighted); Enter or a click opens the task, the
+fitment's verification sheet (`/tasks/:id?fitment=`) or the travel task. *Show all results* opens `/search?q=` (up to 100).
+
+- **OM, OE, TK and TT ids** match exactly: prefix and case optional, with a space, hyphen or nothing after the prefix,
+  leading zeros optional (`OM-00045`, `oe 45`, `tk-112`). A bare number finds OM, OE and TK ids; TT ids need `TT`.
+- **Device id, secondary device id, old device id, chassis no., asset no. and vehicle reg. no.** match by "contains"
+  from 3 characters, ignoring case, spaces and hyphens (Postgres trigram indexes on the normalized values).
+- Ranking: exact ids first, then the identifier's order in the settings, then an exact value before a partial one,
+  then the newest task. Deleted tasks never show; travel tasks follow the travel list's visibility (D-242–D-246).
+- **Settings → Search identifiers** (SA only): switch each of the ten identifiers on or off and set the ranking order
+  (at least one stays on).
+
+API: `GET /api/search?q=&limit=` (`{q, hits, total, truncated}`; default 20, max 100), `GET /api/search/identifiers`
+and `PUT /api/search/identifiers` (`{items: [{identifier, enabled}]}`, all ten in ranking order; SA only).
+
 ### Notifications (F13)
 
 A **bell** in the web top bar (every role) and in the app header shows the unread count; opening it lists the latest
@@ -464,6 +493,8 @@ only, any signed-in user.
   the dashboard with a toast (CR-01). Unknown URLs show a 404 page.
 - **Dates**: every date and time is picked with the shadcn calendar pickers (`components/date-picker.tsx`; date-times
   in IST, 5-minute steps). List filters use one date-range control.
+
+- **Theme** (CR-09): System / Light / Dark — on the web in the user menu (remembered in the browser), in the app on the Profile tab (remembered on the phone). *System* follows the OS setting.
 
 ### Google sign-in
 

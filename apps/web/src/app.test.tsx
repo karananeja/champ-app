@@ -87,11 +87,11 @@ describe('Tasks route guards (F04)', () => {
     });
   }
 
-  it('RO opens Open tasks and sees Travel tasks in the menu', async () => {
+  it('RO opens Open tasks and sees the Travel tab (CR-10)', async () => {
     renderAt('/tasks', 'RO');
     expect(await screen.findByRole('heading', { name: 'Open tasks' })).toBeInTheDocument();
     expect(screen.queryByRole('link', { name: 'Create task' })).not.toBeInTheDocument();
-    expect(sidebar().getByRole('link', { name: 'Travel tasks' })).toBeInTheDocument();
+    expect(screen.getByRole('navigation', { name: 'Task views' })).toHaveTextContent('Travel');
   });
 
   it('F08: Travel tasks is a real list (the placeholder is gone)', async () => {
@@ -165,3 +165,39 @@ describe('404, 403 and error pages (CR-03)', () => {
   });
 });
 
+describe('Tasks page (CR-10)', () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    vi.restoreAllMocks();
+  });
+
+  const LIST = { items: [], total: 0, page: 1, pageSize: 20 };
+
+  it('one Tasks menu item, active on a tab view; the tab bar marks the current view', async () => {
+    renderAt('/tasks/faulty', 'OM', { 'GET /api/tasks/options': { oes: [], technicians: [] } });
+    expect(await screen.findByRole('heading', { name: 'Faulty tasks', level: 2 })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Tasks', level: 1 })).toBeInTheDocument();
+    expect(sidebar().getByRole('link', { name: 'Tasks' })).toHaveAttribute('aria-current', 'page');
+    const tabs = within(screen.getByRole('navigation', { name: 'Task views' }));
+    expect(tabs.getByRole('link', { name: 'Faulty' })).toHaveAttribute('aria-current', 'page');
+    expect(tabs.getByRole('link', { name: 'Open' })).not.toHaveAttribute('aria-current');
+    // Create task / Bulk upload only on the Open tab.
+    expect(screen.queryByRole('link', { name: 'Create task' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: 'Bulk upload' })).not.toBeInTheDocument();
+  });
+
+  it('creators get Create task and Bulk upload on the Open tab', async () => {
+    renderAt('/tasks', 'OE', { 'GET /api/tasks': LIST, 'GET /api/tasks/options': { oes: [], technicians: [] } });
+    expect(await screen.findByRole('heading', { name: 'Open tasks', level: 2 })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Create task' })).toHaveAttribute('href', '/tasks/new');
+    expect(screen.getByRole('link', { name: 'Bulk upload' })).toHaveAttribute('href', '/tasks/bulk');
+    expect(within(screen.getByRole('navigation', { name: 'Task views' })).getByRole('link', { name: 'Open' })).toHaveAttribute('aria-current', 'page');
+  });
+
+  it('Create task and a task page have no tab bar but keep Tasks active in the menu', async () => {
+    renderAt('/tasks/new', 'OM', { 'GET /api/tasks/options': { oes: [], technicians: [] }, 'GET /api/clients': LIST });
+    await screen.findAllByRole('heading', { level: 1 });
+    expect(screen.queryByRole('navigation', { name: 'Task views' })).not.toBeInTheDocument();
+    expect(sidebar().getByRole('link', { name: 'Tasks' })).toHaveAttribute('aria-current', 'page');
+  });
+});

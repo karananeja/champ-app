@@ -58,10 +58,11 @@ const lastOf = (events: HistoryEvent[], type: TaskEventType) => events.findLast(
 /**
  * A fitment's stages in its current cycle: first = created (completed when assigned); second = started
  * (completed when submitted); verification = OE verified; final = OM approved. A reopen starts a new cycle,
- * so only the events after the last reopen count for the second, verification and final stages.
+ * so only the events after the last reopen count for the second, verification and final stages. An undone
+ * fault (CR-11) also starts a new cycle: the fitment is Assigned again and the technician starts it afresh.
  */
 function fitmentStages(created: HistoryEvent | undefined, events: HistoryEvent[], assigned: boolean): StageTimeline {
-  const lastReopen = events.findLastIndex((e) => e.type === 'FITMENT_REOPENED');
+  const lastReopen = events.findLastIndex((e) => e.type === 'FITMENT_REOPENED' || e.type === 'FITMENT_FAULT_UNDONE');
   const cycle = events.slice(lastReopen + 1);
   const assignment = assigned ? lastOf(events, 'FITMENT_ASSIGNED') : undefined;
   const start = lastOf(cycle, 'FITMENT_STARTED');
@@ -107,7 +108,8 @@ export async function getTaskHistory(taskId: string): Promise<TaskHistoryRespons
   const taskCreated = events.find((e) => e.type === 'TASK_CREATED');
   const fitments = task.fitments.map((f) => {
     const own = events.filter((e) => e.fitmentId === f.id);
-    const created = f.replacementOfId ? own.find((e) => e.type === 'FITMENT_REPLACEMENT_CREATED') : taskCreated;
+    // A replacement starts at its creation (also one unlinked by an undo faulty, CR-11).
+    const created = own.find((e) => e.type === 'FITMENT_REPLACEMENT_CREATED') ?? taskCreated;
     return {
       id: f.id,
       tkId: formatTkId(f.tkNo),

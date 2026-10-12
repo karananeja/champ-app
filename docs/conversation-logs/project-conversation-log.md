@@ -351,3 +351,51 @@ Chronological log of the whole project conversation. Feature-level logs live in 
 **User:** "F13 accepted". UAT sign-off recorded and `feature/F13-notifications` merged to `main`.
 
 **Claude:** Wrote the F14 intent (global search) and sent it for sign-off.
+
+**User:** "ok continue" (F14 intent). Taken as approval with all five open points as proposed (D-242 – D-246).
+
+**Claude:** Created branch `feature/F14-global-search`, wrote the F14 spec, and launched two parallel agents (Backend: shared, API; Web: search box, results page, SA settings). Only the Web agent runs the full E2E suite (lesson from F13).
+
+**User:** "add icons to the tabs in mobile view"
+
+**Claude:** Logged CR-08 on the F14 branch. The app's four bottom tabs now show outline icons (house, route, clock, person) above their labels, in the tab colours (D-247). Mobile tests 149 pass; checked on the iOS Simulator through the user's Metro.
+
+**Implementation agents (F14):** Backend ~7 min (3 commits), Web ~17 min (2 commits). Only the Web agent ran the full E2E (lesson from F13): no cross-agent noise.
+
+**Claude verification:**
+- Reviewed the search SQL (bound parameters, fixed column map, escaped LIKE characters).
+- Deflaked the technician upload refusal test (small non-image body instead of 11 MB; it had failed with `write EPIPE` three times across features).
+- All gates pass: 1,214 tests, E2E 73 passed + 4 skipped.
+- Wrote the README, the test report and D-248 – D-252.
+
+**Status:** F14 and CR-08 ready for UAT by the user.
+
+**User:** "add theme selector and in dark mode, the check box doesnot appear selected, and the indicator on notification icon does not seem visible"
+
+**Claude:** Logged CR-09. Theme selector (System / Light / Dark) on the web user menu and the app Profile tab, remembered per browser/phone; checked checkboxes keep their fill in dark mode (web) and the app draws a real checkbox; the bell badge and other red fills under white text use a strong red in both themes (D-253 – D-255).
+
+**User:** "separate button for create task in the side bar is unnecessary and the tasks should be present in single place with tabs separated in the page, also why is faulty task read only?"
+
+**Claude:** Logged CR-10 and launched an agent for the web Tasks page with tabs. Explained that a fitment Moved to FT is final by design (D-011, D-012): its replacement fitment carries the work, so the Faulty view is a record; offered an *Assign replacement* action there or undoing a mistaken faulty if wanted.
+
+**User:** "both options seem to be good for FT and show the action buttons such as bulk upload and create task in open task tab only"
+
+**Claude:** Passed the header-buttons change to the CR-10 agent (Create task and Bulk upload on the Open tab only). Logged CR-11: *Assign replacement* in the Faulty view and a new *Undo faulty* action (back to Assigned; the unstarted replacement is closed as "Faulty marked by mistake"), D-256 – D-257. Backend agent launched; the web part follows CR-10, which is changing the same pages.
+
+**User:** "let the board tab be the first tab"
+
+**Claude:** Relayed to the CR-10 agent: tab order Board, Open, Assigned, Awaiting approval, Re-opened, Faulty, Completed, All, Travel; URLs unchanged.
+
+**User:** "yes, let it open board for OM and SA"
+
+**Claude:** Relayed to the CR-10 agent: the sidebar *Tasks* item opens the Board for OM and SA and the Open tab for others; `/tasks` itself stays the Open tab so existing links keep working.
+
+**Agents:** CR-10 (~21 min, E2E 75/75), CR-11 backend (~9 min) and web (~13 min, E2E 75/75).
+
+**Claude verification:** fixed a live unread-count race in the web and app bells (D-263), deflaked the app notification test, full unit suite green three runs in a row (1,248 tests). F14 and CR-08 – CR-11 ready for UAT.
+
+**User:** "when is analytics dashboard planned?"
+
+**Claude:** It is F15 (Reports – billing – and analytics), the last feature in the build order, next once F14 and the CRs are accepted.
+
+**User:** "F14 accepted". UAT sign-off recorded; CR-08 – CR-11 were on the same branch and are taken as accepted with F14; `feature/F14-global-search` merged to `main`.

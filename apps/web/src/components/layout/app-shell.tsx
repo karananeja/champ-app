@@ -1,6 +1,6 @@
 import { useState } from 'react';
-import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
-import { LogOut, Menu, UserRound, WifiOff } from 'lucide-react';
+import { Link, Outlet, useLocation, useNavigate } from 'react-router-dom';
+import { LogOut, Menu, Monitor, Moon, Sun, UserRound, WifiOff } from 'lucide-react';
 import { ROLE_LABELS } from '@champ/shared';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
@@ -9,6 +9,8 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuLabel,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
@@ -16,9 +18,11 @@ import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTr
 import { useOnline } from '@/hooks/use-online';
 import { useAuth, useCurrentUser } from '@/lib/auth';
 import { initials } from '@/lib/format';
+import { setThemePreference, useTheme, type ThemePreference } from '@/lib/theme';
 import { cn } from '@/lib/utils';
 import { ErrorBoundary } from '@/features/errors/error-pages';
 import { NotificationBell } from '@/features/notifications/notification-bell';
+import { GlobalSearch } from '@/features/search/global-search';
 import { navGroupsFor } from './nav';
 
 function Brand() {
@@ -33,6 +37,8 @@ function Brand() {
 /** The menu (CR-03): groups split by dividers, the active item marked with a brand accent bar and colour. */
 function NavLinks({ onNavigate }: { onNavigate?: () => void }) {
   const user = useCurrentUser();
+  const { pathname } = useLocation();
+  const onPath = (prefix: string) => pathname === prefix || pathname.startsWith(`${prefix}/`);
   return (
     <nav className="grid grid-cols-1" aria-label="Main">
       {navGroupsFor(user).map((group, index) => (
@@ -42,24 +48,26 @@ function NavLinks({ onNavigate }: { onNavigate?: () => void }) {
               {group.label}
             </div>
           )}
-          {group.items.map(({ to, label, icon: Icon, end }) => (
-            <NavLink
-              key={to}
-              to={to}
-              end={end ?? to === '/'}
-              onClick={onNavigate}
-              className={({ isActive }) =>
-                cn(
+          {group.items.map(({ to, label, icon: Icon, end, alsoActiveOn }) => {
+            // Active state computed here (not by NavLink) so `alsoActiveOn` also sets aria-current (CR-10).
+            const active = ((end ?? to === '/') ? pathname === to : onPath(to)) || !!alsoActiveOn?.some(onPath);
+            return (
+              <Link
+                key={to}
+                to={to}
+                onClick={onNavigate}
+                aria-current={active ? 'page' : undefined}
+                className={cn(
                   'relative flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium text-sidebar-foreground/80 transition-colors hover:bg-sidebar-accent/60 hover:text-sidebar-accent-foreground',
-                  isActive &&
+                  active &&
                     'bg-sidebar-accent text-sidebar-accent-foreground before:absolute before:inset-y-1.5 before:left-0 before:w-1 before:rounded-full before:bg-sidebar-primary [&>svg]:text-sidebar-primary',
-                )
-              }
-            >
-              <Icon className="size-4" />
-              {label}
-            </NavLink>
-          ))}
+                )}
+              >
+                <Icon className="size-4" />
+                {label}
+              </Link>
+            );
+          })}
         </div>
       ))}
     </nav>
@@ -78,7 +86,14 @@ function OfflineBanner() {
   );
 }
 
+const THEME_OPTIONS: { value: ThemePreference; label: string; icon: typeof Sun }[] = [
+  { value: 'system', label: 'System', icon: Monitor },
+  { value: 'light', label: 'Light', icon: Sun },
+  { value: 'dark', label: 'Dark', icon: Moon },
+];
+
 function UserMenu() {
+  const { preference } = useTheme();
   const user = useCurrentUser();
   const { logout } = useAuth();
   const navigate = useNavigate();
@@ -101,6 +116,17 @@ function UserMenu() {
         <DropdownMenuItem onSelect={() => navigate('/profile')}>
           <UserRound /> Profile
         </DropdownMenuItem>
+        <DropdownMenuSeparator />
+        {/* CR-09: theme choice, remembered in this browser. */}
+        <DropdownMenuLabel className="text-xs font-normal text-muted-foreground">Theme</DropdownMenuLabel>
+        <DropdownMenuRadioGroup value={preference} onValueChange={(v) => setThemePreference(v as ThemePreference)}>
+          {THEME_OPTIONS.map(({ value, label, icon: Icon }) => (
+            <DropdownMenuRadioItem key={value} value={value} data-testid={`theme-${value}`}>
+              <Icon /> {label}
+            </DropdownMenuRadioItem>
+          ))}
+        </DropdownMenuRadioGroup>
+        <DropdownMenuSeparator />
         <DropdownMenuItem
           onSelect={async () => {
             await logout();
@@ -136,7 +162,7 @@ export function AppShell() {
                 <Menu />
               </Button>
             </SheetTrigger>
-            <SheetContent side="left" className="w-64 bg-sidebar p-4">
+            <SheetContent side="left" className="w-64 overflow-y-auto bg-sidebar p-4">
               <SheetHeader className="p-0 px-3">
                 <SheetTitle>
                   <Brand />
@@ -150,6 +176,7 @@ export function AppShell() {
             <Brand />
           </div>
           <div className="ml-auto flex items-center gap-1">
+            <GlobalSearch />
             <NotificationBell />
             <UserMenu />
           </div>

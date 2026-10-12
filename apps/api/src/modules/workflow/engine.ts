@@ -1,5 +1,7 @@
 import {
+  FAULT_UNDONE_CLOSE_REASON,
   FITMENT_ACTION_EVENTS,
+  FITMENT_STATUS_LABELS,
   TRANSITIONS,
   VERIFICATION_FIELD_KEYS,
   canApproveFitments,
@@ -7,6 +9,7 @@ import {
   canTransition,
   formatOmId,
   formatTkId,
+  toNameKey,
   transitionRefusal,
   type ApproveFitmentsResponse,
   type FitmentAction,
@@ -54,6 +57,7 @@ const NOT_ALLOWED: Record<FitmentAction, string> = {
   VERIFY: "Only the task's operation executive can verify this fitment",
   APPROVE: 'Only an operations manager can final-approve fitments',
   REOPEN: "Only an operations manager or the task's operation executive can reopen this fitment",
+  UNDO_FAULTY: "Only an operations manager or the task's operation executive can undo the fault marking",
 };
 
 /**
@@ -71,7 +75,8 @@ const cleanPayload = (payload: TransitionPayload) =>
  * Moves a fitment through the workflow (spec §3) in one transaction: locks the task and the fitment row,
  * checks the actor (403 FORBIDDEN) and the current status (409 INVALID_TRANSITION), validates references,
  * applies the status and its timestamps, creates the replacement of a faulty fitment (D-012), records reopen
- * attributions (D-074), writes the TaskEvent and recomputes the task status.
+ * attributions (D-074), undoes a mistaken faulty and closes its replacement (D-257), writes the TaskEvent and
+ * recomputes the task status.
  */
 export async function transitionFitment(
   actor: User,
@@ -102,6 +107,7 @@ export async function transitionFitment(
     if (action === 'START' && fitment.technicianId) await assertRouteOrder(tx, fitment.technicianId, fitment);
     if (opts.beforeApply) await opts.beforeApply(tx, { id: fitmentId, taskId: fitment.taskId, tkId: formatTkId(fitment.tkNo) });
     if (action === 'CLOSE_NOT_DONE') await requireActiveLookup(payload.closeReasonId ?? '', 'CLOSE_REASON', 'closeReasonId');
+    const undone = action === 'UNDO_FAULTY' ? await lockUnstartedReplacement(tx, fitment) : null;
 
     const now = new Date();
     const toStatus = TRANSITIONS[action].to;
@@ -149,6 +155,10 @@ export async function transitionFitment(
           billable: null,
         });
         break;
+      case 'UNDO_FAULTY':
+        // Back to Assigned with the same technician (D-257); the form and photos are kept.
+        Object.assign(data, { faultyAt: null, faultReason: null });
+        break;
     }
     await tx.fitment.update({ where: { id: fitmentId }, data });
 
@@ -162,6 +172,7 @@ export async function transitionFitment(
     if (attributions.length) eventData.attributions = attributions;
     const replacement = action === 'MARK_FAULTY' ? await createReplacement(tx, fitment) : null;
     if (replacement) eventData.replacementTkId = formatTkId(replacement.tkNo);
+    if (undone) eventData.replacementTkId = formatTkId(undone.tkNo);
 
     const event = await writeEvent(tx, actor, {
       taskId: fitment.taskId,
@@ -186,6 +197,36 @@ export async function transitionFitment(
           tkId: formatTkId(replacement.tkNo),
           replacementOf: tkId,
           reason: payload.reason ?? null,
+          ...(opts.simulated && { simulated: true }),
+        },
+      });
+    }
+    if (undone) {
+      // The replacement is no longer needed: Closed – not done with the system reason, the undo reason as comments.
+      // It is unlinked (`replacementOfId` is unique), so a later MARK_FAULTY can create a new replacement; its
+      // events keep the link (FITMENT_REPLACEMENT_CREATED.replacementOf, FITMENT_CLOSED_NOT_DONE.faultUndoneOf).
+      const closeReason = await faultUndoneCloseReason(tx);
+      await tx.fitment.update({
+        where: { id: undone.id },
+        data: {
+          status: 'CLOSED_NOT_DONE',
+          closedAt: now,
+          closeReasonId: closeReason.id,
+          closeComments: payload.reason ?? null,
+          replacementOfId: null,
+        },
+      });
+      await writeEvent(tx, actor, {
+        taskId: fitment.taskId,
+        fitmentId: undone.id,
+        type: 'FITMENT_CLOSED_NOT_DONE',
+        fromStatus: undone.status,
+        toStatus: 'CLOSED_NOT_DONE',
+        data: {
+          tkId: formatTkId(undone.tkNo),
+          reason: closeReason.name,
+          comments: payload.reason ?? null,
+          faultUndoneOf: tkId,
           ...(opts.simulated && { simulated: true }),
         },
       });
@@ -215,6 +256,43 @@ async function reopenAttributions(
   }
   if (fitment.technicianId) rows.push({ userId: fitment.technicianId, role: 'OT' });
   return rows;
+}
+
+/**
+ * UNDO_FAULTY (D-257): the replacement of the faulty fitment, locked; refused with 409 unless it is still Open or
+ * Assigned (not started).
+ */
+async function lockUnstartedReplacement(tx: Tx, fitment: { id: string; tkNo: number }) {
+  const replacement = await tx.fitment.findFirst({ where: { replacementOfId: fitment.id }, select: { id: true } });
+  if (!replacement) return null;
+  await tx.$queryRaw`SELECT "id" FROM "Fitment" WHERE "id" = ${replacement.id} FOR UPDATE`;
+  const row = await tx.fitment.findUniqueOrThrow({ where: { id: replacement.id }, select: { id: true, tkNo: true, status: true } });
+  if (row.status !== 'OPEN' && row.status !== 'ASSIGNED') {
+    throw conflict(
+      'INVALID_TRANSITION',
+      `${formatTkId(row.tkNo)} (the replacement) is already ${row.status === 'IN_PROGRESS' ? 'in progress' : FITMENT_STATUS_LABELS[row.status]}; the fault marking of ${formatTkId(fitment.tkNo)} can only be undone while its replacement is Open or Assigned`,
+    );
+  }
+  return row;
+}
+
+/**
+ * The built-in close reason "Faulty marked by mistake" (CR-11; created by the migration and the seed), found by
+ * its code, or created when missing (e.g. a test database whose lookups were truncated).
+ */
+async function faultUndoneCloseReason(tx: Tx) {
+  const { name, code } = FAULT_UNDONE_CLOSE_REASON;
+  const select = { id: true, name: true } as const;
+  const existing = await tx.lookupItem.findUnique({ where: { kind_code: { kind: 'CLOSE_REASON', code } }, select });
+  if (existing) return existing;
+  // A same-named entry someone added by hand becomes the built-in one (as in the migration).
+  const nameKey = toNameKey(name);
+  return tx.lookupItem.upsert({
+    where: { kind_nameKey: { kind: 'CLOSE_REASON', nameKey } },
+    create: { kind: 'CLOSE_REASON', name, nameKey, code, isSystem: true, active: true, sortOrder: 1000 },
+    update: { name, code, isSystem: true, active: true },
+    select,
+  });
 }
 
 /** The replacement of a fitment moved to FT (D-012): same task and vehicle, a new TK number, Open, unassigned. */

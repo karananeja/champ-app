@@ -700,6 +700,16 @@ export const reopenReasonSchema = z
   .min(REOPEN_REASON_MIN, `Give a reason for reopening (at least ${REOPEN_REASON_MIN} characters)`)
   .max(500, 'The reason must be at most 500 characters');
 const reopenPayload = z.object({ reason: reopenReasonSchema, note: noteSchema }, { error: 'Give a reason for reopening' });
+/** Reason of an undo faulty (D-257): the reopen reason rules (3–500 characters). Also used by the web dialog. */
+export const undoFaultyReasonSchema = z
+  .string({ error: 'Give a reason for undoing the fault marking' })
+  .trim()
+  .min(REOPEN_REASON_MIN, `Give a reason for undoing the fault marking (at least ${REOPEN_REASON_MIN} characters)`)
+  .max(500, 'The reason must be at most 500 characters');
+const undoFaultyPayload = z.object(
+  { reason: undoFaultyReasonSchema, note: noteSchema },
+  { error: 'Give a reason for undoing the fault marking' },
+);
 
 // --- Verification (F06) ---
 
@@ -762,6 +772,7 @@ export const transitionSchema = z.discriminatedUnion(
     z.object({ action: z.literal('VERIFY'), payload: notePayload.extend(verificationFieldsShape).optional() }),
     z.object({ action: z.literal('APPROVE'), payload: notePayload.optional() }),
     z.object({ action: z.literal('REOPEN'), payload: reopenPayload }),
+    z.object({ action: z.literal('UNDO_FAULTY'), payload: undoFaultyPayload }),
   ],
   { error: 'Choose a valid action' },
 );

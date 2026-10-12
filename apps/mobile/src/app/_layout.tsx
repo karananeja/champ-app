@@ -10,9 +10,13 @@ import { NotificationsProvider } from '../lib/notifications';
 import { createQueryClient } from '../lib/query-client';
 import { SelectedDateProvider } from '../lib/selected-date';
 import { SessionProvider, useSession } from '../lib/session';
+import { loadThemePreference } from '../theme/theme-preference';
 import { useTheme } from '../theme/use-theme';
 
 let showToast: (message: string) => void = () => {};
+
+// CR-09: apply the saved theme choice as early as possible.
+void loadThemePreference();
 
 export default function RootLayout() {
   const [queryClient] = useState(() => createQueryClient((m) => showToast(m)));

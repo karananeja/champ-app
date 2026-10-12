@@ -15,6 +15,8 @@ export interface Palette {
   border: string;
   input: string;
   destructive: string;
+  /** A strong red for filled backgrounds under white text (badges, Not OK, destructive buttons): readable in both themes (CR-09). */
+  destructiveSolid: string;
   brandSoft: string;
   brandSoftForeground: string;
   /** Illustration palette (unDraw colours remapped, as on web). */
@@ -32,6 +34,7 @@ export const LIGHT: Palette = {
   border: '#e5e5e5',
   input: '#e5e5e5',
   destructive: '#e7000b',
+  destructiveSolid: '#e7000b',
   brandSoft: '#eef2ff',
   brandSoftForeground: '#432dd7',
   il: {
@@ -56,6 +59,7 @@ export const DARK: Palette = {
   border: 'rgba(255,255,255,0.1)',
   input: 'rgba(255,255,255,0.15)',
   destructive: '#ff6467',
+  destructiveSolid: '#c10007',
   brandSoft: '#1e1a4d',
   brandSoftForeground: '#c6d2ff',
   il: {

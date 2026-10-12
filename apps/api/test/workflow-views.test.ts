@@ -135,6 +135,19 @@ describe('workflow lists', () => {
     });
     expect((await list(w.oe, 'faulty')).items.map((i) => i.faultReason)).toEqual(['No power']);
     expect((await list(w.ro, 'faulty')).total).toBe(2);
+    // CR-11: the viewer's actions on each row (D-256, D-257).
+    const actionsOf = async (actor: User) =>
+      Object.fromEntries((await list(actor, 'faulty')).items.map((i) => [i.faultReason, [i.availableActions, i.canAssignReplacement]]));
+    expect(await actionsOf(w.om)).toEqual({ 'No power': [['UNDO_FAULTY'], true], 'Broken antenna': [['UNDO_FAULTY'], true] });
+    expect(await actionsOf(w.oe)).toEqual({ 'No power': [['UNDO_FAULTY'], true] });
+    expect(await actionsOf(w.ro)).toEqual({ 'No power': [[], false], 'Broken antenna': [[], false] });
+    // Once the replacement has started, neither is offered.
+    await step(w.techB, replacement.id, 'START', GPS);
+    expect(await actionsOf(w.oe)).toEqual({ 'No power': [[], false] });
+    // An undone fitment leaves the list.
+    await step(w.om, theirs.fitments[0]!.id, 'UNDO_FAULTY', { reason: 'Marked by mistake' });
+    expect((await list(w.om, 'faulty')).items.map((i) => i.faultReason)).toEqual(['No power']);
+    await step(w.techA, theirs.fitments[0]!.id, 'MARK_FAULTY', { reason: 'Broken antenna' });
     expect((await list(w.om, 'faulty', { oeId: w.otherOe.id })).items.map((i) => i.faultReason)).toEqual(['Broken antenna']);
     expect((await api().get('/api/fitments/faulty').set(bearer(w.techA))).status).toBe(403);
     // Deleted tasks never show.
@@ -197,6 +210,18 @@ describe('history and raw events (SA/OM, D-033)', () => {
       expect((await api().get(`/api/tasks/${task.id}/events`).set(bearer(actor))).status, actor.role).toBe(403);
     }
     expect((await api().get('/api/tasks/nope/history').set(bearer(w.om))).status).toBe(404);
+  });
+
+  it('an undone fault starts a new cycle: the second stage waits for the next start (CR-11)', async () => {
+    const w = await world();
+    const task = await w.createTask(w.om);
+    const f1 = task.fitments[0]!.id;
+    await step(w.techA, f1, 'START', GPS);
+    await step(w.techA, f1, 'MARK_FAULTY', { reason: 'Dead' });
+    await step(w.oe, f1, 'UNDO_FAULTY', { reason: 'Mistake' });
+    const history = (await api().get(`/api/tasks/${task.id}/history`).set(bearer(w.om))).body as TaskHistoryResponse;
+    expect(history.fitments.find((f) => f.id === f1)).toMatchObject({ status: 'ASSIGNED', stages: { second: null } });
+    expect(history.fitments.find((f) => f.tkId === 'TK-00003')).toMatchObject({ status: 'CLOSED_NOT_DONE' });
   });
 
   it('raw events as JSON (with before/after diffs and flags) and as CSV', async () => {

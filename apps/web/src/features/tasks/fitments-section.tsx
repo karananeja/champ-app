@@ -55,7 +55,7 @@ const vehicleText = (f: FitmentDto) =>
     .filter(Boolean)
     .join(' · ') || '—';
 
-/** The review actions (Final approve, Reopen) the server says the caller may take; Verify opens the sheet (F06). */
+/** The review actions (Final approve, Reopen, Undo faulty) the server says the caller may take; Verify opens the sheet (F06). */
 const reviewActions = (f: FitmentDto) =>
   f.availableActions.filter((a): a is ReviewAction => a !== 'VERIFY' && REVIEW_ACTIONS.includes(a));
 
@@ -244,7 +244,7 @@ export function FitmentsSection({ task }: { task: TaskDto }) {
         <Button
           key={action}
           size="sm"
-          variant={action === 'REOPEN' ? 'outline' : 'default'}
+          variant={action === 'APPROVE' ? 'default' : 'outline'}
           onClick={() => setActing({ fitment: f, action })}
           aria-label={`${FITMENT_ACTION_LABELS[action]} ${f.tkId}`}
         >

@@ -7,12 +7,13 @@
     <meta name="theme-color" content="#4f46e5" />
     <title>Champ</title>
     <script>
-      // Dark mode follows the OS setting (CR-03): the .dark class switches the theme tokens in index.css.
+      // Theme (CR-03, CR-09): the saved choice in localStorage "champ-theme" (light | dark), else the OS setting. The
+      // .dark class switches the theme tokens in index.css; src/lib/theme.ts keeps it in sync after load.
       (function () {
-        var media = window.matchMedia('(prefers-color-scheme: dark)');
-        var apply = function () { document.documentElement.classList.toggle('dark', media.matches); };
-        apply();
-        media.addEventListener('change', apply);
+        var stored = null;
+        try { stored = window.localStorage.getItem('champ-theme'); } catch (e) {}
+        var dark = stored === 'dark' || (stored !== 'light' && window.matchMedia('(prefers-color-scheme: dark)').matches);
+        document.documentElement.classList.toggle('dark', dark);
       })();
     </script>
   </head>
