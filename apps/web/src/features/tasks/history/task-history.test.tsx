@@ -58,13 +58,13 @@ const events: TaskEventDto[] = [
   { id: 'e3', at: '2026-10-12T05:10:00.000Z', actor: om, fitment: null, type: 'TASK_UPDATED', fromStatus: null, toStatus: null, data: { pocName: ['Priya Rao', 'Anil'], postStart: true } },
 ];
 
-function renderHistory() {
+function renderHistory(items: TaskEventDto[] = events) {
   const fetchMock = mockApi({
     'GET /api/tasks/task-1/history': history,
     'GET /api/tasks/task-1/events': (url: string) =>
       url.includes('format=csv')
         ? new Response(new Blob(['csv']), { headers: { 'Content-Disposition': 'attachment; filename=champ-OM-00001-events-20261012-1000.csv' } })
-        : { items: events },
+        : { items },
   });
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   render(
@@ -105,6 +105,28 @@ describe('TaskHistory', () => {
     const details = within(rows[2]!).getByTestId('event-details');
     expect(details).toHaveTextContent('pocName: Priya Rao → Anil');
     expect(details).toHaveTextContent('postStart: true');
+  });
+
+  it('F11: shows "Filled from CSV" with its readable diff', async () => {
+    const user = userEvent.setup();
+    renderHistory([
+      {
+        id: 'e9',
+        at: '2026-10-12T06:00:00.000Z',
+        actor: ot,
+        fitment: { id: 'fit-1', tkId: 'TK-00001' },
+        type: 'FITMENT_FORM_CSV_FILLED',
+        fromStatus: null,
+        toStatus: null,
+        data: { tkId: 'TK-00001', 'Device id': ['OLD', 'NEW-1'], Accessories: [null, 'OK'] },
+      },
+    ]);
+    const [row] = await screen.findAllByTestId('event-row');
+    expect(row).toHaveTextContent('Filled from CSV');
+    await user.click(within(row!).getByRole('button', { name: 'Details' }));
+    const details = within(row!).getByTestId('event-details');
+    expect(details).toHaveTextContent('Device id: OLD → NEW-1');
+    expect(details).toHaveTextContent('Accessories: — → OK');
   });
 
   it('filters the raw data by fitment and downloads the CSV', async () => {
