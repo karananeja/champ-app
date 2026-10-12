@@ -26,6 +26,7 @@ import { nextNumber } from '../../lib/counters';
 import { conflict, forbidden, notFound } from '../../lib/errors';
 import { prisma, type User } from '../../lib/prisma';
 import type { Storage } from '../../lib/storage';
+import { notifyTravel } from '../notifications/notifier';
 import { diffOf, type Diff } from '../tasks/events';
 import { dateOfDay, dayOf, distanceOf, toTravelDto, toTravelListItem, travelDetailInclude, travelListInclude } from './dto';
 import { travelOrderBy, travelWhere } from './filters';
@@ -145,6 +146,7 @@ export async function createTravel(storage: Storage, actor: User, input: CreateT
     await tx.travelTaskEvent.create({
       data: { travelTaskId: created.id, actorId: actor.id, type: 'TT_RAISED', toStatus: 'RAISED', data: { ttId: formatTtId(ttNo) } },
     });
+    await notifyTravel(tx, actor, { type: 'TRAVEL_RAISED', travelTaskId: created.id });
     return created.id;
   });
   return getTravel(storage, actor, id);
@@ -270,6 +272,7 @@ export async function transitionTravel(storage: Storage, actor: User, id: string
         data: eventData as Prisma.InputJsonObject,
       },
     });
+    if (action === 'VERIFY') await notifyTravel(tx, actor, { type: 'TRAVEL_VERIFIED', travelTaskId: id });
   });
   return getTravel(storage, actor, id);
 }

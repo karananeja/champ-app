@@ -18,6 +18,7 @@ import { healthRouter } from './modules/health/router';
 import { invitesRouter } from './modules/invites/router';
 import { lookupsRouter, mastersRouter } from './modules/masters/router';
 import { mobileRouter } from './modules/mobile/router';
+import { notificationsRouter } from './modules/notifications/router';
 import { tasksRouter } from './modules/tasks/router';
 import { techniciansRouter } from './modules/technicians/router';
 import { travelRouter } from './modules/travel/router';
@@ -84,6 +85,7 @@ export function createApp(deps: AppDeps = {}) {
   api.use('/fitments', fitmentsRouter(storage));
   api.use('/board', boardRouter());
   api.use('/travel-tasks', travelRouter(storage));
+  api.use('/notifications', notificationsRouter());
   if (devSimulator) api.use('/dev', devSimulatorRouter(storage));
   api.use(notFoundHandler);
 
