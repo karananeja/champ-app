@@ -3,7 +3,7 @@
 | | |
 |---|---|
 | Raised | 2026-10-12 by the user |
-| Status | In implementation: a separate commit on `feature/F07-om-kanban`, made by the F07 agent to avoid conflicting edits |
+| Status | Implemented (commit 933b7b9 on `feature/F07-om-kanban`), awaiting user acceptance |
 | Affects | Web dev server config, API `WEB_URL` default, `.env.example`, README, test fixtures |
 
 ## User request
