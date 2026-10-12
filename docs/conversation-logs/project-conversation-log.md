@@ -297,3 +297,7 @@ Chronological log of the whole project conversation. Feature-level logs live in 
 **User:** "F10B accepted". UAT sign-off recorded and `feature/F10B-fitment-form` merged to `main`.
 
 **Claude:** Wrote the F11 intent (mobile CSV bulk fill) and sent it for sign-off.
+
+**User:** "ok continue" (F11 intent). Taken as approval with all five open points as proposed (D-201 – D-205).
+
+**Claude:** Created branch `feature/F11-mobile-csv-bulk-fill`, wrote the F11 spec, and launched two parallel agents (Backend: shared, API, web; Mobile: bulk screen, CSV, photos walk-through, submit ready).
