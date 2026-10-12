@@ -3,7 +3,7 @@
 | | |
 |---|---|
 | Raised | 2026-10-12 by the user, during F05 UAT |
-| Status | Implemented, awaiting user acceptance |
+| Status | ✅ Complete: accepted by the user on 2026-10-12 ("CR-03 and CR-04 accepted") |
 | Affects | F04 task views and form, F05 fitment lists (web) |
 
 ## User request

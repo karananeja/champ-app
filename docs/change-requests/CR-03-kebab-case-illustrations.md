@@ -3,7 +3,7 @@
 | | |
 |---|---|
 | Raised | 2026-10-12 by the user, while F05 was being built |
-| Status | Implemented, awaiting user acceptance |
+| Status | ✅ Complete: accepted by the user on 2026-10-12 ("CR-03 and CR-04 accepted") |
 | Affects | All apps (file names); web UI (illustrations, polish) |
 
 ## User request
