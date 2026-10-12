@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| Status | **Awaiting user sign-off** |
+| Status | **Approved by user on 2026-10-12** |
 | Requirements | SRS §6.5 · source doc: TT used by technicians to visit a client to pick up a faulty device, replace a device or fix an issue, and to claim travel allowance for ad-hoc work; "OE can verify the TT basis on the information available from the OT added which helps in reimbursement"; Travel task fields (Location, Customer, Technician, Purpose of travel) · Decisions D-018 (reimbursement is calculated outside the system) |
 | Depends on | F05/F06 (complete) |
 
