@@ -255,3 +255,14 @@ Chronological log of the whole project conversation. Feature-level logs live in 
 **User:** "ok continue" (F10 intent). Taken as approval with all five open points as proposed (D-154 – D-158), including the F10/F10B split.
 
 **Claude:** Created branch `feature/F10-route-and-start`, wrote the F10 spec, and launched two parallel agents (Backend: shared, API, web; Mobile: route and fitment screens).
+
+**Implementation agents (F10):** Backend finished in ~18 min (6 commits), Mobile in ~9 min (2 commits), both inside the 20-minute target. The Mac was kept awake with `caffeinate`.
+
+**Claude verification:**
+- All gates pass: 990 tests, E2E 69 passed + 4 skipped.
+- Smoke-tested the Route, Start, Close and Mark faulty flows on the Android emulator. Used an isolated API on :4200 with its own throwaway `_e2e` database and real OSRM routing, so the user's dev data wasn't touched.
+- Fixed dialogs whose buttons were hidden under the keyboard on Android (D-177).
+- Note: my first attempt to start the isolated API rewrote the database URL incorrectly and pointed at the dev DB name. The reset script's `_test`/`_e2e` guard refused it and nothing was changed; the second attempt verified the name before running.
+- Rebuilt the iOS app, and wrote the README, the test report and D-159 – D-177.
+
+**Status:** F10 ready for UAT by the user.

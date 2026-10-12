@@ -94,6 +94,7 @@ the pin and type the address by hand. Map tiles load straight from `tile.openstr
 | Variable | Default | What |
 |---|---|---|
 | `NOMINATIM_URL` | `https://nominatim.openstreetmap.org` | Geocoder base URL (point it at a self-hosted Nominatim later) |
+| `OSRM_URL` | `https://router.project-osrm.org` | Route planning for the field app (F10); point it at a self-hosted OSRM for production |
 | `GEOCODER_CONTACT_EMAIL` | `admin@intellicar.in` | Contact sent in the `User-Agent` (`Champ/0.1 (<email>)`), as the OSM usage policy asks |
 
 `pnpm db:seed:demo` also adds two sample clients (*Demo Fleet Rentals* with sites in Bengaluru and Pune, *Demo
@@ -291,8 +292,23 @@ are told to use the web console (D-128). It's online only (D-008).
 - **Home**: a date chip (today and the 7 days before it, D-029), a notifications bell (live in F13), **Show tasks**
   (your fitments that day) and, for an OE, **Approve visit** (submitted fitments that day waiting for you; the screen
   comes in F12). Pull to refresh.
-- **Tasks**: a read-only list of your fitments for the chosen date (D-131). Route order, the map and starting a
-  fitment come in F10.
+- **Route** (F10): your fitments for the chosen date in the best visiting order (OSRM trip, D-015), from your current
+  position, or from home when location is off (with a notice, D-155). It shows a map with the route line and numbered
+  stops, and a timeline with the distance and drive time from the previous stop. Finished stops come first, ticked.
+  The order is kept until you tap *Recalculate route* (needs GPS) or the day's open fitments change. If routing is
+  unavailable it falls back to straight-line nearest-first ("Approximate order").
+- **One at a time** (D-156): only the next open stop can be started (an In-progress one is always next); the server
+  refuses another with 409 `ROUTE_ORDER`. To skip a stop, close it. *Close* and *Mark faulty* aren't order-restricted.
+- **Fitment screen** (`/fitment/[id]`): site map, customer, site, vehicle, activity, asset and installation type, time,
+  the OE (tap to call) and *Directions* (Apple Maps on iOS, Google Maps navigation on Android). Actions:
+  - **Start** needs a fresh GPS fix (no fix → it explains why and offers *Open settings*); the start position and
+    time are recorded (no distance check, D-157). Then **Continue or Close**: *Yes, continue* shows the fitment-form
+    placeholder until F10B; *No, close* asks for a reason (Close reasons master) and comments.
+  - **Close (not done)** also works before starting; **Mark faulty** (reason) moves the fitment to FT and the OE gets
+    the replacement (D-012).
+- **OEs doing fitments** (D-158): on the web an OE can assign a fitment of their own task to themselves, and an SA/OM
+  can assign any fitment to an OE ("Name (OE)" in the assign dialog). The OE then works it in the app like a
+  technician.
 - **Profile**: your details, your manager (tap the phone to call), home location, app version and *Sign out*.
 - With the API unreachable the app shows **No connection** with *Retry*.
 
@@ -321,6 +337,11 @@ cookie; same rate limit as the web login), `POST /api/mobile/auth/refresh` and `
 `GET /api/mobile/home?date=YYYY-MM-DD`, `GET /api/mobile/fitments?date=` and `PUT /api/me/home-location`
 (`{lat, lng, address}`); all for OT and OE. `/api/geo/search` and `/reverse` now also allow OT and OE. `UserDto` and
 technician rows include `homeLocation`.
+F10: `GET /api/mobile/route?date=&lat=&lng=` (stored per technician and day as `DayRoute`, D-155),
+`POST /api/mobile/route/recalculate` (`{date, lat, lng}`), `GET /api/mobile/fitments/:fid`; the technician steps go
+through the existing `POST /api/fitments/:fid/transitions`. `OSRM_URL` (default `https://router.project-osrm.org`, the
+public demo server: fine for development only) sets the routing service; tests and E2E point it at an unreachable
+address, so they use the straight-line fallback.
 
 ### Look and feel (CR-03, CR-04)
 
