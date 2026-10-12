@@ -32,7 +32,8 @@ export function KpiTable<T>({ rows, columns, rowKey, label, testId }: Props<T>) 
 
   return (
     <>
-      <div className="hidden rounded-md border md:block">
+      {/* Many columns: the table scrolls sideways inside its box on narrower screens (data-scroll-x, D-261). */}
+      <div className="hidden rounded-md border md:block" data-scroll-x>
         <Table aria-label={label}>
           <TableHeader>
             <TableRow>
@@ -89,7 +90,7 @@ export function KpiTable<T>({ rows, columns, rowKey, label, testId }: Props<T>) 
           {sorted.map((row) => (
             <li key={rowKey(row)} className="rounded-md border p-3" data-testid={`${testId}-card`}>
               <div className="font-medium break-words">{first?.cell(row)}</div>
-              <dl className="mt-2 grid grid-cols-2 gap-x-3 gap-y-1 text-sm">
+              <dl className="mt-2 grid grid-cols-1 gap-x-4 gap-y-1 text-sm min-[420px]:grid-cols-2">
                 {rest.map((c) => (
                   <div key={c.key} className="flex min-w-0 justify-between gap-2">
                     <dt className="truncate text-muted-foreground">{c.header}</dt>
