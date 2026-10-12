@@ -249,3 +249,5 @@ Chronological log of the whole project conversation. Feature-level logs live in 
 **Status:** F09 ready for UAT by the user.
 
 **User:** "F09 accepted". UAT sign-off recorded and `feature/F09-mobile-foundation` merged to `main`.
+
+**Claude:** Wrote the F10 intent (route planning and starting a fitment), proposing to split the original F10 into F10 and F10B, and sent it for sign-off.
