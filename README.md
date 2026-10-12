@@ -12,6 +12,7 @@ pnpm workspaces, TypeScript everywhere.
 |---|---|
 | `apps/api` | Express 5 + Prisma 7 (PostgreSQL), zod validation, JWT access + rotating refresh tokens, pino logging |
 | `apps/web` | React 19 + Vite + Tailwind 4 + shadcn/ui, React Router, TanStack Query, React Hook Form |
+| `apps/mobile` | Field app (F09): Expo SDK 57 / React Native 0.86, expo-router, TanStack Query, React Hook Form, MapLibre with OSM tiles; a development build, not Expo Go |
 | `packages/shared` | Roles, permission matrices, zod schemas and DTO types used by both apps |
 | `docker-compose.yml` | PostgreSQL 16 (`localhost:5432`) and MinIO (`localhost:9000`, console `:9001`) |
 
@@ -277,6 +278,50 @@ read) and `…/attachments/:aid/remove`, `GET /api/travel-tasks/export?format=cs
 (up to 10 fitments by TK id or number, for the related-task picker). Receipts are stored in the same private bucket
 as photos under `travel/{travelTaskId}/{attachmentId}.{ext}`.
 
+### Field app (F09)
+
+The field app (`apps/mobile`, "Champ Dev" while developing) is for **technicians (OT) and OEs** only; SA, OM and RO
+are told to use the web console (D-128). It's online only (D-008).
+
+- **Sign in** with the same email and password as the web. The session survives app restarts: the refresh token is
+  kept in the phone's secure storage and the access token in memory (D-133). *Sign out* is on the Profile tab.
+- **Home location** (D-129): an OT must set one at first sign-in, by GPS (*Use my current location*), address search
+  or moving the map under the centre pin; the address is filled from the pin and can be edited before *Save*. An OE
+  may *Skip*. It can be changed from Profile. On the web it shows (read-only) on the Technicians page.
+- **Home**: a date chip (today and the 7 days before it, D-029), a notifications bell (live in F13), **Show tasks**
+  (your fitments that day) and, for an OE, **Approve visit** (submitted fitments that day waiting for you; the screen
+  comes in F12). Pull to refresh.
+- **Tasks**: a read-only list of your fitments for the chosen date (D-131). Route order, the map and starting a
+  fitment come in F10.
+- **Profile**: your details, your manager (tap the phone to call), home location, app version and *Sign out*.
+- With the API unreachable the app shows **No connection** with *Retry*.
+
+**Run it** (Xcode with an iOS Simulator and/or Android Studio with an emulator; the API must be running, `pnpm dev`):
+
+```bash
+cd apps/mobile
+npx expo run:ios                # first time: native build + install on the iOS Simulator (several minutes)
+npx expo run:android            # first time: with an Android emulator running
+pnpm --filter @champ/mobile start   # afterwards: Metro only, then open "Champ Dev" on the device
+```
+
+- The app finds the API on the machine that serves Metro, port 4000 (`localhost` on the iOS Simulator, `10.0.2.2`
+  on the Android emulator, the Mac's Wi-Fi IP on a phone). Set `EXPO_PUBLIC_API_URL=http://<mac-ip>:4000` to
+  override it, then restart Metro.
+- **On a phone** (same Wi-Fi as the Mac): `npx expo run:android --device`, or `npx expo run:ios --device` (needs
+  Xcode signing with your Apple ID as a personal team).
+- `ios/` and `android/` are generated and not committed; delete them and run `expo run:*` again after changing
+  `app.config.ts` or adding a native module. `APP_VARIANT=production` builds the `in.intellicar.champ` id instead of
+  `in.intellicar.champ.dev`.
+- Map tiles come from `tile.openstreetmap.org`, which is fine for development only (its usage policy); production
+  needs another tile provider.
+
+API (field app): `POST /api/mobile/auth/login` (`{email, password}` → `{accessToken, refreshToken, user}`, no
+cookie; same rate limit as the web login), `POST /api/mobile/auth/refresh` and `/logout` (`{refreshToken}`),
+`GET /api/mobile/home?date=YYYY-MM-DD`, `GET /api/mobile/fitments?date=` and `PUT /api/me/home-location`
+(`{lat, lng, address}`); all for OT and OE. `/api/geo/search` and `/reverse` now also allow OT and OE. `UserDto` and
+technician rows include `homeLocation`.
+
 ### Look and feel (CR-03, CR-04)
 
 - **Dashboard**: role-aware stat cards from `GET /api/tasks/summary`. SA/OM see open tasks, awaiting approval,
@@ -305,11 +350,12 @@ with `strictPort`, CR-05, so it fails instead of moving to another port when 300
 | Command | What it does |
 |---|---|
 | `pnpm dev` | API (tsx watch) and web (Vite) in parallel |
-| `pnpm test` | Unit/integration tests: shared, API (against `champ_test`, recreated each run) and web components |
+| `pnpm test` | Unit/integration tests: shared, API (against `champ_test`, recreated each run), web components and the field app (Jest) |
 | `pnpm test:e2e` | Playwright E2E (starts its own API on :4100 and web on :5174 against `champ_e2e`, with the dev simulator on and photos in the MinIO bucket `champ-e2e`, so `docker compose up -d` first; geocoding and map tiles are stubbed) |
 | `pnpm lint` / `pnpm typecheck` | ESLint / TypeScript across the workspace |
 | `pnpm build` | Type-checks the API, builds the web app into `apps/web/dist` and checks that the bundle has no dev simulator |
 | `pnpm start` | Runs the API without watch mode |
+| `pnpm --filter @champ/mobile start` | Metro for the field app's development build (see *Field app*) |
 | `pnpm db:migrate` | Applies pending migrations (`prisma migrate deploy`) |
 | `pnpm db:migrate:dev` | Creates a new migration after editing `apps/api/prisma/schema.prisma` |
 | `pnpm db:seed` | Creates the Super Admin if missing, upserts the master data and creates the task id counters (idempotent) |
@@ -327,6 +373,7 @@ First E2E run on a machine: `pnpm --filter @champ/web exec playwright install ch
 | PostgreSQL | 5432 | `POSTGRES_PORT` (compose) + `DATABASE_URL` |
 | MinIO API / console | 9000 / 9001 | `MINIO_PORT` / `MINIO_CONSOLE_PORT` (compose) |
 | E2E API / web | 4100 / 5174 | — |
+| Metro (field app) | 8081 | `--port` |
 
 ## Conventions
 
