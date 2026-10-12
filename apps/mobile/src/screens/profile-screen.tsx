@@ -63,7 +63,7 @@ export function ProfileScreen() {
             onPress={() => router.push({ pathname: '/onboarding/home-location', params: { mode: 'edit' } })}
           />
         </Card>
-        <Muted style={styles.version}>Champ {Constants.expoConfig?.version ?? ''}</Muted>
+        <Muted style={styles.version}>{`Champ v${Constants.expoConfig?.version ?? 'dev'}`}</Muted>
         <Button
           title="Sign out"
           variant="secondary"
