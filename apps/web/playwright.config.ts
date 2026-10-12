@@ -29,6 +29,10 @@ export default defineConfig({
   reporter: [['list'], ['html', { open: 'never' }]],
   use: {
     baseURL: WEB_URL,
+    // CR-06: a click or fill on a locator that never appears fails after 15 s instead of waiting out the
+    // whole test timeout (up to 150 s), so a broken step is reported in seconds.
+    actionTimeout: 15_000,
+    navigationTimeout: 30_000,
     trace: 'retain-on-failure',
     screenshot: 'only-on-failure',
   },
