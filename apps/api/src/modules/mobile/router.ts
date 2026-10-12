@@ -16,6 +16,8 @@ import {
   uploadTechnicianPhotoSchema,
   type FitmentFormInput,
   type UploadTechnicianPhotoInput,
+  bulkFillConfirmSchema,
+  type BulkFillConfirmInput,
 } from '@champ/shared';
 import type { RouteOptimizer } from '../../lib/router';
 import type { Storage } from '../../lib/storage';
@@ -24,6 +26,7 @@ import { requireRole } from '../../middleware/require-role';
 import { validate } from '../../middleware/validate';
 import * as auth from '../auth/service';
 import { uploadPhoto } from '../verification/upload';
+import { bulkFillSampleCsv, bulkFillUpload, confirmBulkFill, getBulkFill, previewBulkFill, submitReady } from './bulk-fill';
 import { saveForm, technicianUploadGuard, uploadTechnicianPhoto } from './form';
 import { getDayRoute } from './route';
 import * as mobile from './service';
@@ -83,6 +86,32 @@ export function mobileRouter(loginLimiter: RequestHandler, optimizer: RouteOptim
   app.post('/fitments/:fid/photos', technicianUploadGuard, uploadPhoto, validate({ body: uploadTechnicianPhotoSchema }), async (req, res) => {
     const photo = await uploadTechnicianPhoto(storage, currentUser(req), req.params.fid as string, req.file!, req.body as UploadTechnicianPhotoInput);
     res.status(201).json(photo);
+  });
+
+  // F11: CSV bulk fill of the caller's fitments of one task, and submit the complete ones.
+  const taskId = (req: { params: Record<string, unknown> }) => req.params.taskId as string;
+  app.get('/tasks/:taskId/bulk-fill', async (req, res) => {
+    res.json(await getBulkFill(currentUser(req), taskId(req)));
+  });
+
+  app.get('/tasks/:taskId/bulk-fill/sample.csv', async (req, res) => {
+    const file = await bulkFillSampleCsv(currentUser(req), taskId(req));
+    res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+    res.attachment(file.filename);
+    res.send(file.body);
+  });
+
+  // The caller-has-fitments check runs before multer reads the file (D-108).
+  app.post('/tasks/:taskId/bulk-fill/preview', bulkFillUpload, async (req, res) => {
+    res.json(await previewBulkFill(currentUser(req), taskId(req), req.file!.buffer));
+  });
+
+  app.post('/tasks/:taskId/bulk-fill/confirm', validate({ body: bulkFillConfirmSchema }), async (req, res) => {
+    res.json(await confirmBulkFill(currentUser(req), taskId(req), req.body as BulkFillConfirmInput));
+  });
+
+  app.post('/tasks/:taskId/submit-ready', async (req, res) => {
+    res.json(await submitReady(currentUser(req), taskId(req)));
   });
 
   app.get('/route', validate({ query: routeQuerySchema }), async (req, res) => {
