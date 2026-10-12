@@ -446,7 +446,7 @@ describe('export (spec §3)', () => {
       });
     expect(res.status).toBe(200);
     const book = new ExcelJS.Workbook();
-    await book.xlsx.load(res.body as Buffer);
+    await book.xlsx.load(res.body as Parameters<typeof book.xlsx.load>[0]);
     const sheet = book.getWorksheet('Travel tasks')!;
     expect(sheet.getRow(1).values).toEqual([undefined, ...lines[0]!.split(',')]);
     expect(sheet.rowCount).toBe(3);
