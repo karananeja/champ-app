@@ -12,3 +12,4 @@
   - Tests: shared +43, API +15, web +18, E2E +2 (desktop and 360 px). All gates pass (see `test-report.md`).
   - Decisions not in the spec: D-123 to D-126.
 - 2026-10-12: Claude re-ran typecheck, lint, 876 tests, the build with the bundle check, and E2E (67 passed, 4 skipped by design); all pass. Reviewed the travel router guards. Handed to the user for UAT.
+- 2026-10-12: User replied "F08 accepted". UAT sign-off recorded; merged `feature/F08-travel-tasks` to `main`.
