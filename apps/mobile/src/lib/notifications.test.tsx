@@ -75,12 +75,14 @@ describe('NotificationsProvider and the bell', () => {
 
   it('a live notification updates the count and shows a toast; a count event clears it', async () => {
     mockedUseSession.mockReturnValue(fakeSession());
-    await renderBell(0);
+    await renderBell(1);
     await waitFor(() => expect(mocked.__handlers.has(NOTIFICATION_EVENT)).toBe(true));
-    expect(screen.queryByTestId('bell-badge')).toBeNull();
+    // Let the first unread-count request finish first, so its stub answer can't land after the live event.
+    expect(await screen.findByLabelText('Notifications, 1 unread')).toBeOnTheScreen();
     await emit(NOTIFICATION_EVENT, { notification: makeNotification({ title: 'TK-00012 reopened by Ravi' }), unreadCount: 3 });
-    expect(screen.getByLabelText('Notifications, 3 unread')).toBeOnTheScreen();
-    expect(screen.getByText('TK-00012 reopened by Ravi')).toBeOnTheScreen();
+    // React Query tells the screen on a deferred tick: wait for the re-render rather than checking at once.
+    expect(await screen.findByLabelText('Notifications, 3 unread')).toBeOnTheScreen();
+    expect(await screen.findByText('TK-00012 reopened by Ravi')).toBeOnTheScreen();
     await emit(NOTIFICATION_COUNT_EVENT, { unreadCount: 0 });
     expect(await screen.findByLabelText('Notifications')).toBeOnTheScreen();
     expect(screen.queryByTestId('bell-badge')).toBeNull();
