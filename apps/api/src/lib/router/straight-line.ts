@@ -1,4 +1,4 @@
-import type { LatLng, TripResult } from './types';
+import type { LatLng, RouteResult, TripResult } from './types';
 
 const EARTH_RADIUS_M = 6_371_000;
 const rad = (deg: number) => (deg * Math.PI) / 180;
@@ -36,4 +36,9 @@ export function straightLineTrip(origin: LatLng, stops: LatLng[]): TripResult {
     here = stops[idx]!;
   }
   return { order, legs, geometry: null };
+}
+
+/** Straight legs (rounded metres, no durations) between consecutive points in the given order. */
+export function straightLineRoute(points: LatLng[]): RouteResult {
+  return { legs: points.slice(1).map((p, i) => ({ distanceM: Math.round(haversineM(points[i]!, p)), durationS: null })) };
 }

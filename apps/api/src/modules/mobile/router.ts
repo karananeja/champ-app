@@ -18,6 +18,8 @@ import {
   type UploadTechnicianPhotoInput,
   bulkFillConfirmSchema,
   type BulkFillConfirmInput,
+  historyQuerySchema,
+  type HistoryQuery,
 } from '@champ/shared';
 import type { RouteOptimizer } from '../../lib/router';
 import type { Storage } from '../../lib/storage';
@@ -26,7 +28,9 @@ import { requireRole } from '../../middleware/require-role';
 import { validate } from '../../middleware/validate';
 import * as auth from '../auth/service';
 import { uploadPhoto } from '../verification/upload';
+import { getApproveVisit, listApproveVisit } from './approve-visit';
 import { bulkFillSampleCsv, bulkFillUpload, confirmBulkFill, getBulkFill, previewBulkFill, submitReady } from './bulk-fill';
+import { getDayHistory, getReporteesHistory } from './history';
 import { saveForm, technicianUploadGuard, uploadTechnicianPhoto } from './form';
 import { getDayRoute } from './route';
 import * as mobile from './service';
@@ -39,7 +43,10 @@ function sendMobileSession(res: Response, session: auth.Session) {
   res.json(body);
 }
 
-/** `/mobile/*`: the field app's sign-in (OT and OE only, D-128), its home and task list (F09) and day route (F10). */
+/**
+ * `/mobile/*`: the field app's sign-in (OT and OE only, D-128), its home and task list (F09), day route (F10),
+ * history and Approve visit (F12).
+ */
 export function mobileRouter(loginLimiter: RequestHandler, optimizer: RouteOptimizer, storage: Storage) {
   const router = Router();
 
@@ -123,6 +130,27 @@ export function mobileRouter(loginLimiter: RequestHandler, optimizer: RouteOptim
   app.post('/route/recalculate', validate({ body: recalculateRouteSchema }), async (req, res) => {
     const { date, lat, lng } = req.body as RecalculateRouteInput;
     res.json(await getDayRoute(currentUser(req), date, { gps: { lat, lng }, force: true }, optimizer));
+  });
+
+  // F12: day history with distance, direct reportees, and the OE's Approve visit (VERIFY/REOPEN go through
+  // the existing `POST /fitments/:fid/transitions`).
+  app.get('/history', validate({ query: historyQuerySchema }), async (req, res) => {
+    const { date, userId } = req.query as unknown as HistoryQuery;
+    res.json(await getDayHistory(currentUser(req), date, userId, optimizer));
+  });
+
+  app.get('/history/reportees', validate({ query: mobileDateQuerySchema }), async (req, res) => {
+    const { date } = req.query as unknown as MobileDateQuery;
+    res.json(await getReporteesHistory(currentUser(req), date));
+  });
+
+  app.get('/approve-visit', validate({ query: mobileDateQuerySchema }), async (req, res) => {
+    const { date } = req.query as unknown as MobileDateQuery;
+    res.json(await listApproveVisit(currentUser(req), date));
+  });
+
+  app.get('/approve-visit/:fid', async (req, res) => {
+    res.json(await getApproveVisit(storage, currentUser(req), req.params.fid as string));
   });
 
   router.use(app);

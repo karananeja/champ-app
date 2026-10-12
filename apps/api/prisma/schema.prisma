@@ -73,6 +73,7 @@ model User {
   travelReopened              TravelTask[]        @relation("TravelReopenedBy")
   travelEvents                TravelTaskEvent[]   @relation("TravelEventActor")
   dayRoutes                   DayRoute[]          @relation("DayRouteTechnician")
+  dayDistances                DayDistance[]       @relation("DayDistanceUser")
   travelUploads               TravelAttachment[]  @relation("TravelAttachmentUploadedBy")
   travelRemovals              TravelAttachment[]  @relation("TravelAttachmentRemovedBy")
 
@@ -691,4 +692,19 @@ model DayRoute {
   computedAt   DateTime     @default(now())
 
   @@unique([technicianId, date])
+}
+
+/// The distance a field user travelled on an IST day (F12, D-216): cached per signature of the ordered start points.
+model DayDistance {
+  id         String   @id @default(cuid())
+  userId     String
+  user       User     @relation("DayDistanceUser", fields: [userId], references: [id])
+  date       DateTime @db.Date // IST day
+  signature  String // hash of the ordered (merged) start points
+  distanceM  Int
+  approx     Boolean // straight-line (routing unavailable)
+  legs       Json // [{ fitmentId, distanceM }] per started fitment after the first
+  computedAt DateTime @default(now())
+
+  @@unique([userId, date])
 }

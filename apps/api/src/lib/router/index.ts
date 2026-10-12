@@ -3,8 +3,8 @@ import { OsrmRouter } from './osrm';
 import type { RouteOptimizer } from './types';
 
 export * from './types';
-export { OsrmRouter, OSRM_MAX_STOPS, parseTrip } from './osrm';
-export { haversineM, straightLineTrip } from './straight-line';
+export { OsrmRouter, OSRM_MAX_ROUTE_POINTS, OSRM_MAX_STOPS, parseRoute, parseTrip } from './osrm';
+export { haversineM, straightLineRoute, straightLineTrip } from './straight-line';
 export { StubRouter } from './stub';
 
 /** The default route optimiser: OSRM at `OSRM_URL`. */
