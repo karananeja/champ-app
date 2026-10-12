@@ -223,6 +223,97 @@ describe('workflow — faulty device (D-012)', () => {
   });
 });
 
+describe('workflow — undo faulty (CR-11, D-257)', () => {
+  /** f1 started then marked faulty; returns its replacement. */
+  async function faulty(w: Awaited<ReturnType<typeof setup>>, fid: string) {
+    await run([w.techA, fid, 'START', GPS], [w.techA, fid, 'MARK_FAULTY', { reason: 'Device dead on arrival' }]);
+    return prisma.fitment.findUniqueOrThrow({ where: { replacementOfId: fid } });
+  }
+
+  it('puts the fitment back to Assigned with its technician and closes the replacement as "Faulty marked by mistake"', async () => {
+    const w = await setup(2);
+    const [f1] = w.fids as [string, string];
+    const replacement = await faulty(w, f1);
+    await api().post(`/api/tasks/${w.task.id}/assign`).set(bearer(w.oe)).send({ fitmentIds: [replacement.id], technicianId: w.techB.id });
+    expect((await getTask(w.oe, w.task.id)).fitments[0]!.availableActions).toEqual(['UNDO_FAULTY']);
+
+    const res = await run([w.oe, f1, 'UNDO_FAULTY', { reason: 'Tapped faulty by mistake' }]);
+    expect(res.fitment).toMatchObject({ status: 'ASSIGNED', technician: { id: w.techA.id }, faultReason: null, faultyAt: null });
+    expect(res.task).toMatchObject({ status: 'IN_PROGRESS', counts: { total: 3, assigned: 3, open: 0 } });
+
+    const row = await fitmentRow(f1);
+    expect(row).toMatchObject({ status: 'ASSIGNED', technicianId: w.techA.id, faultyAt: null, faultReason: null });
+    expect(row.startedAt).not.toBeNull(); // the earlier start is kept; the next START sets a fresh GPS fix
+    const closed = await prisma.fitment.findUniqueOrThrow({ where: { id: replacement.id }, include: { closeReason: true } });
+    expect(closed).toMatchObject({
+      status: 'CLOSED_NOT_DONE',
+      closeComments: 'Tapped faulty by mistake',
+      closeReason: { kind: 'CLOSE_REASON', code: 'FAULT_UNDONE', name: 'Faulty marked by mistake', isSystem: true, active: true },
+    });
+    expect(closed.closedAt).not.toBeNull();
+    expect(closed.replacementOfId).toBeNull(); // unlinked, so a new MARK_FAULTY can create a new replacement
+
+    const events = (await eventsOf(w.task.id)).filter((e) => ['FITMENT_FAULT_UNDONE', 'FITMENT_CLOSED_NOT_DONE'].includes(e.type));
+    expect(events.map((e) => [e.type, e.fitmentId, e.fromStatus, e.toStatus, e.data])).toEqual([
+      ['FITMENT_FAULT_UNDONE', f1, 'MOVED_TO_FT', 'ASSIGNED', { tkId: 'TK-00001', reason: 'Tapped faulty by mistake', replacementTkId: 'TK-00003' }],
+      [
+        'FITMENT_CLOSED_NOT_DONE',
+        replacement.id,
+        'ASSIGNED',
+        'CLOSED_NOT_DONE',
+        { tkId: 'TK-00003', reason: 'Faulty marked by mistake', comments: 'Tapped faulty by mistake', faultUndoneOf: 'TK-00001' },
+      ],
+    ]);
+
+    // The technician starts it again; a second undo uses the same built-in reason.
+    await run([w.techA, f1, 'START', GPS], [w.techA, f1, 'MARK_FAULTY', { reason: 'Really dead' }]);
+    const second = await prisma.fitment.findUniqueOrThrow({ where: { replacementOfId: f1 } });
+    expect(second).toMatchObject({ tkNo: 4, status: 'OPEN' });
+    await run([w.oe, f1, 'UNDO_FAULTY', { reason: 'Wrong again' }]);
+    expect(await prisma.lookupItem.count({ where: { kind: 'CLOSE_REASON', code: 'FAULT_UNDONE' } })).toBe(1);
+  });
+
+  it('SA and OM may undo too; the task status is recomputed from an Open replacement', async () => {
+    const w = await setup(1);
+    const f1 = w.fids[0]!;
+    await faulty(w, f1);
+    const res = await run([w.om, f1, 'UNDO_FAULTY', { reason: 'Wrong fitment' }]);
+    expect(res.task).toMatchObject({ status: 'IN_PROGRESS', counts: { total: 2, assigned: 1, open: 0 } });
+  });
+
+  it('is refused once the replacement has started, for anyone but SA/OM/the task\'s OE, and without a reason', async () => {
+    const w = await setup(1);
+    const f1 = w.fids[0]!;
+    const replacement = await faulty(w, f1);
+
+    const otherOe = await createUser({ role: 'OE', managerId: w.om.id });
+    const ro = await createUser({ role: 'RO' });
+    for (const actor of [w.techA, otherOe, ro]) {
+      const res = await transition(actor, f1, 'UNDO_FAULTY', { reason: 'Mistake' });
+      expect(res.status, actor.role).toBe(403);
+    }
+    expect((await transition(w.oe, f1, 'UNDO_FAULTY', {})).status).toBe(400);
+    const short = await transition(w.oe, f1, 'UNDO_FAULTY', { reason: ' ab ' });
+    expect(short.status).toBe(400);
+    expect(JSON.stringify(short.body)).toContain('Give a reason for undoing the fault marking (at least 3 characters)');
+
+    await api().post(`/api/tasks/${w.task.id}/assign`).set(bearer(w.oe)).send({ fitmentIds: [replacement.id], technicianId: w.techB.id });
+    await run([w.techB, replacement.id, 'START', GPS]);
+    const res = await transition(w.oe, f1, 'UNDO_FAULTY', { reason: 'Mistake' });
+    expect(res.status).toBe(409);
+    expect(res.body.error).toEqual({
+      code: 'INVALID_TRANSITION',
+      message: 'TK-00002 (the replacement) is already in progress; the fault marking of TK-00001 can only be undone while its replacement is Open or Assigned',
+    });
+    expect(await fitmentRow(f1)).toMatchObject({ status: 'MOVED_TO_FT', faultReason: 'Device dead on arrival' });
+
+    // Only fitments moved to FT.
+    const wrong = await transition(w.oe, replacement.id, 'UNDO_FAULTY', { reason: 'Mistake' });
+    expect(wrong.status).toBe(409);
+    expect(wrong.body.error.message).toBe('This fitment is In progress; only fitments moved to FT can have their fault marking undone');
+  });
+});
+
 describe('workflow — reopen (D-027, D-074, D-075)', () => {
   const attributionsOf = (fitmentId: string) =>
     prisma.reopenAttribution.findMany({ where: { fitmentId }, orderBy: { role: 'asc' }, select: { userId: true, role: true } });
