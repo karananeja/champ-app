@@ -34,6 +34,7 @@ const ALLOWED_FROM: Record<FitmentAction, FitmentStatus[]> = {
   VERIFY: ['SUBMITTED'],
   APPROVE: ['OE_VERIFIED'],
   REOPEN: ['SUBMITTED', 'OE_VERIFIED', 'CLOSED_NOT_DONE'],
+  UNDO_FAULTY: ['MOVED_TO_FT'],
 };
 
 const actor = (role: Role, id = `${role}-1`) => ({ id, role });
@@ -76,6 +77,7 @@ describe('canPerform (who)', () => {
     VERIFY: ['taskOe'],
     APPROVE: ['sa', 'om'],
     REOPEN: ['sa', 'om', 'taskOe'],
+    UNDO_FAULTY: ['sa', 'om', 'taskOe'],
   };
   for (const action of FITMENT_ACTIONS) {
     it(`${action}: ${expected[action].join(', ')}`, () => {
@@ -120,8 +122,10 @@ describe('availableActions', () => {
     expect(availableActions(actor('OE', 'OE-2'), ctx('SUBMITTED'))).toEqual([]);
     expect(availableActions(actor('OM'), ctx('OE_VERIFIED'))).toEqual(['APPROVE', 'REOPEN']);
     expect(availableActions(actor('OM'), ctx('CLOSED_NOT_DONE'))).toEqual(['REOPEN']);
+    expect(availableActions(actor('OE', 'OE-1'), ctx('MOVED_TO_FT'))).toEqual(['UNDO_FAULTY']);
+    expect(availableActions(actor('OT', 'OT-1'), ctx('MOVED_TO_FT'))).toEqual([]);
     expect(availableActions(actor('OM'), ctx('OM_APPROVED'))).toEqual([]);
-    expect(availableActions(actor('SUPER_ADMIN'), ctx('MOVED_TO_FT'))).toEqual([]);
+    expect(availableActions(actor('SUPER_ADMIN'), ctx('MOVED_TO_FT'))).toEqual(['UNDO_FAULTY']);
     for (const status of FITMENT_STATUSES) expect(availableActions(actor('RO'), ctx(status))).toEqual([]);
   });
 });
@@ -195,6 +199,9 @@ describe('payload schemas', () => {
     expect(ok({ action: 'REOPEN', payload: { reason: 'Redo' } })).toBe(true);
     expect(issues({ action: 'REOPEN', payload: { reason: ' ab ' } })).toEqual(['Give a reason for reopening (at least 3 characters)']);
     expect(issues({ action: 'REOPEN' })).toEqual(['Give a reason for reopening']);
+    expect(ok({ action: 'UNDO_FAULTY', payload: { reason: 'Wrong tap' } })).toBe(true);
+    expect(issues({ action: 'UNDO_FAULTY', payload: { reason: ' ab ' } })).toEqual(['Give a reason for undoing the fault marking (at least 3 characters)']);
+    expect(issues({ action: 'UNDO_FAULTY' })).toEqual(['Give a reason for undoing the fault marking']);
   });
 
   it('the other actions take an optional note (≤ 500), blanks become null', () => {

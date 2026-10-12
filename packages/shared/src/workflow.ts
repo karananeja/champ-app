@@ -7,7 +7,7 @@ import { isMobileRole } from './mobile';
  * them and who may edit fitment data. The API engine and the web both use it.
  */
 
-export const FITMENT_ACTIONS = ['START', 'SUBMIT', 'CLOSE_NOT_DONE', 'MARK_FAULTY', 'VERIFY', 'APPROVE', 'REOPEN'] as const;
+export const FITMENT_ACTIONS = ['START', 'SUBMIT', 'CLOSE_NOT_DONE', 'MARK_FAULTY', 'VERIFY', 'APPROVE', 'REOPEN', 'UNDO_FAULTY'] as const;
 export type FitmentAction = (typeof FITMENT_ACTIONS)[number];
 
 export const TRANSITIONS: Record<FitmentAction, { from: readonly FitmentStatus[]; to: FitmentStatus }> = {
@@ -18,6 +18,8 @@ export const TRANSITIONS: Record<FitmentAction, { from: readonly FitmentStatus[]
   VERIFY: { from: ['SUBMITTED'], to: 'OE_VERIFIED' },
   APPROVE: { from: ['OE_VERIFIED'], to: 'OM_APPROVED' },
   REOPEN: { from: ['SUBMITTED', 'OE_VERIFIED', 'CLOSED_NOT_DONE'], to: 'REOPENED' },
+  // CR-11 (D-257): only while the replacement is Open or Assigned (checked by the API engine).
+  UNDO_FAULTY: { from: ['MOVED_TO_FT'], to: 'ASSIGNED' },
 };
 
 export const FITMENT_ACTION_LABELS: Record<FitmentAction, string> = {
@@ -28,6 +30,7 @@ export const FITMENT_ACTION_LABELS: Record<FitmentAction, string> = {
   VERIFY: 'Verify',
   APPROVE: 'Final approve',
   REOPEN: 'Reopen',
+  UNDO_FAULTY: 'Undo faulty',
 };
 
 /** The technician's steps (mobile app in F10; the dev simulator until then, D-073). */
@@ -35,7 +38,7 @@ export const TECHNICIAN_ACTIONS: readonly FitmentAction[] = ['START', 'SUBMIT', 
 export type TechnicianAction = 'START' | 'SUBMIT' | 'CLOSE_NOT_DONE' | 'MARK_FAULTY';
 
 /** The OE/OM steps offered on the web task page. */
-export const REVIEW_ACTIONS: readonly FitmentAction[] = ['VERIFY', 'APPROVE', 'REOPEN'];
+export const REVIEW_ACTIONS: readonly FitmentAction[] = ['VERIFY', 'APPROVE', 'REOPEN', 'UNDO_FAULTY'];
 
 export interface WorkflowActor {
   id: string;
@@ -56,7 +59,7 @@ const isAssignedTechnician = (actor: WorkflowActor, ctx: WorkflowContext) =>
 /**
  * Whether the actor may perform the action on this fitment (who, not when; see `canTransition`).
  * Technician steps: the assigned technician only (an OT, or an OE assigned to the fitment, D-158). Verify: the task's OE. Approve: SA or OM. Reopen: SA, OM
- * or the task's OE (D-027).
+ * or the task's OE (D-027). Undo faulty: SA, OM or the task's OE (D-257).
  */
 export function canPerform(action: FitmentAction, actor: WorkflowActor, ctx: WorkflowContext): boolean {
   switch (action) {
@@ -70,6 +73,7 @@ export function canPerform(action: FitmentAction, actor: WorkflowActor, ctx: Wor
     case 'APPROVE':
       return isManager(actor);
     case 'REOPEN':
+    case 'UNDO_FAULTY':
       return isManager(actor) || isTaskOe(actor, ctx);
   }
 }
@@ -107,11 +111,18 @@ const REFUSALS: Record<FitmentAction, string> = {
   VERIFY: 'only Submitted fitments can be verified',
   APPROVE: 'only OE-verified fitments can be final-approved',
   REOPEN: 'only Submitted, OE-verified or Closed – not done fitments can be reopened',
+  UNDO_FAULTY: 'only fitments moved to FT can have their fault marking undone',
 };
 
 /** The 409 INVALID_TRANSITION message, e.g. "This fitment is Submitted; only OE-verified fitments can be final-approved". */
 export const transitionRefusal = (action: FitmentAction, status: FitmentStatus): string =>
   `This fitment is ${FITMENT_STATUS_LABELS[status]}; ${REFUSALS[action]}`;
+
+/**
+ * The built-in Close reasons entry given to a replacement closed by an undo faulty (CR-11, D-257): it can't be
+ * renamed or deactivated.
+ */
+export const FAULT_UNDONE_CLOSE_REASON = { code: 'FAULT_UNDONE', name: 'Faulty marked by mistake' } as const;
 
 /** TaskEvent type written for each action. */
 export const FITMENT_ACTION_EVENTS = {
@@ -122,9 +133,10 @@ export const FITMENT_ACTION_EVENTS = {
   VERIFY: 'FITMENT_VERIFIED',
   APPROVE: 'FITMENT_APPROVED',
   REOPEN: 'FITMENT_REOPENED',
+  UNDO_FAULTY: 'FITMENT_FAULT_UNDONE',
 } as const satisfies Record<FitmentAction, string>;
 
-/** Every TaskEvent type (F04, F05 and F06). */
+/** Every TaskEvent type (F04, F05, F06 and CR-11). */
 export const TASK_EVENT_TYPES = [
   'TASK_CREATED',
   'TASK_UPDATED',
@@ -140,6 +152,8 @@ export const TASK_EVENT_TYPES = [
   'FITMENT_VERIFIED',
   'FITMENT_APPROVED',
   'FITMENT_REOPENED',
+  // CR-11: a mistaken "faulty" undone
+  'FITMENT_FAULT_UNDONE',
   // F06: verification and photos
   'FITMENT_VERIFICATION_SAVED',
   'PHOTO_ADDED',
@@ -167,6 +181,7 @@ export const TASK_EVENT_LABELS: Record<TaskEventType, string> = {
   FITMENT_VERIFIED: 'OE verified',
   FITMENT_APPROVED: 'OM approved',
   FITMENT_REOPENED: 'Reopened',
+  FITMENT_FAULT_UNDONE: 'Fault undone',
   FITMENT_VERIFICATION_SAVED: 'Verification saved',
   PHOTO_ADDED: 'Photo added',
   PHOTO_REPLACED: 'Photo replaced',

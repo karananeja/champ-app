@@ -489,6 +489,10 @@ export interface WorkflowFitmentItemDto {
   faultReason: string | null;
   faultyAt: string | null;
   replacement: { id: string; tkId: string; status: FitmentStatus; technician: UserRef | null } | null;
+  /** What the caller may do with this fitment now (CR-11: UNDO_FAULTY on a Faulty row whose replacement isn't started). */
+  availableActions: FitmentAction[];
+  /** CR-11 (D-256): the caller may assign the replacement (it is Open or Assigned and the caller can assign on this task). */
+  canAssignReplacement: boolean;
 }
 
 /** One stage of a timeline: when it started and who did it; `completedAt`/`completedBy` when it finished. */
