@@ -3,7 +3,7 @@
 | | |
 |---|---|
 | Raised | 2026-10-12 by the user, during F10 UAT |
-| Status | Awaiting acceptance |
+| Status | ✅ Complete: accepted by the user on 2026-10-12 ("F10 and CR-07 accepted") |
 | Branch | `feature/F10-route-and-start` (accepted together with F10, since the button is on the F10 route screen) |
 | Affects | Field app: sign-in and home-location screens, route map |
 

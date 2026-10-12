@@ -274,3 +274,5 @@ Chronological log of the whole project conversation. Feature-level logs live in 
 - Sign-in and home-location screens now pad above the keyboard on Android too (D-178).
 - Added *Locate me* on the route map: a fresh fix, a "you are here" dot and the map flies there; the route is unchanged (D-179). Added 3 tests; mobile 62 pass.
 - Found the emulator was running the user's own Metro and signed-in session, so stopped device testing there; the user's Metro already serves the changes.
+
+**User:** "F10 and CR-07 accepted". Both recorded and `feature/F10-route-and-start` merged to `main`.
