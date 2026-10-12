@@ -282,7 +282,7 @@ as photos under `travel/{travelTaskId}/{attachmentId}.{ext}`.
 ### Field app (F09)
 
 The field app (`apps/mobile`, "Champ Dev" while developing) is for **technicians (OT) and OEs** only; SA, OM and RO
-are told to use the web console (D-128). It's online only (D-008).
+are told to use the web console (D-128). It's online only (D-008). Bottom tabs: Home, Route, History and Profile, each with an icon (CR-08).
 
 - **Sign in** with the same email and password as the web. The session survives app restarts: the refresh token is
   kept in the phone's secure storage and the access token in memory (D-133). *Sign out* is on the Profile tab.

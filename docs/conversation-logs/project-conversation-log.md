@@ -355,3 +355,7 @@ Chronological log of the whole project conversation. Feature-level logs live in 
 **User:** "ok continue" (F14 intent). Taken as approval with all five open points as proposed (D-242 – D-246).
 
 **Claude:** Created branch `feature/F14-global-search`, wrote the F14 spec, and launched two parallel agents (Backend: shared, API; Web: search box, results page, SA settings). Only the Web agent runs the full E2E suite (lesson from F13).
+
+**User:** "add icons to the tabs in mobile view"
+
+**Claude:** Logged CR-08 on the F14 branch. The app's four bottom tabs now show outline icons (house, route, clock, person) above their labels, in the tab colours (D-247). Mobile tests 149 pass; checked on the iOS Simulator through the user's Metro.

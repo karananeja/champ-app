@@ -250,3 +250,4 @@ Important decisions made during the project. Status values: Proposed, Accepted, 
 | D-244 | 2026-10-12 | Search results follow the task lists' visibility: SA, OM, OE and RO see every match; deleted tasks never show | F14 open point 3 | Accepted | User ("ok continue") |
 | D-245 | 2026-10-12 | Matching: numbered ids exact (prefix and leading zeros optional; a bare number matches OM/OE/TK); other identifiers "contains", ignoring case, spaces and hyphens, from 3 characters | F14 open point 4 | Accepted | User ("ok continue") |
 | D-246 | 2026-10-12 | Global search is web only in F14; the app gets it later | F14 open point 5 | Accepted | User ("ok continue") |
+| D-247 | 2026-10-12 | The app's bottom tabs show outline SVG icons (house, route, clock, person) above the labels, tinted by the active/inactive tab colours with a bolder stroke when active; labels 12 pt | User request (CR-08); same drawing style as the header bell, no new dependency | Accepted (CR-08) | User |
