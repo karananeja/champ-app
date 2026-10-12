@@ -297,6 +297,8 @@ are told to use the web console (D-128). It's online only (D-008).
   stops, and a timeline with the distance and drive time from the previous stop. Finished stops come first, ticked.
   The order is kept until you tap *Recalculate route* (needs GPS) or the day's open fitments change. If routing is
   unavailable it falls back to straight-line nearest-first ("Approximate order").
+  The ◎ **Locate me** button on the map shows where you are and moves the map there, without changing the route
+  (CR-07).
 - **One at a time** (D-156): only the next open stop can be started (an In-progress one is always next); the server
   refuses another with 409 `ROUTE_ORDER`. To skip a stop, close it. *Close* and *Mark faulty* aren't order-restricted.
 - **Fitment screen** (`/fitment/[id]`): site map, customer, site, vehicle, activity, asset and installation type, time,
