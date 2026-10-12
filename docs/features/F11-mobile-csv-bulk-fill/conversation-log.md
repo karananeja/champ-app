@@ -11,3 +11,4 @@
   - New iOS and Android development builds succeeded and are installed (two new native modules).
   - Didn't drive the app: the user's Metro and servers were running. The share sheet and file picker are listed for UAT.
   - Wrote the README, test report and decisions. Handed to the user for UAT.
+- 2026-10-12: User replied "F11 accepted". UAT sign-off recorded; merged `feature/F11-mobile-csv-bulk-fill` to `main`.

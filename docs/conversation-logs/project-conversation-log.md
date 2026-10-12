@@ -311,3 +311,5 @@ Chronological log of the whole project conversation. Feature-level logs live in 
 - Wrote the README, the test report and D-206 – D-215.
 
 **Status:** F11 ready for UAT by the user.
+
+**User:** "F11 accepted". UAT sign-off recorded and `feature/F11-mobile-csv-bulk-fill` merged to `main`.
