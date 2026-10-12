@@ -12,7 +12,7 @@ import { useTheme } from '../theme/use-theme';
 
 export const homeQueryKey = (date: string) => ['mobile-home', date] as const;
 
-/** M3: Show tasks for everyone; Approve visit for OE (D-014; its screen comes in F12). */
+/** M3: Show tasks for everyone; Approve visit for OE (D-014, F12). */
 export function HomeScreen() {
   const { colors, radius } = useTheme();
   const router = useRouter();
@@ -55,11 +55,17 @@ export function HomeScreen() {
           <Muted>Your fitments for this day</Muted>
         </Pressable>
         {user?.role === 'OE' ? (
-          <View testID="tile-approve-visit" accessibilityLabel={`Approve visit, ${count(query.data?.approveVisit)}`} style={tileStyle}>
+          <Pressable
+            testID="tile-approve-visit"
+            accessibilityRole="button"
+            accessibilityLabel={`Approve visit, ${count(query.data?.approveVisit)}`}
+            onPress={() => router.push('/approve-visit')}
+            style={tileStyle}
+          >
             <Text style={[styles.count, { color: colors.primary }]}>{count(query.data?.approveVisit)}</Text>
             <Text style={[styles.tileTitle, { color: colors.foreground }]}>Approve visit</Text>
-            <Muted>Coming in a later update</Muted>
-          </View>
+            <Muted>Submitted fitments waiting for your check</Muted>
+          </Pressable>
         ) : null}
       </ScrollView>
     </View>

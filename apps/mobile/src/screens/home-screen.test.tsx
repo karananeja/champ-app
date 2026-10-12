@@ -32,12 +32,13 @@ describe('HomeScreen', () => {
     expect(router.push).toHaveBeenCalledWith('/route');
   });
 
-  it('shows the Approve visit count for OE', async () => {
+  it('shows the Approve visit count for OE and opens the list (F12)', async () => {
     mockedUseSession.mockReturnValue(fakeSession({ user: makeUser({ role: 'OE' }) }));
     homeApi(2);
     await renderWithProviders(<HomeScreen />, { date: TODAY });
     expect(await screen.findByLabelText('Approve visit, 2')).toBeOnTheScreen();
-    expect(screen.getByText('Coming in a later update')).toBeOnTheScreen();
+    await fireEvent.press(screen.getByTestId('tile-approve-visit'));
+    expect(router.push).toHaveBeenCalledWith('/approve-visit');
   });
 
   it('refetches with the new date when the header date changes', async () => {
